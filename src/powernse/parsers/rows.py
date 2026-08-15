@@ -30,7 +30,15 @@ class BhavcopyRow:
         low = cls.first(row, cls.LOW_KEYS)
         close = cls.first(row, cls.CLOSE_KEYS)
         volume = cls.first(row, cls.VOLUME_KEYS)
-        if None in (symbol, series, open_, high, low, close, volume):
+        if (
+            symbol is None
+            or series is None
+            or open_ is None
+            or high is None
+            or low is None
+            or close is None
+            or volume is None
+        ):
             return None
         try:
             open_f = float(open_)
@@ -93,7 +101,15 @@ class FoBhavcopyRow:
         low = BhavcopyRow.first(row, ("LwPric", "LOW"))
         close = BhavcopyRow.first(row, ("ClsPric", "CLOSE"))
         volume = BhavcopyRow.first(row, ("TtlTradgVol", "CONTRACTS", "Tottrdqty"))
-        if None in (symbol, instrument, open_, high, low, close, volume):
+        if (
+            symbol is None
+            or instrument is None
+            or open_ is None
+            or high is None
+            or low is None
+            or close is None
+            or volume is None
+        ):
             return None
         try:
             open_f = float(open_)
@@ -152,7 +168,7 @@ class IndexClosesRow:
         high = BhavcopyRow.first(row, ("High Index Value", "High"))
         low = BhavcopyRow.first(row, ("Low Index Value", "Low"))
         close = BhavcopyRow.first(row, ("Closing Index Value", "Close"))
-        if None in (name, open_, high, low, close):
+        if name is None or open_ is None or high is None or low is None or close is None:
             return None
         if open_ in ("-", "") or high in ("-", "") or low in ("-", "") or close in ("-", ""):
             return None
