@@ -30,6 +30,8 @@ Public surface: `powernse` package front (`NSEData`, downloaders) + one console 
 
 Policy: [`.shipgate/shipgate.yaml`](.shipgate/shipgate.yaml) (`suite: standard`). Docs: https://inquilabee.github.io/shipgate/
 
+`make check` / pre-commit / CI always use `--full-tree`. Bare `shipgate check` honors `changed-only: true` in policy and may scan fewer files. Do not call `uv run ruff` for gates — Ruff runs via ShipGate managed tools; lint settings stay in `[tool.ruff]`.
+
 ## Rules of thumb
 
 - Prefer official `nsearchives.nseindia.com` and documented NSE JSON APIs.

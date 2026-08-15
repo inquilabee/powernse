@@ -125,9 +125,9 @@ def parse_index_constituent_records(payload: bytes) -> list[IndexConstituentReco
         if isinstance(decoded, dict):
             data = decoded.get("data")
             if isinstance(data, list):
-                return [item for item in data]
+                return list(data)
         if isinstance(decoded, list):
-            return [item for item in decoded]
+            return list(decoded)
         msg = "Unexpected index constituents JSON shape"
         raise PayloadError(msg)
 
