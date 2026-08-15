@@ -15,7 +15,6 @@ from powernse.downloaders import (
     FullBhavcopyDownloader,
     IndexClosesDownloader,
     IndexConstituentsDownloader,
-    bhavcopy_archive_url,
 )
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
 from powernse.loaders import ArchiveReader
@@ -45,7 +44,6 @@ __all__ = [
     "PayloadError",
     "PowerNseError",
     "Settings",
-    "bhavcopy_archive_url",
     "iter_trading_dates",
 ]
 

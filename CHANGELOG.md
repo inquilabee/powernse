@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Download CLI exits `1` on `failed` days only with `--strict` (default soft-fail)
+- `ohlc_adjusted` reads corporate-actions files from the earliest staged day through the query end
+- Package front no longer re-exports `bhavcopy_archive_url` (import from `powernse.downloaders`)
+
+### Added
+
+- Workflow `release-nse-data.yml` publishes Release asset `nse-data.zip` (tag `nse-data-bundle`)
+
 ## 0.1.1 — 2026-08-15
 
 ### Changed

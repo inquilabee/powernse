@@ -1,8 +1,22 @@
 # Fetch the GitHub nse-data bundle
 
-Download the tracked `nse-data/` directory from [inquilabee/powernse](https://github.com/inquilabee/powernse) as a zip and extract it locally — without cloning history.
+Download the tracked `nse-data/` directory without cloning the full git history.
 
-## Try this
+## Preferred: Release asset
+
+When the repo ships a Release named **`nse-data-bundle`** (workflow
+`release-nse-data.yml`), prefer that zip — much smaller than a whole-repo zipball:
+
+```bash
+powernse fetch-bundle --force --url \
+  'https://github.com/inquilabee/powernse/releases/download/nse-data-bundle/nse-data.zip'
+powernse status
+```
+
+Maintainers: run **Actions → Release nse-data bundle → Run workflow** (or wait for the
+Sunday schedule after the archive refresh).
+
+## Fallback: repo zipball / metadata
 
 ```bash
 # PyPI / wheel installs already know the Repository URL — no env needed
@@ -19,11 +33,10 @@ export POWERNSE_GITHUB_REPO=inquilabee/powernse
 powernse fetch-bundle --repo inquilabee/powernse --branch main --dest ./nse-data --force
 ```
 
-Direct zipball or **Release asset** URL (overrides repo/branch; prefer a `nse-data.zip` Release when the code tree is large):
+Other URLs:
 
 ```bash
 powernse fetch-bundle --url 'https://codeload.github.com/inquilabee/powernse/zip/refs/heads/main' --force
-powernse fetch-bundle --url 'https://github.com/inquilabee/powernse/releases/download/TAG/nse-data.zip' --force
 ```
 
 ## What you should see
@@ -40,7 +53,9 @@ fetch-bundle: wrote 42 files to /…/nse-data
 
 ## Sunday updates
 
-Maintainers refresh exchange downloads into `nse-data/` on GitHub (weekly workflow). After that commit lands, clients re-run `fetch-bundle --force` to sync.
+Maintainers refresh exchange downloads into `nse-data/` on GitHub (weekly workflow), then
+the bundle Release workflow refreshes `nse-data.zip`. Clients re-run `fetch-bundle --force`
+(preferably with the Release `--url`) to sync.
 
 ## Next
 
