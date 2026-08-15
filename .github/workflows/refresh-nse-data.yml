@@ -26,6 +26,8 @@ jobs:
       - name: Resume archive downloads
         run: |
           set -euo pipefail
+          # Interactive CLI soft-fails missing days (exit 0); automation must use --strict
+          # so a failed series fails this job instead of committing a partial refresh.
           ROOT=./nse-data
           DAYS=14
           FAILED=0
@@ -39,17 +41,17 @@ jobs:
               FAILED=1
             fi
           }
-          run_one bhavcopy uv run powernse bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2
-          run_one fo-bhavcopy uv run powernse fo-bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2
-          run_one index-closes uv run powernse index-closes --resume --days "$DAYS" --root "$ROOT" --sleep 0.2
-          run_one full-bhavcopy uv run powernse full-bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2
+          run_one bhavcopy uv run powernse bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
+          run_one fo-bhavcopy uv run powernse fo-bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
+          run_one index-closes uv run powernse index-closes --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
+          run_one full-bhavcopy uv run powernse full-bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
           TODAY=$(date -u +%F)
           FROM=$(date -u -d "$TODAY - $DAYS days" +%F)
-          run_one corporate-actions uv run powernse corporate-actions --from "$FROM" --to "$TODAY" --root "$ROOT" --sleep 0.2
-          run_one index-constituents uv run powernse index-constituents --label-date "$TODAY" --root "$ROOT" --sleep 0.2
-          run_one bulk-deals uv run powernse bulk-deals --date "$TODAY" --root "$ROOT" --sleep 0.2
-          run_one block-deals uv run powernse block-deals --date "$TODAY" --root "$ROOT" --sleep 0.2
-          run_one fo-secban uv run powernse fo-secban --date "$TODAY" --root "$ROOT" --sleep 0.2
+          run_one corporate-actions uv run powernse corporate-actions --from "$FROM" --to "$TODAY" --root "$ROOT" --sleep 0.2 --strict
+          run_one index-constituents uv run powernse index-constituents --label-date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
+          run_one bulk-deals uv run powernse bulk-deals --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
+          run_one block-deals uv run powernse block-deals --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
+          run_one fo-secban uv run powernse fo-secban --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
           if [ "$FAILED" -ne 0 ]; then
             echo "One or more download series failed" >&2
             exit 1

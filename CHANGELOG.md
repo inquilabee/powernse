@@ -4,8 +4,8 @@
 
 ### Changed
 
-- Download CLI exits `1` on `failed` days only with `--strict` (default soft-fail)
-- `ohlc_adjusted` reads corporate-actions files from the earliest staged day through the query end
+- Download CLI exits `1` on `failed` days only with `--strict` (default soft-fail); refresh workflow passes `--strict`
+- `ohlc_adjusted` loads CA JSON by file stem in a capped lookback before the OHLC window (not an unbounded calendar walk)
 - Package front no longer re-exports `bhavcopy_archive_url` (import from `powernse.downloaders`)
 
 ### Added

@@ -3,7 +3,7 @@
 import csv
 import json
 import logging
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Self
 
@@ -23,6 +23,7 @@ from powernse.archive import (
     ArchiveRoot,
 )
 from powernse.calendar import iter_trading_dates
+from powernse.constants import CA_ADJUSTMENT_LOOKBACK_DAYS
 from powernse.downloaders.bhavcopy import latest_staged_bhavcopy_date, staged_bhavcopy_csv_path
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
 from powernse.downloaders.deals import (
@@ -181,21 +182,47 @@ class NSEData:
     ) -> list[AdjustedOhlcBar]:
         """Return equity OHLC with opt-in bonus/split adjustments from staged CA files.
 
-        Corporate-action JSON is read from the earliest staged CA day through the query
-        end date so an ex-date inside the OHLC window is found even when the file is
-        labeled before ``from_date``.
+        Corporate-action JSON files are selected by filename date in
+        ``[window_start - lookback, end]`` (see ``CA_ADJUSTMENT_LOOKBACK_DAYS``) so an
+        ex-date inside the OHLC window is found even when the file is labeled before
+        ``from_date``, without scanning the entire multi-year CA tree day-by-day.
         """
         bars = self.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
         if not bars:
             return []
         end = to_date or bars[-1].trade_date
         window_start = from_date or bars[0].trade_date
-        ca_start = self.earliest_corporate_actions_date() or window_start
-        if ca_start > end:
-            ca_start = window_start
-        records = self.actions_for(symbol, from_date=ca_start, to_date=end)
+        records = self._adjustment_corporate_actions(symbol, window_start=window_start, end=end)
         events = corporate_action_price_events(records)
         return apply_price_adjustments(bars, events)
+
+    def _adjustment_corporate_actions(
+        self,
+        symbol: str,
+        *,
+        window_start: date,
+        end: date,
+    ) -> list[dict[str, object]]:
+        floor = window_start - timedelta(days=CA_ADJUSTMENT_LOOKBACK_DAYS)
+        earliest = self.earliest_corporate_actions_date()
+        if earliest is not None and earliest > floor:
+            floor = earliest
+        needle = symbol.strip().upper()
+        matches: list[dict[str, object]] = []
+        for path in self._archive.list_files(RAW_CORPORATE_ACTIONS_DIR):
+            if not path.name.endswith(".json"):
+                continue
+            try:
+                file_day = date.fromisoformat(path.stem)
+            except ValueError:
+                continue
+            if file_day < floor or file_day > end:
+                continue
+            for record in self.corporate_actions(file_day):
+                record_symbol = str(record.get("symbol") or record.get("SYMBOL") or "").upper()
+                if record_symbol == needle:
+                    matches.append(record)
+        return matches
 
     def fo_bars(
         self,
