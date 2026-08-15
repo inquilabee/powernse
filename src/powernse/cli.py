@@ -1,177 +1,181 @@
 """Command-line interface for PowerNSE."""
 
-from __future__ import annotations
-
-import argparse
-import sys
 from datetime import date
 from pathlib import Path
+from typing import Annotated
+
+import typer
+from requests import RequestException
 
 from powernse.constants import DEFAULT_INDEX_NAMES, DEFAULT_SLEEP_SECONDS
 from powernse.downloaders import BhavcopyDownloader, CorporateActionsDownloader, IndexConstituentsDownloader
-from powernse.errors import PowerNseError
+from powernse.errors import DownloadError, PowerNseError
 from powernse.http import NseHttpClient
 from powernse.loaders import ArchiveReader
 from powernse.settings import Settings
 
+app = typer.Typer(
+    name="powernse",
+    help="Download and use official NSE India equity archives.",
+    no_args_is_help=True,
+)
 
-def parse_date(value: str) -> date:
+
+def parse_iso_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
-def add_root_arg(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument(
-        "--root",
-        type=Path,
-        default=None,
-        help="Archive root (default: POWERNSE_ROOT env or ./nse-data)",
-    )
+def _exit_for_summary(summary_failed: int) -> None:
+    if summary_failed > 0:
+        raise typer.Exit(code=1)
 
 
-def add_common_download_args(parser: argparse.ArgumentParser) -> None:
-    add_root_arg(parser)
-    parser.add_argument(
-        "--skip-existing",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Skip dates/files that already exist (default: true)",
-    )
-    parser.add_argument(
-        "--sleep",
-        type=float,
-        default=DEFAULT_SLEEP_SECONDS,
-        help="Extra sleep seconds between successful downloads",
-    )
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="powernse",
-        description="Download and use official NSE India equity archives.",
-    )
-    sub = parser.add_subparsers(dest="command", required=True)
-
-    bhav = sub.add_parser("bhavcopy", help="Download CM bhavcopy CSV archives")
-    bhav.add_argument("--from", dest="from_date", required=True, type=parse_date, help="Start date YYYY-MM-DD")
-    bhav.add_argument("--to", dest="to_date", required=True, type=parse_date, help="End date YYYY-MM-DD")
-    add_common_download_args(bhav)
-    bhav.add_argument("--strict", action="store_true", help="Fail when a trading day is unavailable")
-    bhav.add_argument("--include-weekends", action="store_true", help="Include Saturday and Sunday")
-    bhav.set_defaults(handler=cmd_bhavcopy)
-
-    corp = sub.add_parser("corporate-actions", help="Download corporate actions JSON by day")
-    corp.add_argument("--from", dest="from_date", required=True, type=parse_date, help="Start date YYYY-MM-DD")
-    corp.add_argument("--to", dest="to_date", required=True, type=parse_date, help="End date YYYY-MM-DD")
-    add_common_download_args(corp)
-    corp.set_defaults(handler=cmd_corporate_actions)
-
-    idx = sub.add_parser("index-constituents", help="Download index constituent snapshots")
-    idx.add_argument(
-        "--date",
-        dest="trade_date",
-        type=parse_date,
-        default=date.today(),
-        help="Snapshot date label YYYY-MM-DD (default: today)",
-    )
-    idx.add_argument(
-        "--index",
-        action="append",
-        dest="indices",
-        help="Index name (repeatable). Default: NIFTY 50",
-    )
-    add_common_download_args(idx)
-    idx.set_defaults(handler=cmd_index_constituents)
-
-    status = sub.add_parser("status", help="Show staged file counts under the archive root")
-    add_root_arg(status)
-    status.set_defaults(handler=cmd_status)
-
-    doctor = sub.add_parser("doctor", help="Prime an NSE session and report basic connectivity")
-    doctor.set_defaults(handler=cmd_doctor)
-
-    return parser
-
-
-def cmd_bhavcopy(args: argparse.Namespace) -> int:
-    root = Settings.resolve(args.root).archive_root
+@app.command("bhavcopy")
+def bhavcopy_cmd(
+    from_date: Annotated[date, typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD")],
+    to_date: Annotated[date, typer.Option("--to", parser=parse_iso_date, help="End date YYYY-MM-DD")],
+    root: Annotated[Path | None, typer.Option(help="Archive root (default: POWERNSE_ROOT or ./nse-data)")] = None,
+    skip_existing: Annotated[bool, typer.Option(help="Skip dates that already exist")] = True,
+    sleep: Annotated[
+        float,
+        typer.Option(help="Extra sleep seconds between successful downloads"),
+    ] = DEFAULT_SLEEP_SECONDS,
+    strict: Annotated[bool, typer.Option(help="Abort on the first unavailable trading day")] = False,
+    all_calendar_days: Annotated[
+        bool,
+        typer.Option("--all-calendar-days", help="Walk every calendar day instead of XBOM sessions only"),
+    ] = False,
+) -> None:
+    """Download CM bhavcopy CSV archives."""
+    archive_root = Settings.resolve(root).archive_root
     downloader = BhavcopyDownloader(
-        root,
-        sleep_seconds=args.sleep,
-        skip_existing=args.skip_existing,
-        strict=args.strict,
-        include_weekends=args.include_weekends,
+        archive_root,
+        sleep_seconds=sleep,
+        skip_existing=skip_existing,
+        strict=strict,
+        all_calendar_days=all_calendar_days,
     )
-    summary = downloader.download_range(args.from_date, args.to_date)
-    print(
+    summary = downloader.download_range(from_date, to_date)
+    typer.echo(
         f"bhavcopy: downloaded={summary.downloaded_count} "
         f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
         f"root={downloader.root}"
     )
-    return 0 if summary.failed_count == 0 or not args.strict else 1
+    _exit_for_summary(summary.failed_count)
 
 
-def cmd_corporate_actions(args: argparse.Namespace) -> int:
-    root = Settings.resolve(args.root).archive_root
+@app.command("corporate-actions")
+def corporate_actions_cmd(
+    from_date: Annotated[date, typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD")],
+    to_date: Annotated[date, typer.Option("--to", parser=parse_iso_date, help="End date YYYY-MM-DD")],
+    root: Annotated[Path | None, typer.Option(help="Archive root")] = None,
+    skip_existing: Annotated[bool, typer.Option(help="Skip dates that already exist")] = True,
+    sleep: Annotated[
+        float,
+        typer.Option(help="Extra sleep seconds between downloads"),
+    ] = DEFAULT_SLEEP_SECONDS,
+    strict: Annotated[bool, typer.Option(help="Abort on the first failure")] = False,
+    all_calendar_days: Annotated[
+        bool,
+        typer.Option("--all-calendar-days", help="Walk every calendar day instead of XBOM sessions only"),
+    ] = False,
+) -> None:
+    """Download corporate actions JSON by trading day."""
+    archive_root = Settings.resolve(root).archive_root
     downloader = CorporateActionsDownloader(
-        root,
-        sleep_seconds=args.sleep,
-        skip_existing=args.skip_existing,
+        archive_root,
+        sleep_seconds=sleep,
+        skip_existing=skip_existing,
+        strict=strict,
+        all_calendar_days=all_calendar_days,
     )
-    summary = downloader.download_range(args.from_date, args.to_date)
-    print(
+    summary = downloader.download_range(from_date, to_date)
+    typer.echo(
         f"corporate-actions: downloaded={summary.downloaded_count} "
-        f"skipped={summary.skipped_existing_count} root={downloader.root}"
+        f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
+        f"root={downloader.root}"
     )
-    return 0
+    _exit_for_summary(summary.failed_count)
 
 
-def cmd_index_constituents(args: argparse.Namespace) -> int:
-    root = Settings.resolve(args.root).archive_root
+@app.command("index-constituents")
+def index_constituents_cmd(
+    label_date: Annotated[
+        date | None,
+        typer.Option(
+            "--label-date",
+            parser=parse_iso_date,
+            help="Archive filename date label only (snapshot is as-of download time)",
+        ),
+    ] = None,
+    index: Annotated[
+        list[str] | None,
+        typer.Option(help="Index name (repeatable). Default: NIFTY 50"),
+    ] = None,
+    root: Annotated[Path | None, typer.Option(help="Archive root")] = None,
+    skip_existing: Annotated[bool, typer.Option(help="Skip snapshots that already exist")] = True,
+    sleep: Annotated[
+        float,
+        typer.Option(help="Extra sleep seconds between downloads"),
+    ] = DEFAULT_SLEEP_SECONDS,
+    strict: Annotated[bool, typer.Option(help="Abort on the first failure")] = False,
+) -> None:
+    """Download live index constituent snapshots (as-of now; label-date is filename only)."""
+    archive_root = Settings.resolve(root).archive_root
     downloader = IndexConstituentsDownloader(
-        root,
-        sleep_seconds=args.sleep,
-        skip_existing=args.skip_existing,
+        archive_root,
+        sleep_seconds=sleep,
+        skip_existing=skip_existing,
+        strict=strict,
     )
-    indices = args.indices or list(DEFAULT_INDEX_NAMES)
-    summary = downloader.download_indices(args.trade_date, indices)
-    print(
+    indices = index or list(DEFAULT_INDEX_NAMES)
+    summary = downloader.download_indices(label_date or date.today(), indices)
+    typer.echo(
         f"index-constituents: downloaded={summary.downloaded_count} "
-        f"skipped={summary.skipped_existing_count} root={downloader.root}"
+        f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
+        f"root={downloader.root}"
     )
-    return 0
+    _exit_for_summary(summary.failed_count)
 
 
-def cmd_status(args: argparse.Namespace) -> int:
-    reader = ArchiveReader(args.root)
+@app.command("status")
+def status_cmd(
+    root: Annotated[Path | None, typer.Option(help="Archive root")] = None,
+) -> None:
+    """Show staged file counts under the archive root (does not create directories)."""
+    reader = ArchiveReader(root, create=False)
     inventory = reader.inventory()
-    print(f"archive root: {reader.root}")
+    typer.echo(f"archive root: {reader.root}")
     for key, value in inventory.items():
-        print(f"  {key}: {value}")
-    return 0
+        typer.echo(f"  {key}: {value}")
 
 
-def cmd_doctor(_args: argparse.Namespace) -> int:
+@app.command("doctor")
+def doctor_cmd() -> None:
+    """Prime an NSE session and report basic connectivity."""
     client = NseHttpClient()
     try:
-        client.prime()
-        # Lightweight archives home probe
-        payload = client.fetch_bytes("https://www.nseindia.com/", accept="text/html")
-    except Exception as exc:  # noqa: BLE001 — CLI boundary
-        print(f"doctor: FAILED ({exc})", file=sys.stderr)
-        return 1
-    kind = "html" if payload.lstrip().startswith(b"<") else "bytes"
-    print(f"doctor: OK (session primed; home returned {len(payload)} {kind})")
-    return 0
+        payload = client.probe_home()
+    except (DownloadError, RequestException, OSError) as exc:
+        typer.echo(f"doctor: FAILED ({exc})", err=True)
+        raise typer.Exit(code=1) from exc
+    primed = "primed" if client.primed else f"not primed ({client.prime_error or 'unknown'})"
+    typer.echo(f"doctor: OK ({primed}; home returned {len(payload)} bytes)")
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
+    """Console script entry that returns an exit code."""
     try:
-        return args.handler(args)
+        result = app(args=argv, standalone_mode=False)
+    except typer.Exit as exc:
+        code = exc.exit_code
+        return 0 if code is None else int(code)
     except (PowerNseError, ValueError, OSError) as exc:
-        print(exc, file=sys.stderr)
+        typer.echo(str(exc), err=True)
         return 1
+    if isinstance(result, int):
+        return result
+    return 0
 
 
 if __name__ == "__main__":

@@ -1,9 +1,10 @@
 """Filesystem archive layout for staged NSE downloads."""
 
-from __future__ import annotations
-
+import os
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Self
 
 RAW_BHAVCOPY_DIR = Path("raw") / "bhavcopy"
 RAW_CORPORATE_ACTIONS_DIR = Path("raw") / "corporate_actions"
@@ -29,11 +30,18 @@ class ArchiveRoot:
     root: Path
 
     @classmethod
-    def open(cls, root: Path | str) -> ArchiveRoot:
+    def open(cls, root: Path | str) -> Self:
+        """Open an archive root, creating the standard layout directories."""
         resolved = Path(root).expanduser().resolve()
         return cls(root=resolved)._bootstrap()
 
-    def _bootstrap(self) -> ArchiveRoot:
+    @classmethod
+    def connect(cls, root: Path | str) -> Self:
+        """Attach to an archive root without creating directories."""
+        resolved = Path(root).expanduser().resolve()
+        return cls(root=resolved)
+
+    def _bootstrap(self) -> Self:
         for relative in ARCHIVE_PREFIX_DIRS:
             (self.root / relative).mkdir(parents=True, exist_ok=True)
         return self
@@ -41,7 +49,7 @@ class ArchiveRoot:
     def path_for(self, *parts: str | Path) -> Path:
         target = self.root.joinpath(*[Path(part) for part in parts])
         resolved = target.resolve()
-        if not str(resolved).startswith(str(self.root)):
+        if not resolved.is_relative_to(self.root):
             msg = f"path escapes archive root: {target}"
             raise ValueError(msg)
         return resolved
@@ -55,7 +63,15 @@ class ArchiveRoot:
     def write_bytes(self, relative: str | Path, payload: bytes) -> Path:
         path = self.path_for(relative)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(payload)
+        fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        tmp_path = Path(tmp_name)
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(payload)
+            os.replace(tmp_path, path)
+        except Exception:
+            tmp_path.unlink(missing_ok=True)
+            raise
         return path
 
     def read_bytes(self, relative: str | Path) -> bytes:
@@ -72,3 +88,7 @@ class ArchiveRoot:
         if search.is_file():
             return [search]
         return sorted(path for path in search.rglob("*") if path.is_file() and path.name != ".keep")
+
+    def dated_raw_path(self, prefix: Path, trade_date_year: int, filename: str) -> Path:
+        """Build a staged path under raw/<prefix>/<year>/<filename>."""
+        return self.path_for(prefix, str(trade_date_year), filename)

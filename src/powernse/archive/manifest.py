@@ -1,12 +1,12 @@
 """Download audit manifest (JSONL)."""
 
-from __future__ import annotations
-
 import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+
+from filelock import FileLock
 
 from powernse.archive.layout import MANIFEST_DIR, ArchiveRoot
 
@@ -50,8 +50,10 @@ def manifest_path(archive: ArchiveRoot) -> Path:
 def append_manifest_entry(archive: ArchiveRoot, entry: DownloadManifestEntry) -> None:
     path = manifest_path(archive)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(entry.to_json() + "\n")
+    lock = FileLock(str(path) + ".lock")
+    with lock:
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(entry.to_json() + "\n")
 
 
 def record_download(archive: ArchiveRoot, *, url: str, local_path: str, payload: bytes) -> None:

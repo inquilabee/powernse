@@ -16,6 +16,8 @@ from powernse.downloaders.index_constituents import (
     parse_index_constituent_symbols,
 )
 from powernse.loaders import ArchiveReader
+from powernse.settings import Settings
+from powernse.types import DownloadSummary
 
 
 def test_corporate_actions_url_shape() -> None:
@@ -37,6 +39,7 @@ def test_corporate_actions_download(tmp_path: Path) -> None:
     assert summary.downloaded_count == 1
     path = corporate_actions_staged_path(tmp_path, trade_date)
     assert json.loads(path.read_text(encoding="utf-8"))[0]["symbol"] == "RELIANCE"
+    assert ArchiveReader(tmp_path).corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
 
 
 def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
@@ -71,3 +74,15 @@ def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
 def test_index_constituents_url() -> None:
     url = index_constituents_request_url("NIFTY 50")
     assert "equity-stock-indices" in url
+
+
+def test_settings_env_root(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("POWERNSE_ROOT", str(tmp_path / "from-env"))
+    settings = Settings.resolve(None)
+    assert settings.archive_root == (tmp_path / "from-env").resolve()
+
+
+def test_download_summary_add() -> None:
+    left = DownloadSummary(1, 2, 3)
+    right = DownloadSummary(4, 5, 6)
+    assert left + right == DownloadSummary(5, 7, 9)

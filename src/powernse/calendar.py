@@ -1,7 +1,5 @@
 """Indian equity trading calendar helpers."""
 
-from __future__ import annotations
-
 from collections.abc import Iterator
 from datetime import date, timedelta
 
@@ -19,13 +17,17 @@ def iter_trading_dates(
     from_date: date,
     to_date: date,
     *,
-    include_weekends: bool = False,
+    all_calendar_days: bool = False,
 ) -> Iterator[date]:
-    """Yield trading sessions in range using the XBOM Indian equity calendar."""
+    """Yield dates in range.
+
+    Default: XBOM trading sessions only.
+    When ``all_calendar_days`` is True: every calendar day (weekends and holidays included).
+    """
     if from_date > to_date:
         msg = f"from_date {from_date} must be on or before to_date {to_date}"
         raise ValueError(msg)
-    if include_weekends:
+    if all_calendar_days:
         current = from_date
         while current <= to_date:
             yield current

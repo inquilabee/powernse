@@ -23,7 +23,8 @@ Requires Python 3.13+.
 # Archive root defaults to ./nse-data (override with --root or POWERNSE_ROOT)
 powernse bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse corporate-actions --from 2024-08-01 --to 2024-08-05
-powernse index-constituents --index "NIFTY 50"
+# Snapshot is as-of download time; --label-date only names the file
+powernse index-constituents --index "NIFTY 50" --label-date 2024-08-05
 powernse status
 powernse doctor
 ```

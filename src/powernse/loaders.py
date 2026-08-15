@@ -1,7 +1,5 @@
 """Read staged archive files into Python structures."""
 
-from __future__ import annotations
-
 import csv
 import json
 from datetime import date
@@ -15,7 +13,7 @@ from powernse.downloaders.index_constituents import (
     index_constituents_staged_path,
     parse_index_constituent_symbols,
 )
-from powernse.errors import ArchiveError
+from powernse.errors import ArchiveError, PayloadError
 from powernse.settings import Settings
 
 if TYPE_CHECKING:
@@ -25,12 +23,15 @@ if TYPE_CHECKING:
 class ArchiveReader:
     """Lifecycle owner for reading staged NSE archive files."""
 
-    def __init__(self, root: Path | str | ArchiveRoot | None = None) -> None:
+    def __init__(self, root: Path | str | ArchiveRoot | None = None, *, create: bool = False) -> None:
         if isinstance(root, ArchiveRoot):
             self._archive = root
         else:
             settings = Settings.resolve(root)
-            self._archive = ArchiveRoot.open(settings.archive_root)
+            if create:
+                self._archive = ArchiveRoot.open(settings.archive_root)
+            else:
+                self._archive = ArchiveRoot.connect(settings.archive_root)
 
     @property
     def root(self) -> Path:
@@ -48,7 +49,7 @@ class ArchiveReader:
         with path.open(newline="", encoding="utf-8") as handle:
             return list(csv.DictReader(handle))
 
-    def bhavcopy_frame(self, trade_date: date) -> DataFrame:
+    def bhavcopy_frame(self, trade_date: date) -> "DataFrame":
         try:
             import pandas as pd
         except ImportError as exc:
@@ -56,12 +57,22 @@ class ArchiveReader:
             raise ImportError(msg) from exc
         return pd.read_csv(self.bhavcopy_path(trade_date))
 
-    def corporate_actions(self, trade_date: date) -> object:
+    def corporate_actions(self, trade_date: date) -> list[dict[str, object]]:
         path = corporate_actions_staged_path(self.root, trade_date)
         if not path.is_file():
             msg = f"No staged corporate actions for {trade_date.isoformat()} under {self.root}"
             raise ArchiveError(msg)
-        return json.loads(path.read_text(encoding="utf-8"))
+        decoded = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(decoded, list):
+            msg = f"Corporate actions payload must be a JSON list for {trade_date.isoformat()}"
+            raise PayloadError(msg)
+        records: list[dict[str, object]] = []
+        for item in decoded:
+            if not isinstance(item, dict):
+                msg = "Corporate actions list items must be objects"
+                raise PayloadError(msg)
+            records.append(item)
+        return records
 
     def index_symbols(self, trade_date: date, index_name: str) -> list[str]:
         path = index_constituents_staged_path(self.root, trade_date, index_name)
@@ -80,5 +91,5 @@ class ArchiveReader:
         }
 
     def _manifest_bytes(self) -> int:
-        path = self._archive.path_for("manifest", "downloads.jsonl")
+        path = self.root / "manifest" / "downloads.jsonl"
         return path.stat().st_size if path.is_file() else 0

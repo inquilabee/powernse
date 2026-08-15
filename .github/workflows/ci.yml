@@ -14,12 +14,6 @@ jobs:
         with:
           python-version: "3.13"
       - name: Sync
-        run: uv sync
-      - name: Ruff
-        run: |
-          uv run ruff check src tests
-          uv run ruff format --check src tests
-      - name: Pytest
-        run: uv run pytest
-      - name: Build
-        run: uv build
+        run: uv sync --frozen
+      - name: Pipeline
+        run: make pipeline

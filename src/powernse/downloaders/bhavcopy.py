@@ -1,7 +1,5 @@
 """Official NSE CM bhavcopy archive download and staging."""
 
-from __future__ import annotations
-
 import io
 import logging
 import zipfile
@@ -11,7 +9,7 @@ from pathlib import Path
 
 from powernse.archive import RAW_BHAVCOPY_DIR, archive_key
 from powernse.calendar import iter_trading_dates
-from powernse.constants import ARCHIVE_BASE_URL, UDIFF_SWITCH_DATE_ISO
+from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_SLEEP_SECONDS, UDIFF_SWITCH_DATE_ISO
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.http import looks_like_html
@@ -41,13 +39,27 @@ def staged_bhavcopy_csv_key(trade_date: date) -> str:
     return archive_key(RAW_BHAVCOPY_DIR.as_posix(), str(trade_date.year), f"{trade_date.isoformat()}.csv")
 
 
-def extract_zip_payload_to_csv_bytes(payload: bytes) -> bytes:
+def extract_zip_payload_to_csv_bytes(payload: bytes, *, preferred_member: str | None = None) -> bytes:
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
         members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
         if not members:
             msg = "No CSV member in bhavcopy archive"
             raise PayloadError(msg)
-        with archive.open(members[0]) as source:
+        if preferred_member is not None:
+            matched = [name for name in members if Path(name).name.lower() == preferred_member.lower()]
+            if len(matched) == 1:
+                chosen = matched[0]
+            elif len(members) == 1:
+                chosen = members[0]
+            else:
+                msg = f"Ambiguous CSV members in bhavcopy archive: {members}"
+                raise PayloadError(msg)
+        elif len(members) == 1:
+            chosen = members[0]
+        else:
+            msg = f"Ambiguous CSV members in bhavcopy archive: {members}"
+            raise PayloadError(msg)
+        with archive.open(chosen) as source:
             return source.read()
 
 
@@ -58,21 +70,21 @@ class BhavcopyDownloader(ArchiveDownloader):
         self,
         root: Path | str,
         *,
-        sleep_seconds: float = 0.5,
+        sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
         skip_existing: bool = True,
         strict: bool = False,
-        include_weekends: bool = False,
+        all_calendar_days: bool = False,
         fetch_bytes: Callable[[str], bytes] | None = None,
     ) -> None:
         super().__init__(root, sleep_seconds=sleep_seconds, skip_existing=skip_existing, fetch_bytes=fetch_bytes)
         self._strict = strict
-        self._include_weekends = include_weekends
+        self._all_calendar_days = all_calendar_days
 
     def download_range(self, from_date: date, to_date: date) -> DownloadSummary:
         downloaded = 0
         skipped = 0
         failed = 0
-        for trade_date in iter_trading_dates(from_date, to_date, include_weekends=self._include_weekends):
+        for trade_date in iter_trading_dates(from_date, to_date, all_calendar_days=self._all_calendar_days):
             staged_key = staged_bhavcopy_csv_key(trade_date)
             if self.skip_existing and self.destination_exists(staged_key):
                 skipped += 1
@@ -96,7 +108,7 @@ class BhavcopyDownloader(ArchiveDownloader):
     def _download_trade_date_or_none(self, trade_date: date) -> str | None:
         try:
             return self._download_trade_date(trade_date)
-        except (DownloadError, PayloadError, RuntimeError) as exc:
+        except (DownloadError, PayloadError) as exc:
             if self._strict:
                 raise
             logger.warning("Skipping %s: %s", trade_date.isoformat(), exc)
@@ -109,7 +121,12 @@ class BhavcopyDownloader(ArchiveDownloader):
         if looks_like_html(payload):
             msg = f"Bhavcopy unavailable for {trade_date.isoformat()}: {url}"
             raise DownloadError(msg)
-        csv_bytes = extract_zip_payload_to_csv_bytes(payload)
+        preferred = Path(url).name.replace(".zip", "").replace(".ZIP", "")
+        if preferred.lower().endswith(".csv"):
+            preferred_member = preferred
+        else:
+            preferred_member = None
+        csv_bytes = extract_zip_payload_to_csv_bytes(payload, preferred_member=preferred_member)
         unavailable = f"Bhavcopy unavailable for {trade_date.isoformat()}: {url}"
         self.persist_bytes(url, staged_key, csv_bytes, unavailable_message=unavailable)
         return staged_key

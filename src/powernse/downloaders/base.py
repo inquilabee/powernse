@@ -1,8 +1,7 @@
 """Shared archive downloader scaffold."""
 
-from __future__ import annotations
-
 import time
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 
@@ -10,9 +9,10 @@ from powernse.archive import ArchiveRoot, record_download
 from powernse.errors import DownloadError
 from powernse.http import NseHttpClient, looks_like_html
 from powernse.settings import Settings
+from powernse.types import DownloadSummary
 
 
-class ArchiveDownloader:
+class ArchiveDownloader(ABC):
     """Composable NSE archive fetch / throttle / persist scaffold."""
 
     def __init__(
@@ -58,6 +58,10 @@ class ArchiveDownloader:
     @property
     def skip_existing(self) -> bool:
         return self._skip_existing
+
+    @abstractmethod
+    def download_range(self, *args: object, **kwargs: object) -> DownloadSummary:
+        """Run a dataset-specific download and return summary counts."""
 
     def fetch_bytes_throttled(self, url: str) -> bytes:
         return self._http.fetch_bytes(url, accept=self._default_accept)

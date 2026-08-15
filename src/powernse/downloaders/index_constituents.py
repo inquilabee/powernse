@@ -1,20 +1,29 @@
 """Download NSE index constituent snapshots into the archive staging tree."""
 
-from __future__ import annotations
-
 import json
+import logging
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
-from typing import cast
 from urllib.parse import urlencode
 
 from powernse.archive import RAW_INDEX_CONSTITUENTS_DIR, archive_key
-from powernse.constants import INDEX_CONSTITUENTS_API_URL
+from powernse.constants import DEFAULT_SLEEP_SECONDS, INDEX_CONSTITUENTS_API_URL
 from powernse.downloaders.base import ArchiveDownloader
-from powernse.errors import PayloadError
+from powernse.errors import DownloadError, PayloadError
 from powernse.types import DownloadSummary
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True, slots=True)
+class IndexConstituentRecord:
+    """One equity constituent row from an NSE index snapshot."""
+
+    symbol: str
+    series: str
 
 
 def index_slug(index_name: str) -> str:
@@ -52,8 +61,9 @@ class IndexConstituentsDownloader(ArchiveDownloader):
         self,
         root: Path | str,
         *,
-        sleep_seconds: float = 0.5,
+        sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
         skip_existing: bool = True,
+        strict: bool = False,
         fetch_bytes: Callable[[str], bytes] | None = None,
     ) -> None:
         super().__init__(
@@ -63,9 +73,14 @@ class IndexConstituentsDownloader(ArchiveDownloader):
             fetch_bytes=fetch_bytes,
             default_accept="application/json",
         )
+        self._strict = strict
+
+    def download_range(self, trade_date: date, index_names: list[str]) -> DownloadSummary:
+        """Download snapshots for each index; trade_date is an archive label only."""
+        return self.download_indices(trade_date, index_names)
 
     def download_snapshot(self, trade_date: date, index_name: str) -> Path:
-        """Download one index snapshot for trade_date (snapshot-as-of download time)."""
+        """Download one live index snapshot labeled with trade_date."""
         relative = index_constituents_staged_key(trade_date, index_name)
         destination = self.archive.path_for(relative)
         if self.skip_existing and destination.is_file():
@@ -82,38 +97,54 @@ class IndexConstituentsDownloader(ArchiveDownloader):
     def download_indices(self, trade_date: date, index_names: list[str]) -> DownloadSummary:
         downloaded = 0
         skipped = 0
+        failed = 0
         for index_name in index_names:
             relative = index_constituents_staged_key(trade_date, index_name)
             if self.skip_existing and self.destination_exists(relative):
                 skipped += 1
                 continue
-            self.download_snapshot(trade_date, index_name)
-            downloaded += 1
-        return DownloadSummary(downloaded_count=downloaded, skipped_existing_count=skipped)
+            try:
+                self.download_snapshot(trade_date, index_name)
+                downloaded += 1
+            except (DownloadError, PayloadError) as exc:
+                if self._strict:
+                    raise
+                logger.warning("Skipping index %s: %s", index_name, exc)
+                failed += 1
+        return DownloadSummary(
+            downloaded_count=downloaded,
+            skipped_existing_count=skipped,
+            failed_count=failed,
+        )
 
 
-def extract_index_constituent_records(decoded: object) -> list[object]:
+def parse_index_constituent_records(payload: bytes) -> list[IndexConstituentRecord]:
+    """Parse NSE index constituents JSON into typed records."""
+    decoded = json.loads(payload)
+    raw_records = _extract_raw_records(decoded)
+    records: list[IndexConstituentRecord] = []
+    for item in raw_records:
+        if not isinstance(item, dict):
+            continue
+        symbol = item.get("symbol")
+        if not isinstance(symbol, str) or not symbol:
+            continue
+        series = str(item.get("series") or "")
+        records.append(IndexConstituentRecord(symbol=symbol, series=series))
+    return records
+
+
+def _extract_raw_records(decoded: object) -> list[object]:
     if isinstance(decoded, dict):
         data = decoded.get("data")
         if isinstance(data, list):
-            return cast(list[object], data)
+            return data
     if isinstance(decoded, list):
-        return cast(list[object], decoded)
+        return decoded
     msg = "Unexpected index constituents JSON shape"
     raise PayloadError(msg)
 
 
-def is_eq_constituent_record(record: object) -> bool:
-    if not isinstance(record, dict) or "symbol" not in record:
-        return False
-    return str(record.get("series") or "").upper() == "EQ"
-
-
 def parse_index_constituent_symbols(payload: bytes) -> list[str]:
     """Extract EQ series symbol list from an NSE index constituents JSON payload."""
-    records = extract_index_constituent_records(json.loads(payload))
-    symbols: list[str] = []
-    for record in records:
-        if is_eq_constituent_record(record):
-            symbols.append(str(cast(dict[str, object], record)["symbol"]))
-    return symbols
+    return [record.symbol for record in parse_index_constituent_records(payload) if record.series.upper() == "EQ"]

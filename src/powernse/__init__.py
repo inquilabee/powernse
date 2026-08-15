@@ -1,5 +1,7 @@
 """PowerNSE — download and use official NSE India equity archives."""
 
+from importlib.metadata import PackageNotFoundError, version
+
 from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
 from powernse.downloaders import (
@@ -29,4 +31,12 @@ __all__ = [
     "iter_trading_dates",
 ]
 
-__version__ = "0.1.0"
+
+def _package_version() -> str:
+    try:
+        return version("powernse")
+    except PackageNotFoundError:
+        return "0.0.0+local"
+
+
+__version__ = _package_version()
