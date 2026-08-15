@@ -7,22 +7,37 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
+from powernse.adjust import apply_price_adjustments, corporate_action_price_events
 from powernse.archive import (
     RAW_BHAVCOPY_DIR,
+    RAW_BLOCK_DEALS_DIR,
+    RAW_BULK_DEALS_DIR,
     RAW_CORPORATE_ACTIONS_DIR,
+    RAW_FO_BHAVCOPY_DIR,
+    RAW_FO_SECBAN_DIR,
+    RAW_FULL_BHAVCOPY_DIR,
+    RAW_INDEX_CLOSES_DIR,
     RAW_INDEX_CONSTITUENTS_DIR,
     ArchiveRoot,
 )
 from powernse.calendar import iter_trading_dates
 from powernse.downloaders.bhavcopy import latest_staged_bhavcopy_date, staged_bhavcopy_csv_path
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
+from powernse.downloaders.deals import (
+    staged_block_deals_csv_path,
+    staged_bulk_deals_csv_path,
+    staged_fo_secban_csv_path,
+)
+from powernse.downloaders.fo_bhavcopy import latest_staged_fo_bhavcopy_date, staged_fo_bhavcopy_csv_path
+from powernse.downloaders.full_bhavcopy import latest_staged_full_bhavcopy_date, staged_full_bhavcopy_csv_path
+from powernse.downloaders.index_closes import latest_staged_index_closes_date, staged_index_closes_csv_path
 from powernse.downloaders.index_constituents import (
     index_constituents_staged_path,
     parse_index_constituent_symbols,
 )
 from powernse.errors import ArchiveError, PayloadError
 from powernse.settings import Settings
-from powernse.types import OhlcBar
+from powernse.types import AdjustedOhlcBar, FoBar, IndexBar, OhlcBar
 
 if TYPE_CHECKING:
     from pandas import DataFrame
@@ -101,6 +116,94 @@ class BhavcopyRow:
             except ValueError:
                 continue
         return None
+
+
+class FoBhavcopyRow:
+    """Normalize one F&O bhavcopy CSV row into an FoBar."""
+
+    @classmethod
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> FoBar | None:
+        symbol = BhavcopyRow.first(row, ("TckrSymb", "SYMBOL"))
+        instrument = BhavcopyRow.first(row, ("FinInstrmTp", "INSTRUMENT"))
+        open_ = BhavcopyRow.first(row, ("OpnPric", "OPEN"))
+        high = BhavcopyRow.first(row, ("HghPric", "HIGH"))
+        low = BhavcopyRow.first(row, ("LwPric", "LOW"))
+        close = BhavcopyRow.first(row, ("ClsPric", "CLOSE"))
+        volume = BhavcopyRow.first(row, ("TtlTradgVol", "CONTRACTS", "Tottrdqty"))
+        if None in (symbol, instrument, open_, high, low, close, volume):
+            return None
+        try:
+            open_f = float(open_)
+            high_f = float(high)
+            low_f = float(low)
+            close_f = float(close)
+            volume_i = int(float(volume))
+        except ValueError:
+            return None
+        strike_raw = BhavcopyRow.first(row, ("StrkPric", "STRIKE_PR"))
+        oi_raw = BhavcopyRow.first(row, ("OpnIntrst", "OPEN_INT"))
+        strike = float(strike_raw) if strike_raw not in (None, "") else None
+        open_interest = int(float(oi_raw)) if oi_raw not in (None, "") else None
+        expiry = cls._parse_date(BhavcopyRow.first(row, ("XpryDt", "EXPIRY_DT")))
+        option_type = BhavcopyRow.first(row, ("OptnTp", "OPTION_TYP"))
+        row_date = BhavcopyRow.parse_row_date(row) or trade_date
+        return FoBar(
+            trade_date=row_date,
+            symbol=symbol.strip().upper(),
+            instrument_type=instrument.strip().upper(),
+            expiry=expiry,
+            strike=strike,
+            option_type=option_type.strip().upper() if option_type else None,
+            open=open_f,
+            high=high_f,
+            low=low_f,
+            close=close_f,
+            volume=volume_i,
+            open_interest=open_interest,
+        )
+
+    @staticmethod
+    def _parse_date(raw: str | None) -> date | None:
+        if raw is None or not raw.strip():
+            return None
+        text = raw.strip()
+        try:
+            return date.fromisoformat(text[:10])
+        except ValueError:
+            pass
+        for fmt in ("%d-%b-%Y", "%d-%b-%y", "%d-%m-%Y"):
+            try:
+                return datetime.strptime(text, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+
+class IndexClosesRow:
+    """Normalize one index-closes CSV row into an IndexBar."""
+
+    @classmethod
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> IndexBar | None:
+        name = BhavcopyRow.first(row, ("Index Name", "IndexName"))
+        open_ = BhavcopyRow.first(row, ("Open Index Value", "Open"))
+        high = BhavcopyRow.first(row, ("High Index Value", "High"))
+        low = BhavcopyRow.first(row, ("Low Index Value", "Low"))
+        close = BhavcopyRow.first(row, ("Closing Index Value", "Close"))
+        if None in (name, open_, high, low, close):
+            return None
+        if open_ in ("-", "") or high in ("-", "") or low in ("-", "") or close in ("-", ""):
+            return None
+        try:
+            return IndexBar(
+                trade_date=trade_date,
+                index_name=name.strip(),
+                open=float(open_),
+                high=float(high),
+                low=float(low),
+                close=float(close),
+            )
+        except ValueError:
+            return None
 
 
 class NSEData:
@@ -228,6 +331,103 @@ class NSEData:
         bars = self.ohlc(symbol, from_date=latest_day, to_date=latest_day, series=series)
         return bars[0] if bars else None
 
+    def ohlc_adjusted(
+        self,
+        symbol: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+    ) -> list[AdjustedOhlcBar]:
+        """Return equity OHLC with opt-in bonus/split adjustments from staged CA files."""
+        bars = self.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+        if not bars:
+            return []
+        start = from_date or bars[0].trade_date
+        end = to_date or bars[-1].trade_date
+        records = self.actions_for(symbol, from_date=start, to_date=end)
+        events = corporate_action_price_events(records)
+        return apply_price_adjustments(bars, events)
+
+    def fo_bars(
+        self,
+        symbol: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        instrument_type: str | None = None,
+        expiry: date | None = None,
+        strike: float | None = None,
+        option_type: str | None = None,
+    ) -> list[FoBar]:
+        """Return F&O bars for one underlying across staged F&O bhavcopy days."""
+        start, end = self._resolve_fo_window(from_date, to_date)
+        needle = symbol.strip().upper()
+        instrument_needle = instrument_type.strip().upper() if instrument_type else None
+        option_needle = option_type.strip().upper() if option_type else None
+        bars: list[FoBar] = []
+        for trade_date in iter_trading_dates(start, end):
+            path = staged_fo_bhavcopy_csv_path(self.root, trade_date)
+            if not path.is_file():
+                continue
+            with path.open(newline="", encoding="utf-8") as handle:
+                for row in csv.DictReader(handle):
+                    bar = FoBhavcopyRow.from_row(row, trade_date=trade_date)
+                    if bar is None or bar.symbol != needle:
+                        continue
+                    if instrument_needle is not None and bar.instrument_type != instrument_needle:
+                        continue
+                    if expiry is not None and bar.expiry != expiry:
+                        continue
+                    if strike is not None and (bar.strike is None or abs(bar.strike - strike) > 1e-9):
+                        continue
+                    if option_needle is not None and bar.option_type != option_needle:
+                        continue
+                    bars.append(bar)
+        return bars
+
+    def index_ohlc(
+        self,
+        index_name: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+    ) -> list[IndexBar]:
+        """Return OHLC for one index name across staged index-closes files."""
+        start, end = self._resolve_index_closes_window(from_date, to_date)
+        needle = index_name.strip().casefold()
+        bars: list[IndexBar] = []
+        for trade_date in iter_trading_dates(start, end):
+            path = staged_index_closes_csv_path(self.root, trade_date)
+            if not path.is_file():
+                continue
+            with path.open(newline="", encoding="utf-8") as handle:
+                for row in csv.DictReader(handle):
+                    bar = IndexClosesRow.from_row(row, trade_date=trade_date)
+                    if bar is None:
+                        continue
+                    if bar.index_name.casefold() == needle:
+                        bars.append(bar)
+                        break
+        return bars
+
+    def full_bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
+        path = staged_full_bhavcopy_csv_path(self.root, trade_date)
+        if not path.is_file():
+            msg = f"No staged full bhavcopy for {trade_date.isoformat()} under {self.root}"
+            raise ArchiveError(msg)
+        with path.open(newline="", encoding="utf-8") as handle:
+            return list(csv.DictReader(handle))
+
+    def bulk_deals(self, label_date: date) -> list[dict[str, str]]:
+        return self._read_csv_rows(staged_bulk_deals_csv_path(self.root, label_date), "bulk deals", label_date)
+
+    def block_deals(self, label_date: date) -> list[dict[str, str]]:
+        return self._read_csv_rows(staged_block_deals_csv_path(self.root, label_date), "block deals", label_date)
+
+    def fo_secban(self, label_date: date) -> list[dict[str, str]]:
+        return self._read_csv_rows(staged_fo_secban_csv_path(self.root, label_date), "fo secban", label_date)
+
     def on(self, trade_date: date, *, symbol: str | None = None, series: str = "EQ") -> list[OhlcBar]:
         """All (or one) OHLC bars from a single staged bhavcopy day."""
         path = self.bhavcopy_path(trade_date)
@@ -302,6 +502,12 @@ class NSEData:
         """Return file counts by archive prefix."""
         return {
             "bhavcopy": len(self._archive.list_files(RAW_BHAVCOPY_DIR)),
+            "fo_bhavcopy": len(self._archive.list_files(RAW_FO_BHAVCOPY_DIR)),
+            "full_bhavcopy": len(self._archive.list_files(RAW_FULL_BHAVCOPY_DIR)),
+            "index_closes": len(self._archive.list_files(RAW_INDEX_CLOSES_DIR)),
+            "bulk_deals": len(self._archive.list_files(RAW_BULK_DEALS_DIR)),
+            "block_deals": len(self._archive.list_files(RAW_BLOCK_DEALS_DIR)),
+            "fo_secban": len(self._archive.list_files(RAW_FO_SECBAN_DIR)),
             "corporate_actions": len(self._archive.list_files(RAW_CORPORATE_ACTIONS_DIR)),
             "index_constituents": len(self._archive.list_files(RAW_INDEX_CONSTITUENTS_DIR)),
             "manifest_bytes": self._manifest_bytes(),
@@ -311,17 +517,56 @@ class NSEData:
         path = self.root / "manifest" / "downloads.jsonl"
         return path.stat().st_size if path.is_file() else 0
 
-    def _resolve_bhavcopy_window(self, from_date: date | None, to_date: date | None) -> tuple[date, date]:
-        latest = self.latest_bhavcopy_date()
+    def _read_csv_rows(self, path: Path, label: str, label_date: date) -> list[dict[str, str]]:
+        if not path.is_file():
+            msg = f"No staged {label} for {label_date.isoformat()} under {self.root}"
+            raise ArchiveError(msg)
+        with path.open(newline="", encoding="utf-8") as handle:
+            return list(csv.DictReader(handle))
+
+    def _resolve_window(
+        self,
+        from_date: date | None,
+        to_date: date | None,
+        *,
+        latest: date | None,
+        empty_message: str,
+    ) -> tuple[date, date]:
         end = to_date or latest
         if end is None:
-            msg = f"No staged bhavcopy under {self.root}; download data first"
-            raise ArchiveError(msg)
+            raise ArchiveError(empty_message)
         start = from_date or end
         if start > end:
             msg = f"from_date {start} must be on or before to_date {end}"
             raise ValueError(msg)
         return start, end
+
+    def _resolve_bhavcopy_window(self, from_date: date | None, to_date: date | None) -> tuple[date, date]:
+        return self._resolve_window(
+            from_date,
+            to_date,
+            latest=self.latest_bhavcopy_date(),
+            empty_message=f"No staged bhavcopy under {self.root}; download data first",
+        )
+
+    def _resolve_fo_window(self, from_date: date | None, to_date: date | None) -> tuple[date, date]:
+        return self._resolve_window(
+            from_date,
+            to_date,
+            latest=latest_staged_fo_bhavcopy_date(self._archive),
+            empty_message=f"No staged F&O bhavcopy under {self.root}; download data first",
+        )
+
+    def _resolve_index_closes_window(self, from_date: date | None, to_date: date | None) -> tuple[date, date]:
+        return self._resolve_window(
+            from_date,
+            to_date,
+            latest=latest_staged_index_closes_date(self._archive),
+            empty_message=f"No staged index closes under {self.root}; download data first",
+        )
+
+    def latest_full_bhavcopy_date(self) -> date | None:
+        return latest_staged_full_bhavcopy_date(self._archive)
 
     def _resolve_corporate_actions_window(
         self,
