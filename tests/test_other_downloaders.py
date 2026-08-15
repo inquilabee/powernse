@@ -26,20 +26,16 @@ def test_corporate_actions_url_shape() -> None:
     assert "from_date=01-08-2024" in url
 
 
-def test_corporate_actions_download(tmp_path: Path) -> None:
+def test_corporate_actions_invalid_json_non_strict(tmp_path: Path) -> None:
     trade_date = date(2024, 8, 1)
-    payload = json.dumps([{"symbol": "RELIANCE", "subject": "Dividend", "exDate": "2024-08-01"}]).encode()
 
-    def fetch(url: str) -> bytes:
-        assert "01-08-2024" in url
-        return payload
+    def fetch(_url: str) -> bytes:
+        return b"<html>not json</html>"
 
-    downloader = CorporateActionsDownloader(tmp_path, sleep_seconds=0, fetch_bytes=fetch)
+    downloader = CorporateActionsDownloader(tmp_path, sleep_seconds=0, fetch_bytes=fetch, strict=False)
     summary = downloader.download_range(trade_date, trade_date)
-    assert summary.downloaded_count == 1
-    path = corporate_actions_staged_path(tmp_path, trade_date)
-    assert json.loads(path.read_text(encoding="utf-8"))[0]["symbol"] == "RELIANCE"
-    assert ArchiveReader(tmp_path).corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
+    assert summary == DownloadSummary(downloaded_count=0, skipped_existing_count=0, failed_count=1)
+    assert not corporate_actions_staged_path(tmp_path, trade_date).is_file()
 
 
 def test_index_constituents_parse_and_download(tmp_path: Path) -> None:

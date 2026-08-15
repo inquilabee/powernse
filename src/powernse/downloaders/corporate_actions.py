@@ -123,7 +123,11 @@ class CorporateActionsDownloader(ArchiveDownloader):
     def _download_batch(self, batch_days: list[date], span_start: date, span_end: date) -> int:
         url = corporate_actions_request_url(span_start, span_end)
         payload = self.fetch_bytes_throttled(url)
-        decoded = json.loads(payload)
+        try:
+            decoded = json.loads(payload)
+        except json.JSONDecodeError as exc:
+            msg = f"Corporate actions payload is not valid JSON: {url}"
+            raise PayloadError(msg) from exc
         if not isinstance(decoded, list):
             msg = f"Corporate actions payload must be a JSON list: {url}"
             raise PayloadError(msg)
