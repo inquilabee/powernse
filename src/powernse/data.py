@@ -79,7 +79,14 @@ class NSEData:
 
     def latest_corporate_actions_date(self) -> date | None:
         """Newest staged corporate-actions date, if any."""
-        latest: date | None = None
+        return self._corporate_actions_bound(prefer_latest=True)
+
+    def earliest_corporate_actions_date(self) -> date | None:
+        """Oldest staged corporate-actions date, if any."""
+        return self._corporate_actions_bound(prefer_latest=False)
+
+    def _corporate_actions_bound(self, *, prefer_latest: bool) -> date | None:
+        bound: date | None = None
         for path in self._archive.list_files(RAW_CORPORATE_ACTIONS_DIR):
             if not path.name.endswith(".json"):
                 continue
@@ -87,9 +94,13 @@ class NSEData:
                 candidate = date.fromisoformat(path.stem)
             except ValueError:
                 continue
-            if latest is None or candidate > latest:
-                latest = candidate
-        return latest
+            if bound is None:
+                bound = candidate
+            elif prefer_latest and candidate > bound:
+                bound = candidate
+            elif not prefer_latest and candidate < bound:
+                bound = candidate
+        return bound
 
     def bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
         path = self.bhavcopy_path(trade_date)
@@ -168,13 +179,21 @@ class NSEData:
         to_date: date | None = None,
         series: str = "EQ",
     ) -> list[AdjustedOhlcBar]:
-        """Return equity OHLC with opt-in bonus/split adjustments from staged CA files."""
+        """Return equity OHLC with opt-in bonus/split adjustments from staged CA files.
+
+        Corporate-action JSON is read from the earliest staged CA day through the query
+        end date so an ex-date inside the OHLC window is found even when the file is
+        labeled before ``from_date``.
+        """
         bars = self.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
         if not bars:
             return []
-        start = from_date or bars[0].trade_date
         end = to_date or bars[-1].trade_date
-        records = self.actions_for(symbol, from_date=start, to_date=end)
+        window_start = from_date or bars[0].trade_date
+        ca_start = self.earliest_corporate_actions_date() or window_start
+        if ca_start > end:
+            ca_start = window_start
+        records = self.actions_for(symbol, from_date=ca_start, to_date=end)
         events = corporate_action_price_events(records)
         return apply_price_adjustments(bars, events)
 

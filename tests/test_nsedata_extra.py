@@ -72,3 +72,32 @@ def test_ohlc_adjusted_bonus(tmp_path: Path) -> None:
     assert adjusted[1].close == 100.0
     assert adjusted[0].factor == 2.0
     assert adjusted[0].close == 100.0
+
+
+def test_ohlc_adjusted_loads_ca_file_before_from_date(tmp_path: Path) -> None:
+    """CA JSON labeled before from_date still applies when exDate is in the OHLC window."""
+    day_before = date(2024, 8, 1)
+    ex_day = date(2024, 8, 2)
+    for trade_date, close in ((day_before, 200.0), (ex_day, 100.0)):
+        path = staged_bhavcopy_csv_path(tmp_path, trade_date)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{close},{close},{close},{close},100\n",
+            encoding="utf-8",
+        )
+    ca = corporate_actions_staged_path(tmp_path, date(2024, 7, 15))
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    ca.write_text(
+        '[{"symbol":"RELIANCE","subject":"Bonus 1:1","exDate":"2024-08-02"}]',
+        encoding="utf-8",
+    )
+    adjusted = NSEData(tmp_path).ohlc_adjusted(
+        "RELIANCE",
+        from_date=day_before,
+        to_date=ex_day,
+    )
+    assert len(adjusted) == 2
+    assert adjusted[0].factor == 2.0
+    assert adjusted[0].close == 100.0
+    assert adjusted[1].factor == 1.0
+    assert adjusted[1].close == 100.0

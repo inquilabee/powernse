@@ -1,6 +1,7 @@
 # Use NSEData in Python
 
-OHLC helpers scan each day's full CSV — use modest date windows unless you add your own index.
+OHLC helpers scan each day's full CSV — use modest date windows unless you add your
+own index. Long symbol queries are O(trading days × rows per day).
 
 ## Try this
 
@@ -15,6 +16,7 @@ latest = data.latest("RELIANCE")
 gaps = data.coverage_gaps(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 
 # Opt-in bonus/split adjustment from staged corporate-actions JSON
+# (loads CA files from the earliest staged day through to_date so ex-dates in-window are found)
 adjusted = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 
 fo = data.fo_bars("RELIANCE", instrument_type="FUTSTK")
