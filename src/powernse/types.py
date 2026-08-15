@@ -1,6 +1,7 @@
 """Small shared value types."""
 
 from dataclasses import dataclass
+from datetime import date
 from typing import Self
 
 
@@ -24,3 +25,18 @@ class DownloadSummary:
             skipped_existing_count=self.skipped_existing_count + other.skipped_existing_count,
             failed_count=self.failed_count + other.failed_count,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class OhlcBar:
+    """One symbol's end-of-day OHLC from a staged bhavcopy row."""
+
+    trade_date: date
+    symbol: str
+    series: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    isin: str | None = None

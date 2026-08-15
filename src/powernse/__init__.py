@@ -4,6 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
+from powernse.data import NSEData
 from powernse.downloaders import (
     BhavcopyDownloader,
     CorporateActionsDownloader,
@@ -13,7 +14,7 @@ from powernse.downloaders import (
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
 from powernse.loaders import ArchiveReader
 from powernse.settings import Settings
-from powernse.types import DownloadSummary
+from powernse.types import DownloadSummary, OhlcBar
 
 __all__ = [
     "ArchiveError",
@@ -24,6 +25,8 @@ __all__ = [
     "DownloadError",
     "DownloadSummary",
     "IndexConstituentsDownloader",
+    "NSEData",
+    "OhlcBar",
     "PayloadError",
     "PowerNseError",
     "Settings",
