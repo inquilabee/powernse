@@ -2,6 +2,12 @@
 
 Tracked end-of-day archives refreshed from NSE exchange sources.
 
+CM bhavcopy on this tree runs from **1994-11-03** (when NSE equity archives begin
+hosting files) through the latest staged session. Weekdays before that, and
+calendar gaps that return HTTP 404 from `nsearchives.nseindia.com`, are not
+available from the exchange. Other series folders may still be empty placeholders
+until a refresh fills them.
+
 This tree may start with layout placeholders (`.gitkeep`) only. CSV/JSON payloads are added by the Sunday GitHub Actions refresh (or by maintainers running `powernse … --root ./nse-data` and committing). Until those files exist on GitHub, `fetch-bundle` will not yield OHLC bars — download from NSE locally instead.
 
 A large local history under this directory can be `git add`ed when you are ready to publish; ~hundreds of MB is normal for multi-year CM bhavcopy.
