@@ -7,8 +7,13 @@ from typing import Annotated
 import typer
 from requests import RequestException
 
-from powernse.constants import DEFAULT_INDEX_NAMES, DEFAULT_SLEEP_SECONDS
-from powernse.downloaders import BhavcopyDownloader, CorporateActionsDownloader, IndexConstituentsDownloader
+from powernse.constants import DEFAULT_INDEX_NAMES, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
+from powernse.downloaders import (
+    BhavcopyDownloader,
+    CorporateActionsDownloader,
+    IndexConstituentsDownloader,
+    resolve_bhavcopy_resume_range,
+)
 from powernse.errors import DownloadError, PowerNseError
 from powernse.http import NseHttpClient
 from powernse.loaders import ArchiveReader
@@ -32,8 +37,22 @@ def _exit_for_summary(summary_failed: int) -> None:
 
 @app.command("bhavcopy")
 def bhavcopy_cmd(
-    from_date: Annotated[date, typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD")],
-    to_date: Annotated[date, typer.Option("--to", parser=parse_iso_date, help="End date YYYY-MM-DD")],
+    resume: Annotated[
+        bool,
+        typer.Option("--resume", help="Download from last staged date (or 2000-01-01) through today"),
+    ] = False,
+    from_date: Annotated[
+        date | None,
+        typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD (required unless --resume)"),
+    ] = None,
+    to_date: Annotated[
+        date | None,
+        typer.Option("--to", parser=parse_iso_date, help="End date YYYY-MM-DD (required unless --resume)"),
+    ] = None,
+    days: Annotated[
+        int,
+        typer.Option("--days", help="Max calendar-day span when using --resume (default: 100)"),
+    ] = DEFAULT_RESUME_DAYS,
     root: Annotated[Path | None, typer.Option(help="Archive root (default: POWERNSE_ROOT or ./nse-data)")] = None,
     skip_existing: Annotated[bool, typer.Option(help="Skip dates that already exist")] = True,
     sleep: Annotated[
@@ -48,6 +67,20 @@ def bhavcopy_cmd(
 ) -> None:
     """Download CM bhavcopy CSV archives."""
     archive_root = Settings.resolve(root).archive_root
+    if resume:
+        resolved_from, resolved_to = resolve_bhavcopy_resume_range(
+            archive_root,
+            days=days,
+            from_date=from_date,
+            to_date=to_date,
+        )
+        typer.echo(f"bhavcopy resume: {resolved_from.isoformat()} → {resolved_to.isoformat()} (days<={days})")
+    else:
+        if from_date is None or to_date is None:
+            typer.echo("Provide --from and --to, or use --resume", err=True)
+            raise typer.Exit(code=2)
+        resolved_from, resolved_to = from_date, to_date
+
     downloader = BhavcopyDownloader(
         archive_root,
         sleep_seconds=sleep,
@@ -55,7 +88,7 @@ def bhavcopy_cmd(
         strict=strict,
         all_calendar_days=all_calendar_days,
     )
-    summary = downloader.download_range(from_date, to_date)
+    summary = downloader.download_range(resolved_from, resolved_to)
     typer.echo(
         f"bhavcopy: downloaded={summary.downloaded_count} "
         f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "

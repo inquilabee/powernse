@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from powernse.archive import ArchiveRoot
-from powernse.downloaders.bhavcopy import staged_bhavcopy_csv_path
+from powernse.downloaders.bhavcopy import latest_staged_bhavcopy_date, staged_bhavcopy_csv_path
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
 from powernse.downloaders.index_constituents import (
     index_constituents_staged_path,
@@ -43,6 +43,10 @@ class ArchiveReader:
             msg = f"No staged bhavcopy for {trade_date.isoformat()} under {self.root}"
             raise ArchiveError(msg)
         return path
+
+    def latest_bhavcopy_date(self) -> date | None:
+        """Newest staged bhavcopy date under this archive, if any."""
+        return latest_staged_bhavcopy_date(self._archive)
 
     def bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
         path = self.bhavcopy_path(trade_date)

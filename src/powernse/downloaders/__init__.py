@@ -3,6 +3,8 @@
 from powernse.downloaders.bhavcopy import (
     BhavcopyDownloader,
     bhavcopy_archive_url,
+    latest_staged_bhavcopy_date,
+    resolve_bhavcopy_resume_range,
     staged_bhavcopy_csv_path,
 )
 from powernse.downloaders.corporate_actions import (
@@ -26,6 +28,8 @@ __all__ = [
     "corporate_actions_staged_path",
     "index_constituents_request_url",
     "index_constituents_staged_path",
+    "latest_staged_bhavcopy_date",
     "parse_index_constituent_symbols",
+    "resolve_bhavcopy_resume_range",
     "staged_bhavcopy_csv_path",
 ]

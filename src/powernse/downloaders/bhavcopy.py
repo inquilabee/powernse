@@ -2,14 +2,21 @@
 
 import io
 import logging
+import re
 import zipfile
 from collections.abc import Callable
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
-from powernse.archive import RAW_BHAVCOPY_DIR, archive_key
+from powernse.archive import RAW_BHAVCOPY_DIR, ArchiveRoot, archive_key
 from powernse.calendar import iter_trading_dates
-from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_SLEEP_SECONDS, UDIFF_SWITCH_DATE_ISO
+from powernse.constants import (
+    ARCHIVE_BASE_URL,
+    DEFAULT_RESUME_DAYS,
+    DEFAULT_SLEEP_SECONDS,
+    EMPTY_ARCHIVE_FROM_DATE,
+    UDIFF_SWITCH_DATE_ISO,
+)
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.http import looks_like_html
@@ -18,6 +25,8 @@ from powernse.types import DownloadSummary
 logger = logging.getLogger(__name__)
 
 UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
+_STAGED_BHAVCOPY_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})\.csv$")
+EMPTY_ARCHIVE_FROM = date.fromisoformat(EMPTY_ARCHIVE_FROM_DATE)
 
 
 def bhavcopy_archive_url(trade_date: date) -> str:
@@ -37,6 +46,43 @@ def staged_bhavcopy_csv_path(root: Path, trade_date: date) -> Path:
 
 def staged_bhavcopy_csv_key(trade_date: date) -> str:
     return archive_key(RAW_BHAVCOPY_DIR.as_posix(), str(trade_date.year), f"{trade_date.isoformat()}.csv")
+
+
+def latest_staged_bhavcopy_date(root: Path | ArchiveRoot) -> date | None:
+    """Return the newest staged bhavcopy trade date, or None when the archive is empty."""
+    archive = root if isinstance(root, ArchiveRoot) else ArchiveRoot.connect(root)
+    latest: date | None = None
+    for path in archive.list_files(RAW_BHAVCOPY_DIR):
+        match = _STAGED_BHAVCOPY_NAME.match(path.name)
+        if match is None:
+            continue
+        candidate = date.fromisoformat(match.group(1))
+        if latest is None or candidate > latest:
+            latest = candidate
+    return latest
+
+
+def resolve_bhavcopy_resume_range(
+    root: Path | ArchiveRoot,
+    *,
+    today: date | None = None,
+    days: int = DEFAULT_RESUME_DAYS,
+    from_date: date | None = None,
+    to_date: date | None = None,
+) -> tuple[date, date]:
+    """Resolve ``--resume`` window: last staged (or 2000-01-01) → today, capped by ``days``."""
+    if days < 1:
+        msg = f"--days must be >= 1, got {days}"
+        raise ValueError(msg)
+    resolved_to = to_date or (today or date.today())
+    resolved_from = from_date or latest_staged_bhavcopy_date(root) or EMPTY_ARCHIVE_FROM
+    floor = resolved_to - timedelta(days=days)
+    if resolved_from < floor:
+        resolved_from = floor
+    if resolved_from > resolved_to:
+        msg = f"resume from_date {resolved_from} is after to_date {resolved_to}"
+        raise ValueError(msg)
+    return resolved_from, resolved_to
 
 
 def extract_zip_payload_to_csv_bytes(payload: bytes, *, preferred_member: str | None = None) -> bytes:

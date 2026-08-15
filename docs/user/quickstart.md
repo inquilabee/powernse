@@ -19,6 +19,10 @@ uv run powernse --help
 
 ```bash
 powernse bhavcopy --from 2024-08-01 --to 2024-08-05
+
+# Resume from last staged file (or 2000-01-01) through today, max 100 calendar days
+powernse bhavcopy --resume
+powernse bhavcopy --resume --days 30
 ```
 
 Files land under `./nse-data/raw/bhavcopy/YYYY/YYYY-MM-DD.csv` (or `POWERNSE_ROOT`).
