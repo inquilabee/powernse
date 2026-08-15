@@ -9,7 +9,12 @@ from powernse.errors import PayloadError
 
 def extract_zip_payload_to_csv_bytes(payload: bytes, *, preferred_member: str | None = None) -> bytes:
     """Return bytes of the chosen CSV member inside a ZIP archive."""
-    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+    try:
+        archive_cm = zipfile.ZipFile(io.BytesIO(payload))
+    except zipfile.BadZipFile as exc:
+        msg = "Response is not a ZIP archive"
+        raise PayloadError(msg) from exc
+    with archive_cm as archive:
         members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
         if not members:
             msg = "No CSV member in archive"
