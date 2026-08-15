@@ -33,7 +33,7 @@ def register_snapshot_commands(app: typer.Typer) -> None:
         """Download current bulk-deals snapshot (label-date is filename only)."""
         archive_root = Settings.resolve(root).archive_root
         downloader = BulkDealsDownloader(archive_root, sleep_seconds=sleep, skip_existing=skip_existing, strict=strict)
-        echo_summary("bulk-deals", downloader.download(label_date or date.today()), downloader.root)
+        echo_summary("bulk-deals", downloader.download(label_date or date.today()), downloader.root, strict=strict)
 
     @app.command("block-deals")
     def block_deals_cmd(
@@ -49,7 +49,7 @@ def register_snapshot_commands(app: typer.Typer) -> None:
         """Download current block-deals snapshot (label-date is filename only)."""
         archive_root = Settings.resolve(root).archive_root
         downloader = BlockDealsDownloader(archive_root, sleep_seconds=sleep, skip_existing=skip_existing, strict=strict)
-        echo_summary("block-deals", downloader.download(label_date or date.today()), downloader.root)
+        echo_summary("block-deals", downloader.download(label_date or date.today()), downloader.root, strict=strict)
 
     @app.command("fo-secban")
     def fo_secban_cmd(
@@ -65,7 +65,7 @@ def register_snapshot_commands(app: typer.Typer) -> None:
         """Download current F&O security-ban snapshot (label-date is filename only)."""
         archive_root = Settings.resolve(root).archive_root
         downloader = FoSecbanDownloader(archive_root, sleep_seconds=sleep, skip_existing=skip_existing, strict=strict)
-        echo_summary("fo-secban", downloader.download(label_date or date.today()), downloader.root)
+        echo_summary("fo-secban", downloader.download(label_date or date.today()), downloader.root, strict=strict)
 
     @app.command("corporate-actions")
     def corporate_actions_cmd(
@@ -89,7 +89,7 @@ def register_snapshot_commands(app: typer.Typer) -> None:
             strict=strict,
             all_calendar_days=all_calendar_days,
         )
-        echo_summary("corporate-actions", downloader.download_range(from_date, to_date), downloader.root)
+        echo_summary("corporate-actions", downloader.download_range(from_date, to_date), downloader.root, strict=strict)
 
     @app.command("index-constituents")
     def index_constituents_cmd(
@@ -123,4 +123,5 @@ def register_snapshot_commands(app: typer.Typer) -> None:
             "index-constituents",
             downloader.download_indices(label_date or date.today(), indices),
             downloader.root,
+            strict=strict,
         )

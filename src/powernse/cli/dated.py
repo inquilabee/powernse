@@ -65,6 +65,6 @@ def register_dated_download_command(
             strict=strict,
             all_calendar_days=all_calendar_days,
         )
-        echo_summary(name, downloader.download_range(resolved_from, resolved_to), downloader.root)
+        echo_summary(name, downloader.download_range(resolved_from, resolved_to), downloader.root, strict=strict)
 
     dated_cmd.__doc__ = help_text

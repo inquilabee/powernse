@@ -13,8 +13,8 @@ def parse_iso_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
-def exit_for_summary(summary_failed: int) -> None:
-    if summary_failed > 0:
+def exit_for_summary(summary_failed: int, *, strict: bool) -> None:
+    if strict and summary_failed > 0:
         raise typer.Exit(code=1)
 
 
@@ -43,13 +43,13 @@ def resolve_range_or_resume(
     return from_date, to_date
 
 
-def echo_summary(label: str, summary: DownloadSummary, root: Path) -> None:
+def echo_summary(label: str, summary: DownloadSummary, root: Path, *, strict: bool = False) -> None:
     typer.echo(
         f"{label}: downloaded={summary.downloaded_count} "
         f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
         f"root={root}"
     )
-    exit_for_summary(summary.failed_count)
+    exit_for_summary(summary.failed_count, strict=strict)
 
 
 RESUME_HELP = (
