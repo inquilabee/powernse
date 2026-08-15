@@ -15,7 +15,7 @@ docs/product/vision.md
 docs/user/quickstart.md
 ```
 
-Public surface: `powernse` package front + one console script `powernse`.
+Public surface: `powernse` package front (`NSEData`, downloaders) + one console script `powernse`.
 
 ## Commands
 

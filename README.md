@@ -28,6 +28,7 @@ powernse corporate-actions --from 2024-08-01 --to 2024-08-05
 # Snapshot is as-of download time; --label-date only names the file
 powernse index-constituents --index "NIFTY 50" --label-date 2024-08-05
 powernse status
+powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 powernse doctor
 ```
 
@@ -37,10 +38,14 @@ See [docs/user/quickstart.md](docs/user/quickstart.md).
 
 ```python
 from datetime import date
-from powernse import BhavcopyDownloader, ArchiveReader
+from powernse import BhavcopyDownloader, NSEData
 
 BhavcopyDownloader("./nse-data").download_range(date(2024, 8, 1), date(2024, 8, 5))
-rows = ArchiveReader("./nse-data").bhavcopy_rows(date(2024, 8, 1))
+
+data = NSEData("./nse-data")
+bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+# with pandas extra:
+# frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
 
 ## Archive layout

@@ -42,6 +42,7 @@ Index constituent downloads are **live as-of download time**. `--label-date` onl
 
 ```bash
 powernse status
+powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 powernse doctor
 ```
 
@@ -60,13 +61,14 @@ powernse doctor
 
 ```python
 from datetime import date
-from powernse import BhavcopyDownloader, ArchiveReader
+from powernse import BhavcopyDownloader, NSEData
 
 root = "./nse-data"
 BhavcopyDownloader(root).download_range(date(2024, 8, 1), date(2024, 8, 5))
 
-reader = ArchiveReader(root)
-rows = reader.bhavcopy_rows(date(2024, 8, 1))
+data = NSEData(root)
+bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+gaps = data.coverage_gaps(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 # with pandas extra:
-# frame = reader.bhavcopy_frame(date(2024, 8, 1))
+# frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```

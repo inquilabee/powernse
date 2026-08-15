@@ -8,6 +8,7 @@ import typer
 from requests import RequestException
 
 from powernse.constants import DEFAULT_INDEX_NAMES, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
+from powernse.data import NSEData
 from powernse.downloaders import (
     BhavcopyDownloader,
     CorporateActionsDownloader,
@@ -16,7 +17,6 @@ from powernse.downloaders import (
 )
 from powernse.errors import DownloadError, PowerNseError
 from powernse.http import NseHttpClient
-from powernse.loaders import ArchiveReader
 from powernse.settings import Settings
 
 app = typer.Typer(
@@ -176,11 +176,40 @@ def status_cmd(
     root: Annotated[Path | None, typer.Option(help="Archive root")] = None,
 ) -> None:
     """Show staged file counts under the archive root (does not create directories)."""
-    reader = ArchiveReader(root, create=False)
-    inventory = reader.inventory()
-    typer.echo(f"archive root: {reader.root}")
+    data = NSEData(root, create=False)
+    inventory = data.inventory()
+    typer.echo(f"archive root: {data.root}")
     for key, value in inventory.items():
         typer.echo(f"  {key}: {value}")
+
+
+@app.command("ohlc")
+def ohlc_cmd(
+    symbol: Annotated[str, typer.Argument(help="NSE ticker, e.g. RELIANCE")],
+    from_date: Annotated[
+        date | None,
+        typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD (default: latest day)"),
+    ] = None,
+    to_date: Annotated[
+        date | None,
+        typer.Option("--to", parser=parse_iso_date, help="End date YYYY-MM-DD (default: latest day)"),
+    ] = None,
+    series: Annotated[str, typer.Option(help="Security series filter")] = "EQ",
+    root: Annotated[Path | None, typer.Option(help="Archive root")] = None,
+) -> None:
+    """Print OHLC bars for one symbol from staged bhavcopy files."""
+    data = NSEData(root, create=False)
+    bars = data.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+    if not bars:
+        typer.echo(f"No OHLC rows for {symbol.upper()} series={series} under {data.root}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("trade_date,symbol,series,open,high,low,close,volume,isin")
+    for bar in bars:
+        isin = bar.isin or ""
+        typer.echo(
+            f"{bar.trade_date.isoformat()},{bar.symbol},{bar.series},"
+            f"{bar.open},{bar.high},{bar.low},{bar.close},{bar.volume},{isin}"
+        )
 
 
 @app.command("doctor")
