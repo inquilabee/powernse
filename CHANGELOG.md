@@ -12,3 +12,8 @@
 - Local archive layout with SHA-256 download manifest
 - Optional `powernse[pandas]` DataFrame helpers (`ohlc_frame`, `bhavcopy_frame`)
 - Weekly GitHub Actions refresh workflow for the tracked `nse-data/` tree
+- ShipGate quality gates (`make check` / `make format`) and tag-triggered PyPI publish workflow
+
+### Fixed
+
+- Trading-date iteration no longer raises when `--from` is before XBOM coverage in `exchange-calendars` (weekdays before 2006-08-16; XBOM sessions inside coverage)
