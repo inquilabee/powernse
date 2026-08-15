@@ -1,0 +1,69 @@
+site_name: PowerNSE
+site_url: https://inquilabee.github.io/powernse/
+site_description: Download and use official NSE India equity archives via CLI and Python.
+repo_url: https://github.com/inquilabee/powernse
+repo_name: inquilabee/powernse
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - search.suggest
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Install: user/install.md
+  - Quickstart: user/quickstart.md
+  - Download: user/download/archives.md
+  - Python API: user/python/nsedata.md
+  - GitHub bundle: user/bundle/fetch-bundle.md
+  - Publish (maintainers): maintainer/publish.md
+  - Changelog: https://github.com/inquilabee/powernse/blob/main/CHANGELOG.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+exclude_docs: |
+  product/
+
+validation:
+  unrecognized_links: warn
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/inquilabee/powernse
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/powernse/

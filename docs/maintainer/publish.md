@@ -37,7 +37,7 @@ git tag -a v0.1.0 -m "powernse 0.1.0"
 git push origin v0.1.0
 ```
 
-5. GitHub Actions [`.github/workflows/publish.yml`](../../.github/workflows/publish.yml) builds the sdist/wheel, asserts the tag matches the package version, smokes `import powernse`, and runs `uv publish` via OIDC.
+5. GitHub Actions [publish.yml](https://github.com/inquilabee/powernse/blob/main/.github/workflows/publish.yml) builds the sdist/wheel, asserts the tag matches the package version, smokes `import powernse`, and runs `uv publish` via OIDC.
 6. Confirm https://pypi.org/project/powernse/ and `pip install -U powernse`.
 
 ## Local dry-run (no upload)

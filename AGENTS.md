@@ -18,7 +18,8 @@ docs/maintainer/       # release / publish
 
 Public surface: `powernse` package front (`NSEData`, downloaders) + one console script `powernse`.
 
-GitHub: https://github.com/inquilabee/powernse
+GitHub: https://github.com/inquilabee/powernse  
+Docs: https://inquilabee.github.io/powernse/
 
 ## Commands
 

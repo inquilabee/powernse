@@ -13,6 +13,7 @@
 - Optional `powernse[pandas]` DataFrame helpers (`ohlc_frame`, `bhavcopy_frame`)
 - Weekly GitHub Actions refresh workflow for the tracked `nse-data/` tree
 - ShipGate quality gates (`make check` / `make format`) and tag-triggered PyPI publish workflow
+- MkDocs Material docs site at https://inquilabee.github.io/powernse/
 
 ### Fixed
 

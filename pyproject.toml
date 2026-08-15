@@ -36,7 +36,8 @@ pandas = ["pandas>=2.2"]
 powernse = "powernse.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/inquilabee/powernse"
+Homepage = "https://inquilabee.github.io/powernse/"
+Documentation = "https://inquilabee.github.io/powernse/"
 Repository = "https://github.com/inquilabee/powernse"
 Issues = "https://github.com/inquilabee/powernse/issues"
 Changelog = "https://github.com/inquilabee/powernse/blob/main/CHANGELOG.md"

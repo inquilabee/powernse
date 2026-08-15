@@ -9,7 +9,7 @@ Download and use **official NSE India** equity archives from the command line or
 - **`fetch-bundle`** — pull the tracked `nse-data/` tree from GitHub as a zip
 - XBOM trading-day calendar (weekdays before XBOM coverage; sessions after)
 
-**Repo:** [github.com/inquilabee/powernse](https://github.com/inquilabee/powernse)
+**Docs:** [inquilabee.github.io/powernse](https://inquilabee.github.io/powernse/) · **Repo:** [github.com/inquilabee/powernse](https://github.com/inquilabee/powernse)
 
 ## Install
 
@@ -63,6 +63,7 @@ indexes = data.index_ohlc("Nifty 50")
 
 | Guide | Path |
 | --- | --- |
+| Docs site | [https://inquilabee.github.io/powernse/](https://inquilabee.github.io/powernse/) |
 | Install | [docs/user/install.md](docs/user/install.md) |
 | Quickstart | [docs/user/quickstart.md](docs/user/quickstart.md) |
 | Download archives | [docs/user/download/archives.md](docs/user/download/archives.md) |
@@ -109,7 +110,7 @@ make build
 make install-hooks   # optional pre-commit
 ```
 
-Release: [docs/maintainer/publish.md](docs/maintainer/publish.md) (tag `v*`).
+Release: [docs/maintainer/publish.md](docs/maintainer/publish.md) (tag `v*`). Docs site: `uv run --with mkdocs-material mkdocs serve` locally, or https://inquilabee.github.io/powernse/ after Pages deploy.
 
 ## License
 
