@@ -7,16 +7,30 @@ from pathlib import Path
 from typing import Self
 
 RAW_BHAVCOPY_DIR = Path("raw") / "bhavcopy"
+RAW_FO_BHAVCOPY_DIR = Path("raw") / "fo_bhavcopy"
+RAW_FULL_BHAVCOPY_DIR = Path("raw") / "full_bhavcopy"
+RAW_INDEX_CLOSES_DIR = Path("raw") / "index_closes"
+RAW_BULK_DEALS_DIR = Path("raw") / "bulk_deals"
+RAW_BLOCK_DEALS_DIR = Path("raw") / "block_deals"
+RAW_FO_SECBAN_DIR = Path("raw") / "fo_secban"
 RAW_CORPORATE_ACTIONS_DIR = Path("raw") / "corporate_actions"
 RAW_INDEX_CONSTITUENTS_DIR = Path("raw") / "index_constituents"
 MANIFEST_DIR = Path("manifest")
 
 ARCHIVE_PREFIX_DIRS = (
     RAW_BHAVCOPY_DIR,
+    RAW_FO_BHAVCOPY_DIR,
+    RAW_FULL_BHAVCOPY_DIR,
+    RAW_INDEX_CLOSES_DIR,
+    RAW_BULK_DEALS_DIR,
+    RAW_BLOCK_DEALS_DIR,
+    RAW_FO_SECBAN_DIR,
     RAW_CORPORATE_ACTIONS_DIR,
     RAW_INDEX_CONSTITUENTS_DIR,
     MANIFEST_DIR,
 )
+
+_IGNORED_PLACEHOLDER_NAMES = frozenset({".keep", ".gitkeep"})
 
 
 def archive_key(*parts: str) -> str:
@@ -87,4 +101,8 @@ class ArchiveRoot:
             return []
         if search.is_file():
             return [search]
-        return sorted(path for path in search.rglob("*") if path.is_file() and path.name != ".keep")
+        return sorted(
+            path
+            for path in search.rglob("*")
+            if path.is_file() and path.name not in _IGNORED_PLACEHOLDER_NAMES
+        )

@@ -11,10 +11,10 @@ import requests
 
 from powernse.archive import manifest_path, sha256_file
 from powernse.calendar import is_weekend, iter_trading_dates
+from powernse.archive import extract_zip_payload_to_csv_bytes
 from powernse.downloaders.bhavcopy import (
     BhavcopyDownloader,
     bhavcopy_archive_url,
-    extract_zip_payload_to_csv_bytes,
     staged_bhavcopy_csv_key,
     staged_bhavcopy_csv_path,
 )

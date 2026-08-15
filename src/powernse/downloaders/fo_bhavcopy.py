@@ -1,18 +1,13 @@
-"""Official NSE CM bhavcopy archive download and staging."""
+"""Official NSE F&O bhavcopy archive download and staging."""
 
 import logging
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
-from powernse.archive import RAW_BHAVCOPY_DIR, ArchiveRoot, archive_key, extract_zip_payload_to_csv_bytes
+from powernse.archive import RAW_FO_BHAVCOPY_DIR, ArchiveRoot, archive_key, extract_zip_payload_to_csv_bytes
 from powernse.calendar import iter_trading_dates
-from powernse.constants import (
-    ARCHIVE_BASE_URL,
-    DEFAULT_RESUME_DAYS,
-    DEFAULT_SLEEP_SECONDS,
-    UDIFF_SWITCH_DATE_ISO,
-)
+from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.downloaders.resume import latest_staged_iso_csv_date, resolve_dated_resume_range
 from powernse.errors import DownloadError, PayloadError
@@ -21,34 +16,26 @@ from powernse.types import DownloadSummary
 
 logger = logging.getLogger(__name__)
 
-UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
 
-
-def bhavcopy_archive_url(trade_date: date) -> str:
-    """Return the official NSE archive URL for a trading day's CM bhavcopy."""
-    if trade_date < UDIFF_SWITCH_DATE:
-        date_str = trade_date.strftime("%d%b%Y").upper()
-        month = date_str[2:5]
-        return f"{ARCHIVE_BASE_URL}/content/historical/EQUITIES/{trade_date.year}/{month}/cm{date_str}bhav.csv.zip"
+def fo_bhavcopy_archive_url(trade_date: date) -> str:
+    """Return the official NSE archive URL for a trading day's F&O bhavcopy."""
     compact = trade_date.strftime("%Y%m%d")
-    return f"{ARCHIVE_BASE_URL}/content/cm/BhavCopy_NSE_CM_0_0_0_{compact}_F_0000.csv.zip"
+    return f"{ARCHIVE_BASE_URL}/content/fo/BhavCopy_NSE_FO_0_0_0_{compact}_F_0000.csv.zip"
 
 
-def staged_bhavcopy_csv_path(root: Path, trade_date: date) -> Path:
-    """Path for extracted daily bhavcopy CSV under the archive root."""
-    return root / RAW_BHAVCOPY_DIR / str(trade_date.year) / f"{trade_date.isoformat()}.csv"
+def staged_fo_bhavcopy_csv_path(root: Path, trade_date: date) -> Path:
+    return root / RAW_FO_BHAVCOPY_DIR / str(trade_date.year) / f"{trade_date.isoformat()}.csv"
 
 
-def staged_bhavcopy_csv_key(trade_date: date) -> str:
-    return archive_key(RAW_BHAVCOPY_DIR.as_posix(), str(trade_date.year), f"{trade_date.isoformat()}.csv")
+def staged_fo_bhavcopy_csv_key(trade_date: date) -> str:
+    return archive_key(RAW_FO_BHAVCOPY_DIR.as_posix(), str(trade_date.year), f"{trade_date.isoformat()}.csv")
 
 
-def latest_staged_bhavcopy_date(root: Path | ArchiveRoot) -> date | None:
-    """Return the newest staged bhavcopy trade date, or None when the archive is empty."""
-    return latest_staged_iso_csv_date(root, RAW_BHAVCOPY_DIR)
+def latest_staged_fo_bhavcopy_date(root: Path | ArchiveRoot) -> date | None:
+    return latest_staged_iso_csv_date(root, RAW_FO_BHAVCOPY_DIR)
 
 
-def resolve_bhavcopy_resume_range(
+def resolve_fo_bhavcopy_resume_range(
     root: Path | ArchiveRoot,
     *,
     today: date | None = None,
@@ -56,10 +43,9 @@ def resolve_bhavcopy_resume_range(
     from_date: date | None = None,
     to_date: date | None = None,
 ) -> tuple[date, date]:
-    """Resolve ``--resume`` window: last staged (or 2000-01-01) → today."""
     return resolve_dated_resume_range(
         root,
-        RAW_BHAVCOPY_DIR,
+        RAW_FO_BHAVCOPY_DIR,
         today=today,
         days=days,
         from_date=from_date,
@@ -67,8 +53,8 @@ def resolve_bhavcopy_resume_range(
     )
 
 
-class BhavcopyDownloader(ArchiveDownloader):
-    """Download CM bhavcopy archives into the NSE archive staging tree."""
+class FoBhavcopyDownloader(ArchiveDownloader):
+    """Download F&O bhavcopy archives into the NSE archive staging tree."""
 
     def __init__(
         self,
@@ -89,7 +75,7 @@ class BhavcopyDownloader(ArchiveDownloader):
         skipped = 0
         failed = 0
         for trade_date in iter_trading_dates(from_date, to_date, all_calendar_days=self._all_calendar_days):
-            staged_key = staged_bhavcopy_csv_key(trade_date)
+            staged_key = staged_fo_bhavcopy_csv_key(trade_date)
             if self.skip_existing and self.destination_exists(staged_key):
                 skipped += 1
                 continue
@@ -104,30 +90,25 @@ class BhavcopyDownloader(ArchiveDownloader):
             failed_count=failed,
         )
 
-    def download_day(self, trade_date: date) -> Path:
-        """Download one trading day and return the staged CSV path."""
-        summary_key = self._download_trade_date(trade_date)
-        return self.archive.path_for(summary_key)
-
     def _download_trade_date_or_none(self, trade_date: date) -> str | None:
         try:
             return self._download_trade_date(trade_date)
         except (DownloadError, PayloadError) as exc:
             if self._strict:
                 raise
-            logger.warning("Skipping %s: %s", trade_date.isoformat(), exc)
+            logger.warning("Skipping F&O %s: %s", trade_date.isoformat(), exc)
             return None
 
     def _download_trade_date(self, trade_date: date) -> str:
-        staged_key = staged_bhavcopy_csv_key(trade_date)
-        url = bhavcopy_archive_url(trade_date)
+        staged_key = staged_fo_bhavcopy_csv_key(trade_date)
+        url = fo_bhavcopy_archive_url(trade_date)
         payload = self.fetch_bytes_throttled(url)
         if looks_like_html(payload):
-            msg = f"Bhavcopy unavailable for {trade_date.isoformat()}: {url}"
+            msg = f"F&O bhavcopy unavailable for {trade_date.isoformat()}: {url}"
             raise DownloadError(msg)
         preferred = Path(url).name.replace(".zip", "").replace(".ZIP", "")
         preferred_member = preferred if preferred.lower().endswith(".csv") else None
         csv_bytes = extract_zip_payload_to_csv_bytes(payload, preferred_member=preferred_member)
-        unavailable = f"Bhavcopy unavailable for {trade_date.isoformat()}: {url}"
+        unavailable = f"F&O bhavcopy unavailable for {trade_date.isoformat()}: {url}"
         self.persist_bytes(url, staged_key, csv_bytes, unavailable_message=unavailable)
         return staged_key
