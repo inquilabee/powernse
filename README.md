@@ -1,49 +1,49 @@
-# PowerNSE
+<p align="center">
+  <a href="https://pypi.org/project/powernse/"><img src="https://img.shields.io/pypi/v/powernse.svg" alt="PyPI version"/></a>
+  <a href="https://pypi.org/project/powernse/"><img src="https://img.shields.io/pypi/pyversions/powernse.svg" alt="Python versions"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"/></a>
+  <a href="https://inquilabee.github.io/powernse/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue" alt="Documentation"/></a>
+</p>
 
-Download and use **official NSE India** equity archives from the command line or a few Python calls.
+<p align="center">
+  <strong>Official NSE India archives on disk. One CLI. A small Python API.</strong><br/>
+  Bhavcopy, F&amp;O, indexes, deals, corporate actions — downloaded from the exchange,
+  not scraped from a third-party dump.
+</p>
 
-- CM **bhavcopy**, **F&O bhavcopy**, **full bhavcopy** (delivery), **index closes**
-- **Bulk/block deals** and **F&O security ban** snapshots
-- **Corporate actions** and **index constituent** snapshots
-- Local archive layout with a download **manifest**
-- **`fetch-bundle`** — pull the tracked `nse-data/` tree from GitHub as a zip
-- XBOM trading-day calendar (weekdays before XBOM coverage; sessions after)
+<p align="center">
+  <a href="https://inquilabee.github.io/powernse/">Docs</a> ·
+  <a href="https://inquilabee.github.io/powernse/user/quickstart/">Quick start</a> ·
+  <a href="https://pypi.org/project/powernse/">PyPI</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
+</p>
 
-**Docs:** [inquilabee.github.io/powernse](https://inquilabee.github.io/powernse/) · **Repo:** [github.com/inquilabee/powernse](https://github.com/inquilabee/powernse)
+______________________________________________________________________
+
+NSE publishes end-of-day files. The URLs move, the session cookie is picky, and
+nobody wants to re-learn the layout every quarter. **PowerNSE** stages those
+archives under a local `nse-data/` tree, keeps a download manifest, and lets you
+query OHLC from the CLI or from Python.
+
+Need a ready-made tree? `powernse fetch-bundle` pulls the tracked `nse-data/` from
+this GitHub repo. Prefer building it yourself? Point the downloaders at NSE.
+
+Python **3.13+**.
 
 ## Install
 
-Until the first PyPI upload, install from GitHub (see [docs/user/install.md](docs/user/install.md)):
-
-```bash
-pip install 'powernse @ git+https://github.com/inquilabee/powernse.git'
-pip install 'powernse[pandas] @ git+https://github.com/inquilabee/powernse.git'  # optional
-```
-
-After `v0.1.0` is on PyPI:
-
 ```bash
 pip install powernse
-pip install 'powernse[pandas]'
+pip install 'powernse[pandas]'   # optional DataFrame helpers
 ```
-
-Requires Python 3.13+.
 
 ## Quick start
 
-Full guide: [docs/user/quickstart.md](docs/user/quickstart.md).
-
 ```bash
-# Download from NSE
 powernse bhavcopy --resume
 powernse fo-bhavcopy --resume --days 30
 powernse index-closes --from 2024-08-01 --to 2024-08-05
-powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
-powernse bulk-deals --date 2024-08-09
-
-# Optional: GitHub-hosted nse-data (defaults to this repo after PyPI install)
-powernse fetch-bundle --force
-
+powernse fetch-bundle --force    # optional: GitHub-hosted archive
 powernse status
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 powernse doctor
@@ -56,61 +56,71 @@ from powernse import BhavcopyDownloader, NSEData
 BhavcopyDownloader("./nse-data").download_range(date(2024, 8, 1), date(2024, 8, 5))
 data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
-indexes = data.index_ohlc("Nifty 50")
 ```
 
-## Docs
+Full walkthrough: [docs site quickstart](https://inquilabee.github.io/powernse/user/quickstart/).
 
-| Guide | Path |
+## What you get
+
+| Surface | Covers |
 | --- | --- |
-| Docs site | [https://inquilabee.github.io/powernse/](https://inquilabee.github.io/powernse/) |
-| Install | [docs/user/install.md](docs/user/install.md) |
-| Quickstart | [docs/user/quickstart.md](docs/user/quickstart.md) |
-| Download archives | [docs/user/download/archives.md](docs/user/download/archives.md) |
-| Python NSEData | [docs/user/python/nsedata.md](docs/user/python/nsedata.md) |
-| GitHub bundle | [docs/user/bundle/fetch-bundle.md](docs/user/bundle/fetch-bundle.md) |
-| Tracked archive notes | [nse-data/README.md](nse-data/README.md) |
-| Publish to PyPI (maintainers) | [docs/maintainer/publish.md](docs/maintainer/publish.md) |
-| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Cash / F&O / full bhavcopy | Daily equity and derivatives archives |
+| Index closes & constituents | Index levels and membership snapshots |
+| Bulk / block deals, F&O ban | As-of snapshots |
+| Corporate actions | JSON for adjustment helpers |
+| `NSEData` / CLI | OHLC, coverage gaps, inventory, doctor |
+| `fetch-bundle` | Zip extract of this repo's `nse-data/` |
+
+Trading days use XBOM sessions when `exchange-calendars` covers the window
+(from 2006-08-16). Earlier dates fall back to weekdays.
 
 ## Archive layout
 
 ```text
 nse-data/
   raw/bhavcopy/YYYY/YYYY-MM-DD.csv
-  raw/fo_bhavcopy/YYYY/YYYY-MM-DD.csv
-  raw/full_bhavcopy/YYYY/YYYY-MM-DD.csv
-  raw/index_closes/YYYY/YYYY-MM-DD.csv
-  raw/bulk_deals/YYYY/YYYY-MM-DD.csv
-  raw/block_deals/YYYY/YYYY-MM-DD.csv
-  raw/fo_secban/YYYY/YYYY-MM-DD.csv
+  raw/fo_bhavcopy/…
+  raw/full_bhavcopy/…
+  raw/index_closes/…
+  raw/bulk_deals/…  raw/block_deals/…  raw/fo_secban/…
   raw/corporate_actions/YYYY/YYYY-MM-DD.json
   raw/index_constituents/YYYY/YYYY-MM-DD_<index>.json
   manifest/downloads.jsonl
 ```
 
-## Be a good citizen
+## Etiquette
 
-PowerNSE throttles requests and primes an NSE session cookie. Prefer modest date ranges; use `--skip-existing` (default) when resuming. NSE availability and URL shapes can change.
+Requests are throttled and an NSE session cookie is primed first. Keep date
+ranges modest; `--skip-existing` is on by default. Exchange URLs can change
+without notice.
 
-## Need a quick historical dump?
+This project does **not** download or ingest Kaggle (or other third-party) dumps.
+If you only need rough historical OHLCV for experiments, fetch those yourself —
+PowerNSE sticks to official archives.
 
-PowerNSE always prefers **official exchange archives**. If you only need rough historical OHLCV for experimentation, a public Kaggle dump such as [NSE India Stock Data (1990–2021)](https://www.kaggle.com/datasets/stoicstatic/india-stock-data-nse-1990-2020) may be good enough — download it yourself from Kaggle. This project does **not** fetch or ingest Kaggle datasets.
+## Documentation
+
+| Guide | Link |
+| --- | --- |
+| [Install](https://inquilabee.github.io/powernse/user/install/) | pip / uv / clone |
+| [Quick start](https://inquilabee.github.io/powernse/user/quickstart/) | Download + query |
+| [Archives](https://inquilabee.github.io/powernse/user/download/archives/) | Every downloader |
+| [NSEData](https://inquilabee.github.io/powernse/user/python/nsedata/) | Python API |
+| [fetch-bundle](https://inquilabee.github.io/powernse/user/bundle/fetch-bundle/) | GitHub zip extract |
+| [Publish](https://inquilabee.github.io/powernse/maintainer/publish/) | Maintainer release |
 
 ## Development
 
-Quality gates use [ShipGate](https://inquilabee.github.io/shipgate/) (`suite: standard` in `.shipgate/shipgate.yaml`).
-
 ```bash
 uv sync
-make check      # shipgate install + check --full-tree
-make format     # shipgate format
+make check    # ShipGate
+make format
 make test
 make build
-make install-hooks   # optional pre-commit
 ```
 
-Release: [docs/maintainer/publish.md](docs/maintainer/publish.md) (tag `v*`). Docs site: `uv run --with mkdocs-material mkdocs serve` locally, or https://inquilabee.github.io/powernse/ after Pages deploy.
+Local docs: `uv run --with mkdocs-material mkdocs serve`. Quality gates:
+[ShipGate](https://inquilabee.github.io/shipgate/) (`suite: standard`).
 
 ## License
 
