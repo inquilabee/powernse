@@ -5,6 +5,7 @@ reports/
 server/
 worktrees/
 *.lock
+lock.json
 
 # Project policy — safe to commit
 !configs/
