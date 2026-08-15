@@ -1,0 +1,68 @@
+[project]
+name = "powernse"
+version = "0.1.0"
+description = "Download and use official NSE India equity archives via CLI and Python"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Vishal Mishra", email = "vishal.k.mishra2@gmail.com" },
+]
+keywords = ["nse", "india", "bhavcopy", "equities", "market-data", "download"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+requires-python = ">=3.13"
+dependencies = [
+    "exchange-calendars>=4.5",
+    "pyrate-limiter>=3.7",
+    "requests>=2.32",
+    "tenacity>=9.0",
+]
+
+[project.optional-dependencies]
+pandas = ["pandas>=2.2"]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+    "powernse[pandas]",
+]
+
+[project.scripts]
+powernse = "powernse.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.19,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv]
+default-groups = ["dev"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+    "pandas>=2.2",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["-q"]
+filterwarnings = ["error"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/powernse/__init__.py" = ["F401"]
