@@ -2,10 +2,11 @@
 
 Download and use **official NSE India** equity archives from the command line or a few Python calls.
 
-- CM **bhavcopy** (legacy + UDIFF ZIP formats)
-- **Corporate actions** JSON
-- **Index constituent** snapshots
+- CM **bhavcopy**, **F&O bhavcopy**, **full bhavcopy** (delivery), **index closes**
+- **Bulk/block deals** and **F&O security ban** snapshots
+- **Corporate actions** and **index constituent** snapshots
 - Local archive layout with a download **manifest**
+- **`fetch-bundle`** — pull the tracked `nse-data/` tree from GitHub as a zip
 - XBOM trading-day calendar (skips weekends/holidays by default)
 
 ## Install
@@ -17,42 +18,58 @@ pip install 'powernse[pandas]'   # optional DataFrame helpers
 
 Requires Python 3.13+.
 
-## Quick start (CLI)
+## Quick start
+
+Full guide: [docs/user/quickstart.md](docs/user/quickstart.md).
 
 ```bash
-# Archive root defaults to ./nse-data (override with --root or POWERNSE_ROOT)
-powernse bhavcopy --from 2024-08-01 --to 2024-08-05
-powernse bhavcopy --resume                 # last staged (or 2000-01-01) → today, max 100 days
-powernse bhavcopy --resume --days 30
-powernse corporate-actions --from 2024-08-01 --to 2024-08-05
-# Snapshot is as-of download time; --label-date only names the file
-powernse index-constituents --index "NIFTY 50" --label-date 2024-08-05
+# Option A — GitHub-hosted nse-data tree
+export POWERNSE_GITHUB_REPO=OWNER/REPO
+powernse fetch-bundle --force
+
+# Option B — download from NSE
+powernse bhavcopy --resume
+powernse fo-bhavcopy --resume --days 30
+powernse index-closes --from 2024-08-01 --to 2024-08-05
+powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
+powernse bulk-deals --date 2024-08-09
+
 powernse status
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 powernse doctor
 ```
-
-See [docs/user/quickstart.md](docs/user/quickstart.md).
-
-## Quick start (Python)
 
 ```python
 from datetime import date
 from powernse import BhavcopyDownloader, NSEData
 
 BhavcopyDownloader("./nse-data").download_range(date(2024, 8, 1), date(2024, 8, 5))
-
 data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
-# with pandas extra:
-# frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+indexes = data.index_ohlc("Nifty 50")
 ```
+
+## Docs
+
+| Guide | Path |
+| --- | --- |
+| Quickstart | [docs/user/quickstart.md](docs/user/quickstart.md) |
+| Download archives | [docs/user/download/archives.md](docs/user/download/archives.md) |
+| Python NSEData | [docs/user/python/nsedata.md](docs/user/python/nsedata.md) |
+| GitHub bundle | [docs/user/bundle/fetch-bundle.md](docs/user/bundle/fetch-bundle.md) |
+| Tracked archive notes | [nse-data/README.md](nse-data/README.md) |
 
 ## Archive layout
 
 ```text
 nse-data/
   raw/bhavcopy/YYYY/YYYY-MM-DD.csv
+  raw/fo_bhavcopy/YYYY/YYYY-MM-DD.csv
+  raw/full_bhavcopy/YYYY/YYYY-MM-DD.csv
+  raw/index_closes/YYYY/YYYY-MM-DD.csv
+  raw/bulk_deals/YYYY/YYYY-MM-DD.csv
+  raw/block_deals/YYYY/YYYY-MM-DD.csv
+  raw/fo_secban/YYYY/YYYY-MM-DD.csv
   raw/corporate_actions/YYYY/YYYY-MM-DD.json
   raw/index_constituents/YYYY/YYYY-MM-DD_<index>.json
   manifest/downloads.jsonl

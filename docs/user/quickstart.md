@@ -1,11 +1,12 @@
 # Quickstart
 
+Download official NSE India end-of-day archives, or pull a ready `nse-data/` tree from GitHub, then query OHLC from the CLI or Python.
+
 ## Install
 
 ```bash
 pip install powernse
-# optional DataFrame helpers
-pip install 'powernse[pandas]'
+pip install 'powernse[pandas]'   # optional DataFrame helpers
 ```
 
 From a clone:
@@ -15,63 +16,63 @@ uv sync
 uv run powernse --help
 ```
 
-## Download bhavcopy
+## Fastest path: GitHub bundle
+
+If this project hosts a tracked `nse-data/` directory on GitHub:
 
 ```bash
-powernse bhavcopy --from 2024-08-01 --to 2024-08-05
-
-# Resume from last staged file (or 2000-01-01) through today, max 100 calendar days
-powernse bhavcopy --resume
-powernse bhavcopy --resume --days 30
-```
-
-Files land under `./nse-data/raw/bhavcopy/YYYY/YYYY-MM-DD.csv` (or `POWERNSE_ROOT`).
-
-Default date walking uses the XBOM trading calendar. Pass `--all-calendar-days` only when you intentionally want weekends and holidays included.
-
-## Corporate actions and indices
-
-```bash
-powernse corporate-actions --from 2024-08-01 --to 2024-08-05
-powernse index-constituents --index "NIFTY 50" --label-date 2024-08-05
-```
-
-Index constituent downloads are **live as-of download time**. `--label-date` only names the staged file; it does not request a historical membership list.
-
-## Check the archive
-
-```bash
+export POWERNSE_GITHUB_REPO=OWNER/REPO
+powernse fetch-bundle --force
 powernse status
-powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
+powernse ohlc RELIANCE
+```
+
+`--force` overwrites a non-empty destination. Without env:
+
+```bash
+powernse fetch-bundle --repo OWNER/REPO --dest ./nse-data --force
+```
+
+## Download from NSE yourself
+
+```bash
+powernse bhavcopy --resume
+powernse fo-bhavcopy --resume --days 30
+powernse index-closes --from 2024-08-01 --to 2024-08-05
+powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
+powernse bulk-deals --date 2024-08-09
+powernse corporate-actions --from 2024-08-01 --to 2024-08-05
 powernse doctor
 ```
 
-`status` never creates archive directories. Download commands create the layout on first write.
+Files land under `./nse-data/` (or `POWERNSE_ROOT` / `--root`).
 
-## Exit codes
+## Read OHLC
 
-| Code | Meaning |
-| --- | --- |
-| `0` | Command completed with zero failures |
-| `1` | Download failures (`failed_count > 0`), doctor failure, empty `ohlc` result, or domain error |
-| `2` | `bhavcopy` missing required `--from`/`--to` when not using `--resume` |
-
-`--strict` aborts a range on the first hard failure instead of counting and continuing.
-
-`--resume` uses last staged bhavcopy (or 2000-01-01) through today. `--days` caps that window only when `--from` is omitted; an explicit `--from` is not clamped.
-
-## Python
+```bash
+powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
+powernse status
+```
 
 ```python
 from datetime import date
 from powernse import BhavcopyDownloader, NSEData
 
-root = "./nse-data"
-BhavcopyDownloader(root).download_range(date(2024, 8, 1), date(2024, 8, 5))
-
-data = NSEData(root)
+BhavcopyDownloader("./nse-data").download_range(date(2024, 8, 1), date(2024, 8, 5))
+data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
-gaps = data.coverage_gaps(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
-# with pandas extra:
-# frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success (zero download failures) |
+| `1` | Download failures, doctor failure, empty `ohlc`, or domain error |
+| `2` | Missing `--from`/`--to` when not using `--resume` |
+
+## Next
+
+- [Download archives](download/archives.md)
+- [Use NSEData in Python](python/nsedata.md)
+- [Fetch the GitHub nse-data bundle](bundle/fetch-bundle.md)
