@@ -98,6 +98,20 @@ This project does **not** download or ingest Kaggle (or other third-party) dumps
 If you only need rough historical OHLCV for experiments, fetch those yourself —
 PowerNSE sticks to official archives.
 
+## Disclaimer
+
+PowerNSE is **not affiliated with, endorsed by, or connected to** the National
+Stock Exchange of India (NSE) or any related entity. It is an unofficial tool
+for **educational and research** use only — not financial advice, and not an
+official data feed.
+
+You are responsible for how you use the software and any data it retrieves,
+including compliance with NSE terms of use. The author accepts **no liability**
+for losses, damages, or other consequences arising from use of this package.
+Use at your own risk.
+
+Full text: [DISCLAIMER.md](DISCLAIMER.md).
+
 ## Documentation
 
 | Guide | Link |
@@ -107,6 +121,7 @@ PowerNSE sticks to official archives.
 | [Archives](https://inquilabee.github.io/powernse/user/download/archives/) | Every downloader |
 | [NSEData](https://inquilabee.github.io/powernse/user/python/nsedata/) | Python API |
 | [fetch-bundle](https://inquilabee.github.io/powernse/user/bundle/fetch-bundle/) | GitHub zip extract |
+| [Disclaimer](https://inquilabee.github.io/powernse/user/disclaimer/) | Unofficial · educational use |
 | [Publish](https://inquilabee.github.io/powernse/maintainer/publish/) | Maintainer release |
 
 ## Development
@@ -124,4 +139,4 @@ Local docs: `uv run --with mkdocs-material mkdocs serve`. Quality gates:
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Also read [DISCLAIMER.md](DISCLAIMER.md).

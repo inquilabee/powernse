@@ -48,6 +48,7 @@ nav:
   - Download: user/download/archives.md
   - Python API: user/python/nsedata.md
   - GitHub bundle: user/bundle/fetch-bundle.md
+  - Disclaimer: user/disclaimer.md
   - Publish: maintainer/publish.md
   - Changelog: https://github.com/inquilabee/powernse/blob/main/CHANGELOG.md
 

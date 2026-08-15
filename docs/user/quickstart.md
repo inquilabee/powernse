@@ -2,6 +2,13 @@
 
 Download official NSE India end-of-day archives, then query OHLC from the CLI or Python. You can also pull this project's tracked `nse-data/` tree from GitHub as a zip when it contains archives.
 
+!!! warning "Disclaimer"
+
+    PowerNSE is **not affiliated with NSE**. Use for **educational and research**
+    purposes only. The author bears **no responsibility** for anything that goes
+    wrong — trading losses, blocked access, bad data, or otherwise. See
+    [Disclaimer](disclaimer.md).
+
 ## Install
 
 See [Install](install.md).
@@ -81,3 +88,4 @@ OHLC helpers scan each day's CSV — prefer modest date windows.
 - [Download archives](download/archives.md)
 - [Use NSEData in Python](python/nsedata.md)
 - [Fetch the GitHub nse-data bundle](bundle/fetch-bundle.md)
+- [Disclaimer](disclaimer.md)

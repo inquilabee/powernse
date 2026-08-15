@@ -2,6 +2,14 @@
 
 Pull official NSE end-of-day files into a local archive root.
 
+!!! warning "Disclaimer"
+
+    This is an **unofficial** client. It is **not** an NSE product and has **no
+    connection** with the exchange. Downloads are for **educational and research**
+    use. Respect [NSE terms of use](https://www.nseindia.com/terms-of-use). The
+    author accepts **no liability** for misuse, outages, or losses. Full text:
+    [Disclaimer](../disclaimer.md).
+
 ## Try this
 
 ```bash
@@ -58,3 +66,4 @@ nse-data/
 
 - [Python NSEData](../python/nsedata.md)
 - [GitHub bundle](../bundle/fetch-bundle.md)
+- [Disclaimer](../disclaimer.md)

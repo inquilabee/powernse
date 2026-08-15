@@ -52,4 +52,5 @@ bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5
 | [Archives](user/download/archives.md) | Every downloader |
 | [NSEData](user/python/nsedata.md) | Python API |
 | [fetch-bundle](user/bundle/fetch-bundle.md) | GitHub zip extract |
+| [Disclaimer](user/disclaimer.md) | Unofficial · educational use |
 | [Changelog](https://github.com/inquilabee/powernse/blob/main/CHANGELOG.md) | What shipped |
