@@ -69,8 +69,17 @@ def test_force_replaces_orphan_files(tmp_path: Path) -> None:
     assert not orphan.exists()
 
 
-def test_fetch_bundle_cli_missing_repo(tmp_path: Path) -> None:
+def test_fetch_bundle_cli_missing_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from powernse.cli import main
 
+    monkeypatch.delenv("POWERNSE_GITHUB_REPO", raising=False)
+    monkeypatch.setattr("powernse.cli.bundle_cmd.github_repo_from_package_metadata", lambda: None)
+    monkeypatch.setattr("powernse.bundle.github_repo_from_package_metadata", lambda: None)
     code = main(["fetch-bundle", "--dest", str(tmp_path / "empty")])
     assert code == 1
+
+
+def test_github_repo_from_package_metadata_reads_urls() -> None:
+    from powernse.bundle import github_repo_from_package_metadata
+
+    assert github_repo_from_package_metadata() == "inquilabee/powernse"
