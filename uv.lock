@@ -455,25 +455,20 @@ wheels = [
 
 [[package]]
 name = "powernse"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "exchange-calendars" },
     { name = "filelock" },
+    { name = "pandas" },
     { name = "pydantic-settings" },
     { name = "requests" },
     { name = "tenacity" },
     { name = "typer" },
 ]
 
-[package.optional-dependencies]
-pandas = [
-    { name = "pandas" },
-]
-
 [package.dev-dependencies]
 dev = [
-    { name = "pandas" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "shipgate" },
@@ -483,17 +478,15 @@ dev = [
 requires-dist = [
     { name = "exchange-calendars", specifier = ">=4.5" },
     { name = "filelock", specifier = ">=3.32" },
-    { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.2" },
+    { name = "pandas", specifier = ">=2.2" },
     { name = "pydantic-settings", specifier = ">=2.15" },
     { name = "requests", specifier = ">=2.32" },
     { name = "tenacity", specifier = ">=9.0" },
     { name = "typer", specifier = ">=0.27" },
 ]
-provides-extras = ["pandas"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "pandas", specifier = ">=2.2" },
     { name = "pre-commit", specifier = ">=4.6" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "shipgate", specifier = ">=0.1.11" },

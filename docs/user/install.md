@@ -6,7 +6,6 @@ Requires **Python 3.13+**. Published on [PyPI](https://pypi.org/project/powernse
 
 ```bash
 pip install powernse
-pip install 'powernse[pandas]'   # optional DataFrame helpers
 powernse --help
 powernse doctor
 ```

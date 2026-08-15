@@ -26,7 +26,7 @@ re-learning the layout every quarter.
   <div class="pn-card"><strong>Download from NSE</strong><span>Resume-friendly dated archives with throttling and skip-existing defaults.</span></div>
   <div class="pn-card"><strong>fetch-bundle</strong><span>Pull the tracked GitHub <code>nse-data/</code> tree as a zip when you want a ready archive.</span></div>
   <div class="pn-card"><strong>NSEData API</strong><span>OHLC, F&amp;O bars, index closes, deals, coverage gaps — from a few Python calls.</span></div>
-  <div class="pn-card"><strong>Python 3.13+</strong><span><code>pip install powernse</code> · optional <code>powernse[pandas]</code> frames.</span></div>
+  <div class="pn-card"><strong>Python 3.13+</strong><span><code>pip install powernse</code> (includes pandas) · DataFrame helpers on <code>NSEData</code>.</span></div>
 </div>
 
 ## Try it

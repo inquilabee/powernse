@@ -25,14 +25,11 @@ bulk = data.bulk_deals(date(2024, 8, 9))
 print(data.inventory())
 ```
 
-With pandas:
-
-```bash
-pip install 'powernse[pandas]'
-```
+DataFrames (pandas is a core dependency):
 
 ```python
 frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+day = data.bhavcopy_frame(date(2024, 8, 5))
 ```
 
 ## What you should see

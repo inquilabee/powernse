@@ -5,7 +5,9 @@ import json
 import logging
 from datetime import date
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import Self
+
+import pandas as pd
 
 from powernse.adjust import apply_price_adjustments, corporate_action_price_events
 from powernse.archive import (
@@ -39,9 +41,6 @@ from powernse.errors import ArchiveError, PayloadError
 from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
 from powernse.settings import Settings
 from powernse.types import AdjustedOhlcBar, FoBar, IndexBar, OhlcBar
-
-if TYPE_CHECKING:
-    from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -97,12 +96,7 @@ class NSEData:
         with path.open(newline="", encoding="utf-8") as handle:
             return list(csv.DictReader(handle))
 
-    def bhavcopy_frame(self, trade_date: date) -> "DataFrame":
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            msg = "pandas is required for bhavcopy_frame(); install with: pip install powernse[pandas]"
-            raise ImportError(msg) from exc
+    def bhavcopy_frame(self, trade_date: date) -> pd.DataFrame:
         return pd.read_csv(self.bhavcopy_path(trade_date))
 
     def ohlc(
@@ -139,12 +133,7 @@ class NSEData:
         from_date: date | None = None,
         to_date: date | None = None,
         series: str = "EQ",
-    ) -> "DataFrame":
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            msg = "pandas is required for ohlc_frame(); install with: pip install powernse[pandas]"
-            raise ImportError(msg) from exc
+    ) -> pd.DataFrame:
         bars = self.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
         return pd.DataFrame(
             [

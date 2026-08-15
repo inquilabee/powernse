@@ -69,7 +69,6 @@ Requires Python **3.13+**.
 
 ```bash
 pip install powernse
-pip install 'powernse[pandas]'   # optional DataFrame helpers
 ```
 
 ## Quick start

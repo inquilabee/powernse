@@ -15,7 +15,6 @@ See [Install](install.md).
 
 ```bash
 pip install powernse
-pip install 'powernse[pandas]'   # optional DataFrame helpers
 powernse --help
 ```
 

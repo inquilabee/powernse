@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-08-15
+
+### Changed
+
+- `pandas` is a core install dependency (no more `powernse[pandas]` extra); `ohlc_frame` / `bhavcopy_frame` import pandas directly
+
 ## 0.1.0 — 2026-08-15
 
 ### Added
@@ -10,7 +16,7 @@
 - `ArchiveReader` compatibility alias for `NSEData` (prefer `NSEData`)
 - GitHub `nse-data/` zipball extract (`fetch-bundle`); optional Release asset via `--url`
 - Local archive layout with SHA-256 download manifest
-- Optional `powernse[pandas]` DataFrame helpers (`ohlc_frame`, `bhavcopy_frame`)
+- DataFrame helpers (`ohlc_frame`, `bhavcopy_frame`) via pandas
 - Weekly GitHub Actions refresh workflow for the tracked `nse-data/` tree
 - ShipGate quality gates (`make check` / `make format`) and tag-triggered PyPI publish workflow
 - MkDocs Material docs site at https://inquilabee.github.io/powernse/

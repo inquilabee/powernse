@@ -1,6 +1,6 @@
 [project]
 name = "powernse"
-version = "0.1.0"
+version = "0.1.1"
 description = "Download and use NSE India end-of-day equity archives via CLI and Python"
 readme = "README.md"
 license = "MIT"
@@ -23,14 +23,12 @@ requires-python = ">=3.13"
 dependencies = [
     "exchange-calendars>=4.5",
     "filelock>=3.32",
+    "pandas>=2.2",
     "pydantic-settings>=2.15",
     "requests>=2.32",
     "tenacity>=9.0",
     "typer>=0.27",
 ]
-
-[project.optional-dependencies]
-pandas = ["pandas>=2.2"]
 
 [project.scripts]
 powernse = "powernse.cli:main"
@@ -51,7 +49,6 @@ default-groups = ["dev"]
 
 [dependency-groups]
 dev = [
-    "pandas>=2.2",
     "pre-commit>=4.6",
     "pytest>=8.3",
     "shipgate>=0.1.11",
