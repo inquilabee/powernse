@@ -1,24 +1,27 @@
 """Official NSE F&O bhavcopy archive download and staging."""
 
-import logging
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
 from powernse.archive import RAW_FO_BHAVCOPY_DIR, ArchiveRoot, archive_key, extract_zip_payload_to_csv_bytes
-from powernse.calendar import iter_trading_dates
-from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
-from powernse.downloaders.base import ArchiveDownloader
+from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS, UDIFF_SWITCH_DATE_ISO
+from powernse.downloaders.dated import DatedCsvArchiveDownloader, RootLike
 from powernse.downloaders.resume import latest_staged_iso_csv_date, resolve_dated_resume_range
-from powernse.errors import DownloadError, PayloadError
-from powernse.http import looks_like_html
-from powernse.types import DownloadSummary
 
-logger = logging.getLogger(__name__)
+UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
 
 
 def fo_bhavcopy_archive_url(trade_date: date) -> str:
-    """Return the official NSE archive URL for a trading day's F&O bhavcopy."""
+    """Return the official NSE archive URL for a trading day's F&O bhavcopy.
+
+    Before the UDIFF switch date, uses ``content/historical/DERIVATIVES/...``.
+    On and after that date, uses ``content/fo/BhavCopy_NSE_FO_...``.
+    """
+    if trade_date < UDIFF_SWITCH_DATE:
+        date_str = trade_date.strftime("%d%b%Y").upper()
+        month = date_str[2:5]
+        return f"{ARCHIVE_BASE_URL}/content/historical/DERIVATIVES/{trade_date.year}/{month}/fo{date_str}bhav.csv.zip"
     compact = trade_date.strftime("%Y%m%d")
     return f"{ARCHIVE_BASE_URL}/content/fo/BhavCopy_NSE_FO_0_0_0_{compact}_F_0000.csv.zip"
 
@@ -53,12 +56,14 @@ def resolve_fo_bhavcopy_resume_range(
     )
 
 
-class FoBhavcopyDownloader(ArchiveDownloader):
+class FoBhavcopyDownloader(DatedCsvArchiveDownloader):
     """Download F&O bhavcopy archives into the NSE archive staging tree."""
+
+    series_label = "F&O bhavcopy"
 
     def __init__(
         self,
-        root: Path | str,
+        root: RootLike,
         *,
         sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
         skip_existing: bool = True,
@@ -66,49 +71,23 @@ class FoBhavcopyDownloader(ArchiveDownloader):
         all_calendar_days: bool = False,
         fetch_bytes: Callable[[str], bytes] | None = None,
     ) -> None:
-        super().__init__(root, sleep_seconds=sleep_seconds, skip_existing=skip_existing, fetch_bytes=fetch_bytes)
-        self._strict = strict
-        self._all_calendar_days = all_calendar_days
-
-    def download_range(self, from_date: date, to_date: date) -> DownloadSummary:
-        downloaded = 0
-        skipped = 0
-        failed = 0
-        for trade_date in iter_trading_dates(from_date, to_date, all_calendar_days=self._all_calendar_days):
-            staged_key = staged_fo_bhavcopy_csv_key(trade_date)
-            if self.skip_existing and self.destination_exists(staged_key):
-                skipped += 1
-                continue
-            result = self._download_trade_date_or_none(trade_date)
-            if result is None:
-                failed += 1
-            else:
-                downloaded += 1
-        return DownloadSummary(
-            downloaded_count=downloaded,
-            skipped_existing_count=skipped,
-            failed_count=failed,
+        super().__init__(
+            root,
+            sleep_seconds=sleep_seconds,
+            skip_existing=skip_existing,
+            strict=strict,
+            all_calendar_days=all_calendar_days,
+            fetch_bytes=fetch_bytes,
         )
 
-    def _download_trade_date_or_none(self, trade_date: date) -> str | None:
-        try:
-            return self._download_trade_date(trade_date)
-        except (DownloadError, PayloadError) as exc:
-            if self._strict:
-                raise
-            logger.warning("Skipping F&O %s: %s", trade_date.isoformat(), exc)
-            return None
+    def staged_key(self, trade_date: date) -> str:
+        return staged_fo_bhavcopy_csv_key(trade_date)
 
-    def _download_trade_date(self, trade_date: date) -> str:
-        staged_key = staged_fo_bhavcopy_csv_key(trade_date)
-        url = fo_bhavcopy_archive_url(trade_date)
-        payload = self.fetch_bytes_throttled(url)
-        if looks_like_html(payload):
-            msg = f"F&O bhavcopy unavailable for {trade_date.isoformat()}: {url}"
-            raise DownloadError(msg)
+    def archive_url(self, trade_date: date) -> str:
+        return fo_bhavcopy_archive_url(trade_date)
+
+    def materialize_payload(self, trade_date: date, url: str, payload: bytes) -> bytes:
+        del trade_date
         preferred = Path(url).name.replace(".zip", "").replace(".ZIP", "")
         preferred_member = preferred if preferred.lower().endswith(".csv") else None
-        csv_bytes = extract_zip_payload_to_csv_bytes(payload, preferred_member=preferred_member)
-        unavailable = f"F&O bhavcopy unavailable for {trade_date.isoformat()}: {url}"
-        self.persist_bytes(url, staged_key, csv_bytes, unavailable_message=unavailable)
-        return staged_key
+        return extract_zip_payload_to_csv_bytes(payload, preferred_member=preferred_member)

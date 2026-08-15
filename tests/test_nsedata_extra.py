@@ -53,8 +53,7 @@ def test_ohlc_adjusted_bonus(tmp_path: Path) -> None:
         path = staged_bhavcopy_csv_path(tmp_path, trade_date)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
-            "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\n"
-            f"RELIANCE,EQ,{close},{close},{close},{close},100\n",
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{close},{close},{close},{close},100\n",
             encoding="utf-8",
         )
     ca = corporate_actions_staged_path(tmp_path, ex_day)

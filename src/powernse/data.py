@@ -3,7 +3,7 @@
 import csv
 import json
 import logging
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
@@ -36,6 +36,7 @@ from powernse.downloaders.index_constituents import (
     parse_index_constituent_symbols,
 )
 from powernse.errors import ArchiveError, PayloadError
+from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
 from powernse.settings import Settings
 from powernse.types import AdjustedOhlcBar, FoBar, IndexBar, OhlcBar
 
@@ -43,167 +44,6 @@ if TYPE_CHECKING:
     from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
-
-
-class BhavcopyRow:
-    """Normalize one legacy or UDIFF bhavcopy CSV row into an OhlcBar."""
-
-    SYMBOL_KEYS = ("SYMBOL", "TckrSymb")
-    SERIES_KEYS = ("SERIES", "SctySrs")
-    OPEN_KEYS = ("OPEN", "OpnPric")
-    HIGH_KEYS = ("HIGH", "HghPric")
-    LOW_KEYS = ("LOW", "LwPric")
-    CLOSE_KEYS = ("CLOSE", "ClsPric")
-    VOLUME_KEYS = ("TOTTRDQTY", "TtlTradgVol")
-    ISIN_KEYS = ("ISIN",)
-    DATE_KEYS = ("TradDt", "TIMESTAMP")
-
-    @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> OhlcBar | None:
-        symbol = cls.first(row, cls.SYMBOL_KEYS)
-        series = cls.first(row, cls.SERIES_KEYS)
-        open_ = cls.first(row, cls.OPEN_KEYS)
-        high = cls.first(row, cls.HIGH_KEYS)
-        low = cls.first(row, cls.LOW_KEYS)
-        close = cls.first(row, cls.CLOSE_KEYS)
-        volume = cls.first(row, cls.VOLUME_KEYS)
-        if None in (symbol, series, open_, high, low, close, volume):
-            return None
-        try:
-            open_f = float(open_)
-            high_f = float(high)
-            low_f = float(low)
-            close_f = float(close)
-            volume_i = int(float(volume))
-        except ValueError:
-            logger.warning("Skipping bhavcopy row with bad numerics on %s: %s", trade_date, symbol)
-            return None
-        isin = cls.first(row, cls.ISIN_KEYS)
-        row_date = cls.parse_row_date(row) or trade_date
-        return OhlcBar(
-            trade_date=row_date,
-            symbol=symbol.strip().upper(),
-            series=series.strip().upper(),
-            open=open_f,
-            high=high_f,
-            low=low_f,
-            close=close_f,
-            volume=volume_i,
-            isin=isin.strip() if isin else None,
-        )
-
-    @staticmethod
-    def first(row: dict[str, str], keys: tuple[str, ...]) -> str | None:
-        for key in keys:
-            value = row.get(key)
-            if value is not None and str(value).strip() != "":
-                return str(value)
-        return None
-
-    @classmethod
-    def parse_row_date(cls, row: dict[str, str]) -> date | None:
-        raw = cls.first(row, cls.DATE_KEYS)
-        if raw is None:
-            return None
-        text = raw.strip()
-        try:
-            return date.fromisoformat(text[:10])
-        except ValueError:
-            pass
-        for fmt in ("%d-%b-%Y", "%d-%b-%y"):
-            try:
-                return datetime.strptime(text, fmt).date()
-            except ValueError:
-                continue
-        return None
-
-
-class FoBhavcopyRow:
-    """Normalize one F&O bhavcopy CSV row into an FoBar."""
-
-    @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> FoBar | None:
-        symbol = BhavcopyRow.first(row, ("TckrSymb", "SYMBOL"))
-        instrument = BhavcopyRow.first(row, ("FinInstrmTp", "INSTRUMENT"))
-        open_ = BhavcopyRow.first(row, ("OpnPric", "OPEN"))
-        high = BhavcopyRow.first(row, ("HghPric", "HIGH"))
-        low = BhavcopyRow.first(row, ("LwPric", "LOW"))
-        close = BhavcopyRow.first(row, ("ClsPric", "CLOSE"))
-        volume = BhavcopyRow.first(row, ("TtlTradgVol", "CONTRACTS", "Tottrdqty"))
-        if None in (symbol, instrument, open_, high, low, close, volume):
-            return None
-        try:
-            open_f = float(open_)
-            high_f = float(high)
-            low_f = float(low)
-            close_f = float(close)
-            volume_i = int(float(volume))
-        except ValueError:
-            return None
-        strike_raw = BhavcopyRow.first(row, ("StrkPric", "STRIKE_PR"))
-        oi_raw = BhavcopyRow.first(row, ("OpnIntrst", "OPEN_INT"))
-        strike = float(strike_raw) if strike_raw not in (None, "") else None
-        open_interest = int(float(oi_raw)) if oi_raw not in (None, "") else None
-        expiry = cls._parse_date(BhavcopyRow.first(row, ("XpryDt", "EXPIRY_DT")))
-        option_type = BhavcopyRow.first(row, ("OptnTp", "OPTION_TYP"))
-        row_date = BhavcopyRow.parse_row_date(row) or trade_date
-        return FoBar(
-            trade_date=row_date,
-            symbol=symbol.strip().upper(),
-            instrument_type=instrument.strip().upper(),
-            expiry=expiry,
-            strike=strike,
-            option_type=option_type.strip().upper() if option_type else None,
-            open=open_f,
-            high=high_f,
-            low=low_f,
-            close=close_f,
-            volume=volume_i,
-            open_interest=open_interest,
-        )
-
-    @staticmethod
-    def _parse_date(raw: str | None) -> date | None:
-        if raw is None or not raw.strip():
-            return None
-        text = raw.strip()
-        try:
-            return date.fromisoformat(text[:10])
-        except ValueError:
-            pass
-        for fmt in ("%d-%b-%Y", "%d-%b-%y", "%d-%m-%Y"):
-            try:
-                return datetime.strptime(text, fmt).date()
-            except ValueError:
-                continue
-        return None
-
-
-class IndexClosesRow:
-    """Normalize one index-closes CSV row into an IndexBar."""
-
-    @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> IndexBar | None:
-        name = BhavcopyRow.first(row, ("Index Name", "IndexName"))
-        open_ = BhavcopyRow.first(row, ("Open Index Value", "Open"))
-        high = BhavcopyRow.first(row, ("High Index Value", "High"))
-        low = BhavcopyRow.first(row, ("Low Index Value", "Low"))
-        close = BhavcopyRow.first(row, ("Closing Index Value", "Close"))
-        if None in (name, open_, high, low, close):
-            return None
-        if open_ in ("-", "") or high in ("-", "") or low in ("-", "") or close in ("-", ""):
-            return None
-        try:
-            return IndexBar(
-                trade_date=trade_date,
-                index_name=name.strip(),
-                open=float(open_),
-                high=float(high),
-                low=float(low),
-                close=float(close),
-            )
-        except ValueError:
-            return None
 
 
 class NSEData:

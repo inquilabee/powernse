@@ -5,9 +5,11 @@ Pull official NSE end-of-day files into a local archive root.
 ## Try this
 
 ```bash
-# Cash-market bhavcopy (resume last staged → today, max 100 calendar days)
+# Cash-market bhavcopy
+# --resume: last staged → today; empty archives clamp to today-minus --days (default 100)
 powernse bhavcopy --resume
 powernse bhavcopy --resume --days 30
+powernse bhavcopy --resume --from 2000-01-01   # uncapped history
 powernse bhavcopy --from 2024-08-01 --to 2024-08-05
 
 # F&O bhavcopy, index closes, full bhav (delivery columns)

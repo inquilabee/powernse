@@ -7,11 +7,11 @@ import pytest
 
 from powernse.cli import main
 from powernse.downloaders.bhavcopy import (
-    EMPTY_ARCHIVE_FROM,
     latest_staged_bhavcopy_date,
     resolve_bhavcopy_resume_range,
     staged_bhavcopy_csv_path,
 )
+from powernse.downloaders.resume import EMPTY_ARCHIVE_FROM
 from powernse.types import DownloadSummary
 
 
@@ -75,8 +75,6 @@ def test_resume_rejects_non_positive_days(tmp_path: Path) -> None:
 
 
 def test_bhavcopy_resume_cli(tmp_path: Path, monkeypatch) -> None:
-    from powernse import cli
-
     captured: dict[str, date] = {}
 
     class FakeDownloader:
@@ -92,8 +90,8 @@ def test_bhavcopy_resume_cli(tmp_path: Path, monkeypatch) -> None:
         del root, today, days, from_date, to_date
         return date(2024, 8, 10), date(2024, 8, 15)
 
-    monkeypatch.setattr(cli, "BhavcopyDownloader", FakeDownloader)
-    monkeypatch.setattr(cli, "resolve_bhavcopy_resume_range", fake_resolve)
+    monkeypatch.setattr("powernse.cli.app.BhavcopyDownloader", FakeDownloader)
+    monkeypatch.setattr("powernse.cli.app.resolve_bhavcopy_resume_range", fake_resolve)
     code = main(["bhavcopy", "--resume", "--root", str(tmp_path)])
     assert code == 0
     assert captured["from"] == date(2024, 8, 10)

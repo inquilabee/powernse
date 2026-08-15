@@ -30,7 +30,7 @@ ARCHIVE_PREFIX_DIRS = (
     MANIFEST_DIR,
 )
 
-_IGNORED_PLACEHOLDER_NAMES = frozenset({".keep", ".gitkeep"})
+IGNORED_PLACEHOLDER_NAMES = frozenset({".keep", ".gitkeep"})
 
 
 def archive_key(*parts: str) -> str:
@@ -102,7 +102,5 @@ class ArchiveRoot:
         if search.is_file():
             return [search]
         return sorted(
-            path
-            for path in search.rglob("*")
-            if path.is_file() and path.name not in _IGNORED_PLACEHOLDER_NAMES
+            path for path in search.rglob("*") if path.is_file() and path.name not in IGNORED_PLACEHOLDER_NAMES
         )

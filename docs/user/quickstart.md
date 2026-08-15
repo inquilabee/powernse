@@ -1,6 +1,6 @@
 # Quickstart
 
-Download official NSE India end-of-day archives, or pull a ready `nse-data/` tree from GitHub, then query OHLC from the CLI or Python.
+Download official NSE India end-of-day archives, then query OHLC from the CLI or Python. When this project's GitHub repo publishes a populated `nse-data/` tree, you can also pull that tree as a zip.
 
 ## Install
 
@@ -16,24 +16,7 @@ uv sync
 uv run powernse --help
 ```
 
-## Fastest path: GitHub bundle
-
-If this project hosts a tracked `nse-data/` directory on GitHub:
-
-```bash
-export POWERNSE_GITHUB_REPO=OWNER/REPO
-powernse fetch-bundle --force
-powernse status
-powernse ohlc RELIANCE
-```
-
-`--force` overwrites a non-empty destination. Without env:
-
-```bash
-powernse fetch-bundle --repo OWNER/REPO --dest ./nse-data --force
-```
-
-## Download from NSE yourself
+## Download from NSE (always works)
 
 ```bash
 powernse bhavcopy --resume
@@ -43,16 +26,27 @@ powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse bulk-deals --date 2024-08-09
 powernse corporate-actions --from 2024-08-01 --to 2024-08-05
 powernse doctor
+powernse status
+powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 ```
+
+`--resume` walks from the last staged day through today, capped by `--days` (default 100) when `--from` is omitted. For uncapped history: `powernse bhavcopy --resume --from 2000-01-01`.
 
 Files land under `./nse-data/` (or `POWERNSE_ROOT` / `--root`).
 
-## Read OHLC
+## GitHub bundle (when the repo hosts data)
 
 ```bash
-powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
+export POWERNSE_GITHUB_REPO=OWNER/REPO   # or set package [project.urls] Repository before publish
+powernse fetch-bundle --force
 powernse status
 ```
+
+`--force` replaces the destination tree. Prefer a Release asset URL with `--url` when the code repo grows large; zipball of the whole repo remains the default.
+
+Until `nse-data/` on GitHub contains CSV/JSON (not only placeholders), `fetch-bundle` will not give you bars — download from NSE first.
+
+## Python
 
 ```python
 from datetime import date
@@ -63,12 +57,14 @@ data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
 
+OHLC helpers scan each day's CSV — prefer modest date windows.
+
 ## Exit codes
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Success (zero download failures) |
-| `1` | Download failures, doctor failure, empty `ohlc`, or domain error |
+| `1` | Download failures, doctor failure, empty query result, or domain error |
 | `2` | Missing `--from`/`--to` when not using `--resume` |
 
 ## Next

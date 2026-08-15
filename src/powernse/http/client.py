@@ -119,7 +119,6 @@ class NseHttpClient:
             except RequestException as exc:
                 raise DownloadError(f"NSE fetch failed for {url}: {exc}") from exc
         self.prime()
-        self._throttler.wait()
         return self._read_with_retry(url, accept=accept)
 
     def _read_with_retry(self, url: str, *, accept: str) -> bytes:
@@ -130,6 +129,7 @@ class NseHttpClient:
             reraise=True,
         )
         def _once() -> bytes:
+            self._throttler.wait()
             response = self._session.get(url, headers={**DEFAULT_HEADERS, "Accept": accept}, timeout=60)
             response.raise_for_status()
             content_type = response.headers.get("Content-Type")

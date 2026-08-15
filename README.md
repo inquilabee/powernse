@@ -23,16 +23,15 @@ Requires Python 3.13+.
 Full guide: [docs/user/quickstart.md](docs/user/quickstart.md).
 
 ```bash
-# Option A — GitHub-hosted nse-data tree
-export POWERNSE_GITHUB_REPO=OWNER/REPO
-powernse fetch-bundle --force
-
-# Option B — download from NSE
+# Download from NSE
 powernse bhavcopy --resume
 powernse fo-bhavcopy --resume --days 30
 powernse index-closes --from 2024-08-01 --to 2024-08-05
 powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse bulk-deals --date 2024-08-09
+
+# Optional: GitHub-hosted nse-data (set POWERNSE_GITHUB_REPO or package Repository URL)
+# powernse fetch-bundle --force
 
 powernse status
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05

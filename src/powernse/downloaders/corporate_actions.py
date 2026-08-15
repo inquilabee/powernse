@@ -128,17 +128,23 @@ class CorporateActionsDownloader(ArchiveDownloader):
             msg = f"Corporate actions payload must be a JSON list: {url}"
             raise PayloadError(msg)
         by_day: dict[date, list[dict[str, object]]] = {day: [] for day in batch_days}
-        undated: list[dict[str, object]] = []
+        undated_count = 0
         for item in decoded:
             if not isinstance(item, dict):
                 continue
             item_date = parse_corporate_action_date(item)
             if item_date is None:
-                undated.append(item)
+                undated_count += 1
+                logger.warning("Skipping undated corporate-action record in batch %s–%s", span_start, span_end)
             elif item_date in by_day:
                 by_day[item_date].append(item)
-        if undated and batch_days:
-            by_day[batch_days[0]].extend(undated)
+        if undated_count:
+            logger.warning(
+                "Dropped %s undated corporate-action record(s) for %s–%s",
+                undated_count,
+                span_start,
+                span_end,
+            )
         written = 0
         for day in batch_days:
             relative = corporate_actions_staged_key(day)

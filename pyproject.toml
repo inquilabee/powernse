@@ -35,6 +35,12 @@ pandas = ["pandas>=2.2"]
 [project.scripts]
 powernse = "powernse.cli:main"
 
+# Maintainers: before PyPI publish, uncomment and set the real GitHub URLs so
+# `powernse fetch-bundle` can default without POWERNSE_GITHUB_REPO:
+# [project.urls]
+# Homepage = "https://github.com/OWNER/REPO"
+# Repository = "https://github.com/OWNER/REPO"
+
 [build-system]
 requires = ["uv_build>=0.11.19,<0.12.0"]
 build-backend = "uv_build"

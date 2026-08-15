@@ -1,6 +1,7 @@
 """NSE bulk/block deal and F&O security-ban snapshot downloads."""
 
 import logging
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -13,6 +14,7 @@ from powernse.archive import (
 )
 from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_SLEEP_SECONDS
 from powernse.downloaders.base import ArchiveDownloader
+from powernse.downloaders.dated import RootLike
 from powernse.errors import DownloadError
 from powernse.types import DownloadSummary
 
@@ -47,18 +49,15 @@ def staged_fo_secban_csv_key(label_date: date) -> str:
     return archive_key(RAW_FO_SECBAN_DIR.as_posix(), str(label_date.year), f"{label_date.isoformat()}.csv")
 
 
-class SnapshotCsvDownloader(ArchiveDownloader):
+class SnapshotCsvDownloader(ArchiveDownloader, ABC):
     """Download a current-exchange snapshot CSV and stage it under a label date."""
 
     snapshot_url: str
     snapshot_label: str
 
-    def key_for(self, label_date: date) -> str:
-        raise NotImplementedError
-
     def __init__(
         self,
-        root: Path | str,
+        root: RootLike,
         *,
         sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
         skip_existing: bool = True,
@@ -67,6 +66,10 @@ class SnapshotCsvDownloader(ArchiveDownloader):
     ) -> None:
         super().__init__(root, sleep_seconds=sleep_seconds, skip_existing=skip_existing, fetch_bytes=fetch_bytes)
         self._strict = strict
+
+    @abstractmethod
+    def key_for(self, label_date: date) -> str:
+        """Archive-relative key for the labeled snapshot."""
 
     def download(self, label_date: date) -> DownloadSummary:
         staged_key = self.key_for(label_date)

@@ -38,6 +38,8 @@ def test_fo_bhavcopy_url_and_stage(tmp_path: Path) -> None:
     trade_date = date(2024, 8, 9)
     url = fo_bhavcopy_archive_url(trade_date)
     assert url.endswith("BhavCopy_NSE_FO_0_0_0_20240809_F_0000.csv.zip")
+    legacy = fo_bhavcopy_archive_url(date(2024, 1, 2))
+    assert "/content/historical/DERIVATIVES/2024/JAN/fo02JAN2024bhav.csv.zip" in legacy
     payload = _zip_bytes("BhavCopy_NSE_FO_0_0_0_20240809_F_0000.csv", "TckrSymb,ClsPric\nRELIANCE,100\n")
 
     def fetch(fetched: str) -> bytes:

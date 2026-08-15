@@ -1,6 +1,6 @@
 # Use NSEData in Python
 
-Query staged archives without re-downloading.
+OHLC helpers scan each day's full CSV — use modest date windows unless you add your own index.
 
 ## Try this
 

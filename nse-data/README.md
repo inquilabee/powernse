@@ -2,8 +2,9 @@
 
 Tracked end-of-day archives refreshed from official NSE sources.
 
-CSV/JSON payloads are meant to live in this tree and be updated on GitHub (typically Sundays). A large local history is fine to `git add` when you are ready to publish; this repository may also start with an empty layout and grow via the weekly workflow.
+This tree may start with layout placeholders (`.gitkeep`) only. CSV/JSON payloads are added by the Sunday GitHub Actions refresh (or by maintainers running `powernse … --root ./nse-data` and committing). Until those files exist on GitHub, `fetch-bundle` will not yield OHLC bars — download from NSE locally instead.
 
+A large local history under this directory can be `git add`ed when you are ready to publish; ~hundreds of MB is normal for multi-year CM bhavcopy.
 
 ## Layout
 
@@ -23,22 +24,26 @@ manifest/
 ## Get a copy without cloning the whole repo
 
 ```bash
-powernse fetch-bundle --repo OWNER/REPO --dest ./nse-data
+powernse fetch-bundle --repo OWNER/REPO --dest ./nse-data --force
 # or
 export POWERNSE_GITHUB_REPO=OWNER/REPO
 powernse fetch-bundle --force
 ```
 
+Prefer a Release asset (`--url …/nse-data.zip`) when the code repository is large.
+
 ## Sunday refresh
 
-A GitHub Actions workflow runs weekly (`refresh-nse-data.yml`) to resume downloads into this tree and commit updates. You can also run locally:
+Workflow `.github/workflows/refresh-nse-data.yml` resumes downloads (including corporate-actions and index-constituents) and commits updates. Locally:
 
 ```bash
 powernse bhavcopy --resume --days 14 --root ./nse-data
 powernse fo-bhavcopy --resume --days 14 --root ./nse-data
 powernse index-closes --resume --days 14 --root ./nse-data
 powernse full-bhavcopy --resume --days 14 --root ./nse-data
-powernse bulk-deals --date "$(date -I)" --root ./nse-data
-powernse block-deals --date "$(date -I)" --root ./nse-data
-powernse fo-secban --date "$(date -I)" --root ./nse-data
+powernse corporate-actions --from "$(date -u -d '14 days ago' +%F)" --to "$(date -u +%F)" --root ./nse-data
+powernse index-constituents --label-date "$(date -u +%F)" --root ./nse-data
+powernse bulk-deals --date "$(date -u +%F)" --root ./nse-data
+powernse block-deals --date "$(date -u +%F)" --root ./nse-data
+powernse fo-secban --date "$(date -u +%F)" --root ./nse-data
 ```

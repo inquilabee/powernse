@@ -54,3 +54,23 @@ def test_bundle_fetcher_uses_repo_url(tmp_path: Path) -> None:
 
     written = BundleFetcher(fetch_bytes=fetch).download_to(tmp_path / "nse", repo="owner/repo", force=True)
     assert written == 1
+
+
+def test_force_replaces_orphan_files(tmp_path: Path) -> None:
+    dest = tmp_path / "nse"
+    dest.mkdir()
+    orphan = dest / "raw" / "old.csv"
+    orphan.parent.mkdir(parents=True)
+    orphan.write_text("orphan\n", encoding="utf-8")
+    payload = _repo_zip({"owner-repo-sha/nse-data/raw/new.csv": "ok\n"})
+    written = extract_nse_data_bundle(payload, dest, force=True)
+    assert written == 1
+    assert (dest / "raw" / "new.csv").is_file()
+    assert not orphan.exists()
+
+
+def test_fetch_bundle_cli_missing_repo(tmp_path: Path) -> None:
+    from powernse.cli import main
+
+    code = main(["fetch-bundle", "--dest", str(tmp_path / "empty")])
+    assert code == 1

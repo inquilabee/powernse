@@ -4,8 +4,11 @@
 
 ### Added
 
-- CLI (`powernse`) for bhavcopy (including `--resume` / `--days`), corporate-actions, index-constituents, status, ohlc, and doctor
-- Python API: `NSEData`, `OhlcBar`, `BhavcopyDownloader`, `CorporateActionsDownloader`, `IndexConstituentsDownloader`
-- `ArchiveReader` compatibility alias for `NSEData`
+- CLI (`powernse`) for CM / F&O / full bhavcopy, index closes, bulk/block deals, F&O sec-ban, corporate-actions, index-constituents, `fetch-bundle`, status, `ohlc` / `ohlc-adjusted` / `fo-ohlc` / `index-ohlc`, and doctor
+- `--resume` / `--days` for dated archive series (empty archives clamp to today-minus `--days`; pass `--from` to uncapped)
+- Python API: `NSEData`, `OhlcBar`, `AdjustedOhlcBar`, `FoBar`, `IndexBar`, and downloaders including deals / F&O / full / index closes
+- `ArchiveReader` compatibility alias for `NSEData` (prefer `NSEData`)
+- GitHub `nse-data/` zipball extract (`fetch-bundle`); optional Release asset via `--url`
 - Local archive layout with SHA-256 download manifest
 - Optional `powernse[pandas]` DataFrame helpers (`ohlc_frame`, `bhavcopy_frame`)
+- Weekly GitHub Actions refresh workflow for the tracked `nse-data/` tree
