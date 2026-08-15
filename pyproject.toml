@@ -1,7 +1,7 @@
 [project]
 name = "powernse"
 version = "0.1.0"
-description = "Download and use official NSE India equity archives via CLI and Python"
+description = "Download and use NSE India end-of-day equity archives via CLI and Python"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

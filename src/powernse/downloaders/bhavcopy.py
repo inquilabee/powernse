@@ -1,4 +1,4 @@
-"""Official NSE CM bhavcopy archive download and staging."""
+"""NSE CM bhavcopy archive download and staging."""
 
 from collections.abc import Callable
 from datetime import date
@@ -19,7 +19,7 @@ UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
 
 
 def bhavcopy_archive_url(trade_date: date) -> str:
-    """Return the official NSE archive URL for a trading day's CM bhavcopy."""
+    """Return the NSE archive URL for a trading day's CM bhavcopy."""
     if trade_date < UDIFF_SWITCH_DATE:
         date_str = trade_date.strftime("%d%b%Y").upper()
         month = date_str[2:5]

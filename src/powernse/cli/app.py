@@ -20,7 +20,7 @@ from powernse.errors import PowerNseError
 
 app = typer.Typer(
     name="powernse",
-    help="Download and use official NSE India equity archives.",
+    help="Download and use NSE India end-of-day equity archives.",
     no_args_is_help=True,
 )
 

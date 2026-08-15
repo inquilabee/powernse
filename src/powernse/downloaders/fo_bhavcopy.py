@@ -1,4 +1,4 @@
-"""Official NSE F&O bhavcopy archive download and staging."""
+"""NSE F&O bhavcopy archive download and staging."""
 
 from collections.abc import Callable
 from datetime import date
@@ -13,7 +13,7 @@ UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
 
 
 def fo_bhavcopy_archive_url(trade_date: date) -> str:
-    """Return the official NSE archive URL for a trading day's F&O bhavcopy.
+    """Return the NSE archive URL for a trading day's F&O bhavcopy.
 
     Before the UDIFF switch date, uses ``content/historical/DERIVATIVES/...``.
     On and after that date, uses ``content/fo/BhavCopy_NSE_FO_...``.

@@ -1,7 +1,7 @@
 # PowerNSE
 
 <div class="pn-hero" markdown="0">
-  <h1>Official NSE archives. On your disk.</h1>
+  <h1>NSE end-of-day archives. On your disk.</h1>
   <p class="pn-tagline">
     One CLI and a small Python API for end-of-day equity data from the exchange —
     bhavcopy, F&amp;O, indexes, deals, corporate actions. No third-party dump ingest.
@@ -13,6 +13,10 @@
     <a class="pn-ghost" href="https://github.com/inquilabee/powernse">GitHub</a>
   </p>
 </div>
+
+<p align="center">
+  <img src="images/powernse-hero.png" alt="PowerNSE — end-of-day archives on disk" width="920"/>
+</p>
 
 NSE URLs move. Session cookies are picky. PowerNSE stages the files under
 `nse-data/`, keeps a download manifest, and lets you query OHLC without

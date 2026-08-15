@@ -1,4 +1,4 @@
-"""PowerNSE — download and use official NSE India equity archives."""
+"""PowerNSE — download and use NSE India end-of-day equity archives."""
 
 from importlib.metadata import PackageNotFoundError, version
 

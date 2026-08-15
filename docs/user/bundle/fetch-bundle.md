@@ -40,7 +40,7 @@ fetch-bundle: wrote 42 files to /…/nse-data
 
 ## Sunday updates
 
-Maintainers refresh official downloads into `nse-data/` on GitHub (weekly workflow). After that commit lands, clients re-run `fetch-bundle --force` to sync.
+Maintainers refresh exchange downloads into `nse-data/` on GitHub (weekly workflow). After that commit lands, clients re-run `fetch-bundle --force` to sync.
 
 ## Next
 

@@ -1,34 +1,69 @@
 <p align="center">
-  <a href="https://pypi.org/project/powernse/"><img src="https://img.shields.io/pypi/v/powernse.svg" alt="PyPI version"/></a>
-  <a href="https://pypi.org/project/powernse/"><img src="https://img.shields.io/pypi/pyversions/powernse.svg" alt="Python versions"/></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"/></a>
-  <a href="https://inquilabee.github.io/powernse/"><img src="https://img.shields.io/badge/docs-GitHub%20Pages-blue" alt="Documentation"/></a>
+  <img src="docs/images/powernse-mark.svg" alt="PowerNSE" width="88" height="88"/>
+</p>
+
+<h1 align="center">PowerNSE</h1>
+
+<p align="center">
+  <a href="https://pypi.org/project/powernse/"><img src="https://img.shields.io/pypi/v/powernse.svg?logo=pypi&amp;logoColor=white&amp;label=PyPI&amp;color=0b3d3a" alt="PyPI"/></a>
+  <a href="https://pypi.org/project/powernse/"><img src="https://img.shields.io/pypi/pyversions/powernse.svg?logo=python&amp;logoColor=white&amp;label=Python" alt="Python versions"/></a>
+  <a href="https://github.com/inquilabee/powernse/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/inquilabee/powernse/ci.yml?branch=main&amp;label=CI&amp;logo=github" alt="CI"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-c4a35a?labelColor=0b3d3a" alt="License: MIT"/></a>
+  <a href="https://inquilabee.github.io/powernse/"><img src="https://img.shields.io/badge/docs-live-0b3d3a?labelColor=555" alt="Documentation"/></a>
+  <a href="DISCLAIMER.md"><img src="https://img.shields.io/badge/NSE-unofficial-critical" alt="Unofficial · not affiliated with NSE"/></a>
 </p>
 
 <p align="center">
-  <strong>Official NSE India archives on disk. One CLI. A small Python API.</strong><br/>
-  Bhavcopy, F&amp;O, indexes, deals, corporate actions — downloaded from the exchange,
-  not scraped from a third-party dump.
+  <img src="docs/images/powernse-hero.png" alt="PowerNSE — end-of-day archives on disk" width="920"/>
+</p>
+
+<p align="center">
+  <strong>NSE end-of-day archives. On your disk. Under your control.</strong><br/>
+  One CLI · a small Python API · no third-party dump path
 </p>
 
 <p align="center">
   <a href="https://inquilabee.github.io/powernse/">Docs</a> ·
   <a href="https://inquilabee.github.io/powernse/user/quickstart/">Quick start</a> ·
   <a href="https://pypi.org/project/powernse/">PyPI</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="DISCLAIMER.md">Disclaimer</a>
 </p>
+
+<table>
+  <tr>
+    <td>
+
+**Disclaimer** — PowerNSE is **not affiliated with, endorsed by, or connected to**
+the National Stock Exchange of India (NSE) or any related entity. It is an
+unofficial tool for **educational and research** use only — not financial advice,
+and not an NSE product or data feed.
+
+You are responsible for how you use the software and any data it retrieves,
+including compliance with NSE terms of use. The author accepts **no liability**
+for losses, damages, or other consequences arising from use of this package.
+Use at your own risk.
+
+Full text: [DISCLAIMER.md](DISCLAIMER.md) ·
+[docs](https://inquilabee.github.io/powernse/user/disclaimer/).
+
+</td>
+  </tr>
+</table>
 
 ______________________________________________________________________
 
-NSE publishes end-of-day files. The URLs move, the session cookie is picky, and
-nobody wants to re-learn the layout every quarter. **PowerNSE** stages those
-archives under a local `nse-data/` tree, keeps a download manifest, and lets you
-query OHLC from the CLI or from Python.
+NSE publishes end-of-day files. The URLs drift, the session cookie is fussy, and
+relearning the layout every quarter is a tax. **PowerNSE** downloads those
+archives into a local `nse-data/` tree, records a SHA-256 manifest, and gives you
+OHLC from the CLI or from Python — from the exchange, not from a scraped dump.
 
-Need a ready-made tree? `powernse fetch-bundle` pulls the tracked `nse-data/` from
-this GitHub repo. Prefer building it yourself? Point the downloaders at NSE.
+Two ways in:
 
-Python **3.13+**.
+1. **Build it** — point the downloaders at NSE (`bhavcopy`, F&amp;O, indexes, deals, …).
+2. **Fetch it** — `powernse fetch-bundle` extracts the tracked `nse-data/` from this repo.
+
+Requires Python **3.13+**.
 
 ## Install
 
@@ -58,7 +93,7 @@ data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
 
-Full walkthrough: [docs site quickstart](https://inquilabee.github.io/powernse/user/quickstart/).
+Walkthrough: [quickstart](https://inquilabee.github.io/powernse/user/quickstart/).
 
 ## What you get
 
@@ -90,27 +125,11 @@ nse-data/
 
 ## Etiquette
 
-Requests are throttled and an NSE session cookie is primed first. Keep date
-ranges modest; `--skip-existing` is on by default. Exchange URLs can change
-without notice.
+Requests are throttled; an NSE session cookie is primed first. Keep date ranges
+modest; `--skip-existing` is on by default. Exchange URLs can change without notice.
 
-This project does **not** download or ingest Kaggle (or other third-party) dumps.
-If you only need rough historical OHLCV for experiments, fetch those yourself —
-PowerNSE sticks to official archives.
-
-## Disclaimer
-
-PowerNSE is **not affiliated with, endorsed by, or connected to** the National
-Stock Exchange of India (NSE) or any related entity. It is an unofficial tool
-for **educational and research** use only — not financial advice, and not an
-official data feed.
-
-You are responsible for how you use the software and any data it retrieves,
-including compliance with NSE terms of use. The author accepts **no liability**
-for losses, damages, or other consequences arising from use of this package.
-Use at your own risk.
-
-Full text: [DISCLAIMER.md](DISCLAIMER.md).
+No Kaggle (or other third-party dump) path. Rough historical OHLCV for experiments
+belongs elsewhere — PowerNSE sticks to archives published by the exchange.
 
 ## Documentation
 
@@ -122,20 +141,6 @@ Full text: [DISCLAIMER.md](DISCLAIMER.md).
 | [NSEData](https://inquilabee.github.io/powernse/user/python/nsedata/) | Python API |
 | [fetch-bundle](https://inquilabee.github.io/powernse/user/bundle/fetch-bundle/) | GitHub zip extract |
 | [Disclaimer](https://inquilabee.github.io/powernse/user/disclaimer/) | Unofficial · educational use |
-| [Publish](https://inquilabee.github.io/powernse/maintainer/publish/) | Maintainer release |
-
-## Development
-
-```bash
-uv sync
-make check    # ShipGate
-make format
-make test
-make build
-```
-
-Local docs: `uv run --with mkdocs-material mkdocs serve`. Quality gates:
-[ShipGate](https://inquilabee.github.io/shipgate/) (`suite: standard`).
 
 ## License
 

@@ -4,7 +4,7 @@ Product contract for PowerNSE. Portable persona skills under `.cursor/skills/` s
 
 ## Purpose
 
-Ship a publishable Python package that downloads official NSE equity archives and lets users load them via CLI and a small public API. Vision: [docs/product/vision.md](docs/product/vision.md).
+Ship and maintain the published Python package (`powernse` on PyPI) that downloads NSE equity archives and lets users load them via CLI and a small public API. Vision: [docs/product/vision.md](docs/product/vision.md).
 
 ## Layout
 
@@ -18,7 +18,7 @@ docs/maintainer/       # release / publish
 
 Public surface: `powernse` package front (`NSEData`, downloaders) + one console script `powernse`.
 
-GitHub: https://github.com/inquilabee/powernse  
+GitHub: https://github.com/inquilabee/powernse
 Docs: https://inquilabee.github.io/powernse/
 
 ## Commands
@@ -39,7 +39,7 @@ Policy: [`.shipgate/shipgate.yaml`](.shipgate/shipgate.yaml) (`suite: standard`)
 
 ## Rules of thumb
 
-- Prefer official `nsearchives.nseindia.com` and documented NSE JSON APIs.
+- Prefer `nsearchives.nseindia.com` and documented NSE JSON APIs.
 - Do not add a Kaggle (or other third-party dump) download path.
 - Keep the public API small: `NSEData` + downloaders + settings/errors (`ArchiveReader` is a compatibility alias).
 - Never bypass quality hooks when they are installed (`make check` / pre-commit ShipGate gates).

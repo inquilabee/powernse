@@ -1,6 +1,6 @@
 site_name: PowerNSE
 site_url: https://inquilabee.github.io/powernse/
-site_description: Official NSE India equity archives via CLI and Python.
+site_description: Download NSE India end-of-day equity archives via CLI and Python.
 repo_url: https://github.com/inquilabee/powernse
 repo_name: inquilabee/powernse
 edit_uri: edit/main/docs/
@@ -49,8 +49,10 @@ nav:
   - Python API: user/python/nsedata.md
   - GitHub bundle: user/bundle/fetch-bundle.md
   - Disclaimer: user/disclaimer.md
-  - Publish: maintainer/publish.md
   - Changelog: https://github.com/inquilabee/powernse/blob/main/CHANGELOG.md
+  - Maintainer:
+      - Development: maintainer/development.md
+      - Publish: maintainer/publish.md
 
 markdown_extensions:
   - admonition

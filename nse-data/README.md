@@ -1,6 +1,6 @@
 # NSE data archive
 
-Tracked end-of-day archives refreshed from official NSE sources.
+Tracked end-of-day archives refreshed from NSE exchange sources.
 
 This tree may start with layout placeholders (`.gitkeep`) only. CSV/JSON payloads are added by the Sunday GitHub Actions refresh (or by maintainers running `powernse … --root ./nse-data` and committing). Until those files exist on GitHub, `fetch-bundle` will not yield OHLC bars — download from NSE locally instead.
 

@@ -1,6 +1,6 @@
 # Quickstart
 
-Download official NSE India end-of-day archives, then query OHLC from the CLI or Python. You can also pull this project's tracked `nse-data/` tree from GitHub as a zip when it contains archives.
+Download NSE India end-of-day archives, then query OHLC from the CLI or Python. You can also pull this project's tracked `nse-data/` tree from GitHub as a zip when it contains archives.
 
 !!! warning "Disclaimer"
 
@@ -43,7 +43,7 @@ Files land under `./nse-data/` (or `POWERNSE_ROOT` / `--root`).
 
 ## GitHub bundle
 
-After install from PyPI (or a wheel with `[project.urls] Repository`), no env var is required:
+After `pip install powernse`, no env var is required (the wheel embeds the Repository URL):
 
 ```bash
 powernse fetch-bundle --force

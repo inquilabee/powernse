@@ -44,7 +44,7 @@ class DatedCsvArchiveDownloader(ArchiveDownloader, ABC):
 
     @abstractmethod
     def archive_url(self, trade_date: date) -> str:
-        """Return the official download URL for ``trade_date``."""
+        """Return the download URL for ``trade_date``."""
 
     def materialize_payload(self, trade_date: date, url: str, payload: bytes) -> bytes:
         """Transform raw HTTP bytes into staged CSV bytes (default: passthrough)."""

@@ -1,6 +1,6 @@
 # Install
 
-Requires **Python 3.13+**.
+Requires **Python 3.13+**. Published on [PyPI](https://pypi.org/project/powernse/).
 
 ## From PyPI
 

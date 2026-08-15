@@ -1,4 +1,4 @@
-"""Official NSE daily index close CSV download and staging."""
+"""NSE daily index close CSV download and staging."""
 
 from collections.abc import Callable
 from datetime import date
@@ -11,7 +11,7 @@ from powernse.downloaders.resume import latest_staged_iso_csv_date, resolve_date
 
 
 def index_closes_archive_url(trade_date: date) -> str:
-    """Return the official NSE archive URL for all-index closes on a day."""
+    """Return the NSE archive URL for all-index closes on a day."""
     stamp = trade_date.strftime("%d%m%Y")
     return f"{ARCHIVE_BASE_URL}/content/indices/ind_close_all_{stamp}.csv"
 

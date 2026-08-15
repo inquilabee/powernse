@@ -1,4 +1,4 @@
-"""Official NSE security full bhavcopy (with delivery) download and staging."""
+"""NSE security full bhavcopy (with delivery) download and staging."""
 
 from collections.abc import Callable
 from datetime import date
@@ -11,7 +11,7 @@ from powernse.downloaders.resume import latest_staged_iso_csv_date, resolve_date
 
 
 def full_bhavcopy_archive_url(trade_date: date) -> str:
-    """Return the official NSE archive URL for ``sec_bhavdata_full`` on a day."""
+    """Return the NSE archive URL for ``sec_bhavdata_full`` on a day."""
     stamp = trade_date.strftime("%d%m%Y")
     return f"{ARCHIVE_BASE_URL}/products/content/sec_bhavdata_full_{stamp}.csv"
 

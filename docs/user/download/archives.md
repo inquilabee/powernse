@@ -1,6 +1,6 @@
 # Download archives
 
-Pull official NSE end-of-day files into a local archive root.
+Pull NSE end-of-day files into a local archive root.
 
 !!! warning "Disclaimer"
 
