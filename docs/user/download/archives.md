@@ -36,7 +36,7 @@ bhavcopy: downloaded=3 skipped=0 failed=0 root=/…/nse-data
 - `skipped` — already present (`--skip-existing` default)
 - `failed` — missing days or HTTP/HTML responses (exit `1` if any)
 
-Default date walking uses the XBOM calendar. Use `--all-calendar-days` only when you intentionally want weekends/holidays.
+Default date walking uses the XBOM calendar where `exchange-calendars` covers the window (from **2006-08-16**). Earlier dates use Monday–Friday only (no holiday calendar). Use `--all-calendar-days` only when you intentionally want weekends/holidays.
 
 ## Where files land
 

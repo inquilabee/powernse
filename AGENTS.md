@@ -12,10 +12,13 @@ Ship a publishable Python package that downloads official NSE equity archives an
 src/powernse/          # package (http, archive, downloaders, cli, loaders)
 tests/                 # pytest
 docs/product/vision.md
-docs/user/quickstart.md
+docs/user/             # client docs (install, quickstart, …)
+docs/maintainer/       # release / publish
 ```
 
 Public surface: `powernse` package front (`NSEData`, downloaders) + one console script `powernse`.
+
+GitHub: https://github.com/inquilabee/powernse
 
 ## Commands
 
@@ -27,6 +30,7 @@ Public surface: `powernse` package front (`NSEData`, downloaders) + one console 
 | Test | `make test` / `uv run pytest` |
 | Build | `make build` / `uv build` |
 | Hooks | `make install-hooks` |
+| Release | Tag `vX.Y.Z` after bumping `pyproject.toml` — see [docs/maintainer/publish.md](docs/maintainer/publish.md) |
 
 Policy: [`.shipgate/shipgate.yaml`](.shipgate/shipgate.yaml) (`suite: standard`). Docs: https://inquilabee.github.io/shipgate/
 
@@ -38,3 +42,4 @@ Policy: [`.shipgate/shipgate.yaml`](.shipgate/shipgate.yaml) (`suite: standard`)
 - Do not add a Kaggle (or other third-party dump) download path.
 - Keep the public API small: `NSEData` + downloaders + settings/errors (`ArchiveReader` is a compatibility alias).
 - Never bypass quality hooks when they are installed (`make check` / pre-commit ShipGate gates).
+- Do not `git add` local multi-year `nse-data/` dumps unless the user asked to publish that archive tree.

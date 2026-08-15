@@ -7,7 +7,9 @@ Download and use **official NSE India** equity archives from the command line or
 - **Corporate actions** and **index constituent** snapshots
 - Local archive layout with a download **manifest**
 - **`fetch-bundle`** — pull the tracked `nse-data/` tree from GitHub as a zip
-- XBOM trading-day calendar (skips weekends/holidays by default)
+- XBOM trading-day calendar (weekdays before XBOM coverage; sessions after)
+
+**Repo:** [github.com/inquilabee/powernse](https://github.com/inquilabee/powernse)
 
 ## Install
 
@@ -16,7 +18,7 @@ pip install powernse
 pip install 'powernse[pandas]'   # optional DataFrame helpers
 ```
 
-Requires Python 3.13+.
+Requires Python 3.13+. Full install notes: [docs/user/install.md](docs/user/install.md).
 
 ## Quick start
 
@@ -30,8 +32,8 @@ powernse index-closes --from 2024-08-01 --to 2024-08-05
 powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse bulk-deals --date 2024-08-09
 
-# Optional: GitHub-hosted nse-data (set POWERNSE_GITHUB_REPO or package Repository URL)
-# powernse fetch-bundle --force
+# Optional: GitHub-hosted nse-data (defaults to this repo after PyPI install)
+powernse fetch-bundle --force
 
 powernse status
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
@@ -52,11 +54,14 @@ indexes = data.index_ohlc("Nifty 50")
 
 | Guide | Path |
 | --- | --- |
+| Install | [docs/user/install.md](docs/user/install.md) |
 | Quickstart | [docs/user/quickstart.md](docs/user/quickstart.md) |
 | Download archives | [docs/user/download/archives.md](docs/user/download/archives.md) |
 | Python NSEData | [docs/user/python/nsedata.md](docs/user/python/nsedata.md) |
 | GitHub bundle | [docs/user/bundle/fetch-bundle.md](docs/user/bundle/fetch-bundle.md) |
 | Tracked archive notes | [nse-data/README.md](nse-data/README.md) |
+| Publish to PyPI (maintainers) | [docs/maintainer/publish.md](docs/maintainer/publish.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
 
 ## Archive layout
 
@@ -94,6 +99,8 @@ make test
 make build
 make install-hooks   # optional pre-commit
 ```
+
+Release: [docs/maintainer/publish.md](docs/maintainer/publish.md) (tag `v*`).
 
 ## License
 

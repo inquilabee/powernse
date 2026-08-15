@@ -1,29 +1,29 @@
 # Fetch the GitHub nse-data bundle
 
-Download the tracked `nse-data/` directory from this project's GitHub repo as a zip and extract it locally — without cloning history.
+Download the tracked `nse-data/` directory from [inquilabee/powernse](https://github.com/inquilabee/powernse) as a zip and extract it locally — without cloning history.
 
 ## Try this
 
 ```bash
-# Set once (required unless the installed package declares [project.urls] Repository)
-export POWERNSE_GITHUB_REPO=OWNER/REPO
-# optional: export POWERNSE_GITHUB_BRANCH=main
-
+# PyPI / wheel installs already know the Repository URL — no env needed
 powernse fetch-bundle --force
 powernse status
 ```
 
-Or pass flags:
+Override when needed:
 
 ```bash
-powernse fetch-bundle --repo OWNER/REPO --branch main --dest ./nse-data --force
+export POWERNSE_GITHUB_REPO=inquilabee/powernse
+# optional: export POWERNSE_GITHUB_BRANCH=main
+
+powernse fetch-bundle --repo inquilabee/powernse --branch main --dest ./nse-data --force
 ```
 
 Direct zipball or **Release asset** URL (overrides repo/branch; prefer a `nse-data.zip` Release when the code tree is large):
 
 ```bash
-powernse fetch-bundle --url 'https://codeload.github.com/OWNER/REPO/zip/refs/heads/main' --force
-powernse fetch-bundle --url 'https://github.com/OWNER/REPO/releases/download/TAG/nse-data.zip' --force
+powernse fetch-bundle --url 'https://codeload.github.com/inquilabee/powernse/zip/refs/heads/main' --force
+powernse fetch-bundle --url 'https://github.com/inquilabee/powernse/releases/download/TAG/nse-data.zip' --force
 ```
 
 ## What you should see
@@ -44,5 +44,6 @@ Maintainers refresh official downloads into `nse-data/` on GitHub (weekly workfl
 
 ## Next
 
+- [Install](../install.md)
 - [Quickstart](../quickstart.md)
 - [Download from NSE](../download/archives.md)

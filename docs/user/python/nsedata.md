@@ -45,5 +45,6 @@ frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(202
 
 ## Next
 
+- [Install](../install.md)
 - [Download archives](../download/archives.md)
 - [Fetch bundle](../bundle/fetch-bundle.md)

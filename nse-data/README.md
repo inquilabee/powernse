@@ -24,10 +24,10 @@ manifest/
 ## Get a copy without cloning the whole repo
 
 ```bash
-powernse fetch-bundle --repo OWNER/REPO --dest ./nse-data --force
-# or
-export POWERNSE_GITHUB_REPO=OWNER/REPO
 powernse fetch-bundle --force
+# or
+powernse fetch-bundle --repo inquilabee/powernse --dest ./nse-data --force
+export POWERNSE_GITHUB_REPO=inquilabee/powernse
 ```
 
 Prefer a Release asset (`--url …/nse-data.zip`) when the code repository is large.
