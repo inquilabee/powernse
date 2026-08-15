@@ -1,11 +1,16 @@
-.PHONY: sync check test build typecheck pipeline
+.PHONY: sync check format test build typecheck pipeline install-hooks
 
 sync:
 	uv sync
 
+# ShipGate: install managed tools, then report-only standard suite (full tree).
 check:
-	uv run ruff check src tests
-	uv run ruff format --check src tests
+	uv run shipgate install
+	uv run shipgate check --target . --full-tree
+
+format:
+	uv run shipgate install
+	uv run shipgate format --target .
 
 test:
 	uv run pytest
@@ -14,7 +19,10 @@ build:
 	uv build
 
 typecheck:
-	test -f src/powernse/py.typed
-	@echo "py.typed present; install mypy/ty in CI when you want full static checking"
+	uv run shipgate install
+	uv run shipgate check --check ty.check --target . --full-tree
 
-pipeline: check test typecheck build
+pipeline: check test build
+
+install-hooks:
+	uv run pre-commit install

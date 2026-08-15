@@ -22,13 +22,17 @@ Public surface: `powernse` package front (`NSEData`, downloaders) + one console 
 | Task | Command |
 | --- | --- |
 | Sync | `uv sync` |
-| Lint | `make check` |
+| Quality | `make check` (ShipGate `install` + `check --full-tree`) |
+| Format | `make format` |
 | Test | `make test` / `uv run pytest` |
 | Build | `make build` / `uv build` |
+| Hooks | `make install-hooks` |
+
+Policy: [`.shipgate/shipgate.yaml`](.shipgate/shipgate.yaml) (`suite: standard`). Docs: https://inquilabee.github.io/shipgate/
 
 ## Rules of thumb
 
 - Prefer official `nsearchives.nseindia.com` and documented NSE JSON APIs.
 - Do not add a Kaggle (or other third-party dump) download path.
 - Keep the public API small: `NSEData` + downloaders + settings/errors (`ArchiveReader` is a compatibility alias).
-- Never bypass quality hooks when they are installed.
+- Never bypass quality hooks when they are installed (`make check` / pre-commit ShipGate gates).

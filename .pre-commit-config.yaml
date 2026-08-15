@@ -1,16 +1,32 @@
+# ShipGate: format then check the project suite (.shipgate/shipgate.yaml).
+# Pytest stays on pre-push so commit stays fast.
 repos:
   - repo: local
     hooks:
-      - id: ruff-check
-        name: ruff check
-        entry: uv run ruff check src tests
+      - id: shipgate-sync
+        name: uv sync
+        entry: uv sync
         language: system
         pass_filenames: false
-      - id: ruff-format
-        name: ruff format
-        entry: uv run ruff format --check src tests
+        always_run: true
+      - id: shipgate-install
+        name: shipgate install
+        entry: uv run shipgate install
         language: system
         pass_filenames: false
+        always_run: true
+      - id: shipgate-format
+        name: shipgate format
+        entry: uv run shipgate format --target .
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: shipgate-check
+        name: shipgate check
+        entry: uv run shipgate check --target . --full-tree
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: pytest
         name: pytest
         entry: uv run pytest

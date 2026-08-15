@@ -84,11 +84,15 @@ PowerNSE always prefers **official exchange archives**. If you only need rough h
 
 ## Development
 
+Quality gates use [ShipGate](https://inquilabee.github.io/shipgate/) (`suite: standard` in `.shipgate/shipgate.yaml`).
+
 ```bash
 uv sync
-make check
+make check      # shipgate install + check --full-tree
+make format     # shipgate format
 make test
 make build
+make install-hooks   # optional pre-commit
 ```
 
 ## License
