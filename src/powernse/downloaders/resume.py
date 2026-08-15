@@ -34,9 +34,11 @@ def resolve_dated_resume_range(
     from_date: date | None = None,
     to_date: date | None = None,
 ) -> tuple[date, date]:
-    """Resolve resume window: last staged (or 2000-01-01) → today.
+    """Resolve resume window: last staged date (or empty-archive floor) → today.
 
-    ``days`` caps the window only when ``from_date`` is omitted.
+    When ``from_date`` is omitted, ``days`` caps how far back from ``to_date`` the
+    window may start (empty archives therefore begin at today-minus ``days``, not
+    at the empty-archive epoch alone). Pass ``from_date`` for uncapped history.
     """
     if days < 1:
         msg = f"--days must be >= 1, got {days}"
