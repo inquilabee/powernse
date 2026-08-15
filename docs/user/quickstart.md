@@ -4,11 +4,11 @@ Download official NSE India end-of-day archives, then query OHLC from the CLI or
 
 ## Install
 
-See [Install](install.md). Short path:
+See [Install](install.md). Until PyPI has `0.1.0`:
 
 ```bash
-pip install powernse
-pip install 'powernse[pandas]'   # optional DataFrame helpers
+pip install 'powernse @ git+https://github.com/inquilabee/powernse.git'
+pip install 'powernse[pandas]'   # after the wheel is on PyPI
 powernse --help
 ```
 

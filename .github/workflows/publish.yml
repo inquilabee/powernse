@@ -27,8 +27,14 @@ jobs:
         run: uv build
       - name: Smoke wheel
         run: |
-          uv run --isolated --no-project --with dist/*.whl python -c \
-            "import powernse; from powernse import NSEData; assert powernse.__version__; print(powernse.__version__)"
+          TAG="${GITHUB_REF_NAME#v}"
+          uv run --isolated --no-project --with dist/*.whl python -c "
+          import powernse
+          from powernse import NSEData
+          expected = '''${TAG}'''
+          assert powernse.__version__ == expected, (powernse.__version__, expected)
+          print('ok', powernse.__version__)
+          "
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:

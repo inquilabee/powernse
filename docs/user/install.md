@@ -1,25 +1,24 @@
 # Install
 
-## From PyPI
-
-```bash
-pip install powernse
-pip install 'powernse[pandas]'   # optional DataFrame helpers
-```
-
 Requires **Python 3.13+**.
 
+## From GitHub (works today)
+
+Until the first PyPI release (`v0.1.0`) is published, install from GitHub:
+
 ```bash
+pip install 'powernse @ git+https://github.com/inquilabee/powernse.git'
+pip install 'powernse[pandas] @ git+https://github.com/inquilabee/powernse.git'  # optional
 powernse --help
 powernse doctor
 ```
 
-## From GitHub (before or beside PyPI)
+## From PyPI (after first release)
 
 ```bash
-pip install 'powernse @ git+https://github.com/inquilabee/powernse.git'
-# or a tag:
-pip install 'powernse @ git+https://github.com/inquilabee/powernse.git@v0.1.0'
+pip install powernse
+pip install 'powernse[pandas]'   # optional DataFrame helpers
+powernse --help
 ```
 
 ## From a clone (development)

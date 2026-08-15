@@ -13,12 +13,21 @@ Download and use **official NSE India** equity archives from the command line or
 
 ## Install
 
+Until the first PyPI upload, install from GitHub (see [docs/user/install.md](docs/user/install.md)):
+
 ```bash
-pip install powernse
-pip install 'powernse[pandas]'   # optional DataFrame helpers
+pip install 'powernse @ git+https://github.com/inquilabee/powernse.git'
+pip install 'powernse[pandas] @ git+https://github.com/inquilabee/powernse.git'  # optional
 ```
 
-Requires Python 3.13+. Full install notes: [docs/user/install.md](docs/user/install.md).
+After `v0.1.0` is on PyPI:
+
+```bash
+pip install powernse
+pip install 'powernse[pandas]'
+```
+
+Requires Python 3.13+.
 
 ## Quick start
 
