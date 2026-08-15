@@ -178,6 +178,3 @@ pyrightconfig.json
 # Powerhouse DX — local only; restore with powerhouse-dx
 .vscode/
 .powerhouse/
-
-# Local download default root
-nse-data/

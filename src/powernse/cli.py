@@ -8,6 +8,7 @@ from typing import Annotated
 import typer
 from requests import RequestException
 
+from powernse.bundle import BundleFetcher
 from powernse.constants import DEFAULT_INDEX_NAMES, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
 from powernse.data import NSEData
 from powernse.downloaders import (
@@ -388,6 +389,37 @@ def index_constituents_cmd(
         downloader.download_indices(label_date or date.today(), indices),
         downloader.root,
     )
+
+
+@app.command("fetch-bundle")
+def fetch_bundle_cmd(
+    repo: Annotated[
+        str | None,
+        typer.Option(help="GitHub owner/repo hosting nse-data (or POWERNSE_GITHUB_REPO)"),
+    ] = None,
+    branch: Annotated[str | None, typer.Option(help="Git branch (default: main / POWERNSE_GITHUB_BRANCH)")] = None,
+    url: Annotated[
+        str | None,
+        typer.Option(help="Direct zipball URL (overrides --repo/--branch)"),
+    ] = None,
+    dest: Annotated[
+        Path | None,
+        typer.Option(help="Extract destination (default: POWERNSE_ROOT or ./nse-data)"),
+    ] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite a non-empty destination")] = False,
+) -> None:
+    """Download the tracked nse-data/ tree from GitHub as a zip and extract it."""
+    settings = Settings.resolve(dest)
+    resolved_repo = repo or settings.github_repo
+    resolved_branch = branch or settings.github_branch
+    written = BundleFetcher().download_to(
+        settings.archive_root,
+        repo=resolved_repo,
+        branch=resolved_branch,
+        url=url,
+        force=force,
+    )
+    typer.echo(f"fetch-bundle: wrote {written} files to {settings.archive_root}")
 
 
 @app.command("status")
