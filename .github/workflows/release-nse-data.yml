@@ -1,0 +1,38 @@
+name: Release nse-data bundle
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Sundays 08:00 UTC — after the 06:00 refresh workflow
+    - cron: "0 8 * * 0"
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Zip nse-data
+        run: |
+          set -euo pipefail
+          rm -f nse-data.zip
+          zip -r nse-data.zip nse-data -x 'nse-data/**/*.lock' -x 'nse-data/**/__pycache__/*'
+
+      - name: Upload Release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nse-data-bundle
+          name: NSE data bundle
+          body: |
+            Tracked `nse-data/` tree for `powernse fetch-bundle --url`.
+
+            ```bash
+            powernse fetch-bundle --force --url \
+              'https://github.com/inquilabee/powernse/releases/download/nse-data-bundle/nse-data.zip'
+            ```
+          files: nse-data.zip
+          fail_on_unmatched_files: true
+          make_latest: false

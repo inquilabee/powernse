@@ -36,7 +36,8 @@ powernse fetch-bundle --repo inquilabee/powernse --dest ./nse-data --force
 export POWERNSE_GITHUB_REPO=inquilabee/powernse
 ```
 
-Prefer a Release asset (`--url …/nse-data.zip`) when the code repository is large.
+Prefer a Release asset (`--url …/nse-data-bundle/nse-data.zip`) when available — see
+[fetch-bundle](https://inquilabee.github.io/powernse/user/bundle/fetch-bundle/).
 
 ## Sunday refresh
 
