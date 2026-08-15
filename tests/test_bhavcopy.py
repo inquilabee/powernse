@@ -57,6 +57,28 @@ def test_all_calendar_days_includes_weekend() -> None:
     assert date(2024, 1, 6) not in sessions_only
 
 
+def test_iter_trading_dates_before_xbom_uses_weekdays() -> None:
+    """XBOM coverage starts mid-2006; earlier ranges must not raise."""
+    days = list(iter_trading_dates(date(2000, 1, 1), date(2000, 1, 7)))
+    assert date(2000, 1, 1) not in days  # Saturday
+    assert date(2000, 1, 2) not in days  # Sunday
+    assert days == [
+        date(2000, 1, 3),
+        date(2000, 1, 4),
+        date(2000, 1, 5),
+        date(2000, 1, 6),
+        date(2000, 1, 7),
+    ]
+
+
+def test_iter_trading_dates_spans_pre_xbom_and_sessions() -> None:
+    days = list(iter_trading_dates(date(2006, 8, 14), date(2006, 8, 17)))
+    assert date(2006, 8, 14) in days  # weekday before first XBOM session
+    assert date(2006, 8, 15) in days
+    assert date(2006, 8, 16) in days  # first XBOM session
+    assert date(2006, 8, 17) in days
+
+
 def _zip_bytes(*members: tuple[str, str]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
