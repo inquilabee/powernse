@@ -178,6 +178,7 @@ pyrightconfig.json
 # Powerhouse DX — local only; restore with powerhouse-dx
 .vscode/
 .powerhouse/
+.cursor/
 
 # MkDocs
 /site/
