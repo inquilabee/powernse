@@ -1,4 +1,0 @@
-scan_roots:
-  - .
-private_only: false
-allowlist_file: .shipgate/allowlists/class-local-functions.yaml
