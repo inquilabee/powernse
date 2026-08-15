@@ -151,6 +151,33 @@ def test_http_client_wraps_http_error() -> None:
         client.fetch_bytes("https://example.test/missing")
 
 
+def test_http_client_retries_503() -> None:
+    from powernse.constants import MAX_HTTP_ATTEMPTS
+
+    attempts = {"n": 0}
+
+    class FakeResponse:
+        status_code = 503
+        headers: dict[str, str] = {}
+        content = b"busy"
+
+        def raise_for_status(self) -> None:
+            error = requests.HTTPError("503")
+            error.response = self  # type: ignore[assignment]
+            raise error
+
+    class FakeSession:
+        def get(self, *_args: object, **_kwargs: object) -> FakeResponse:
+            attempts["n"] += 1
+            return FakeResponse()
+
+    client = NseHttpClient(session=FakeSession(), min_interval_seconds=0)  # type: ignore[arg-type]
+    client._primed = True
+    with pytest.raises(DownloadError, match="HTTP 503"):
+        client.fetch_bytes("https://example.test/busy")
+    assert attempts["n"] == MAX_HTTP_ATTEMPTS
+
+
 def test_throttler_enforces_minimum_interval() -> None:
     throttler = RequestThrottler(0.05)
     start = __import__("time").monotonic()

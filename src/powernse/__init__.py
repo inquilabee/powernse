@@ -35,11 +35,11 @@ __all__ = [
 ]
 
 
-def _package_version() -> str:
+def package_version() -> str:
     try:
         return version("powernse")
     except PackageNotFoundError:
         return "0.0.0+local"
 
 
-__version__ = _package_version()
+__version__ = package_version()

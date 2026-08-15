@@ -25,7 +25,7 @@ from powernse.types import DownloadSummary
 logger = logging.getLogger(__name__)
 
 UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
-_STAGED_BHAVCOPY_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})\.csv$")
+STAGED_BHAVCOPY_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})\.csv$")
 EMPTY_ARCHIVE_FROM = date.fromisoformat(EMPTY_ARCHIVE_FROM_DATE)
 
 
@@ -53,7 +53,7 @@ def latest_staged_bhavcopy_date(root: Path | ArchiveRoot) -> date | None:
     archive = root if isinstance(root, ArchiveRoot) else ArchiveRoot.connect(root)
     latest: date | None = None
     for path in archive.list_files(RAW_BHAVCOPY_DIR):
-        match = _STAGED_BHAVCOPY_NAME.match(path.name)
+        match = STAGED_BHAVCOPY_NAME.match(path.name)
         if match is None:
             continue
         candidate = date.fromisoformat(match.group(1))
@@ -70,15 +70,19 @@ def resolve_bhavcopy_resume_range(
     from_date: date | None = None,
     to_date: date | None = None,
 ) -> tuple[date, date]:
-    """Resolve ``--resume`` window: last staged (or 2000-01-01) → today, capped by ``days``."""
+    """Resolve ``--resume`` window: last staged (or 2000-01-01) → today.
+
+    ``--days`` caps the window only when ``from_date`` is omitted.
+    """
     if days < 1:
         msg = f"--days must be >= 1, got {days}"
         raise ValueError(msg)
     resolved_to = to_date or (today or date.today())
-    resolved_from = from_date or latest_staged_bhavcopy_date(root) or EMPTY_ARCHIVE_FROM
-    floor = resolved_to - timedelta(days=days)
-    if resolved_from < floor:
-        resolved_from = floor
+    resolved_from = from_date if from_date is not None else (latest_staged_bhavcopy_date(root) or EMPTY_ARCHIVE_FROM)
+    if from_date is None:
+        floor = resolved_to - timedelta(days=days)
+        if resolved_from < floor:
+            resolved_from = floor
     if resolved_from > resolved_to:
         msg = f"resume from_date {resolved_from} is after to_date {resolved_to}"
         raise ValueError(msg)

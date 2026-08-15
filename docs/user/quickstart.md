@@ -53,9 +53,12 @@ powernse doctor
 | Code | Meaning |
 | --- | --- |
 | `0` | Command completed with zero failures |
-| `1` | Validation / download / connectivity failure (`failed_count > 0`, doctor failure, or domain error) |
+| `1` | Download failures (`failed_count > 0`), doctor failure, empty `ohlc` result, or domain error |
+| `2` | `bhavcopy` missing required `--from`/`--to` when not using `--resume` |
 
 `--strict` aborts a range on the first hard failure instead of counting and continuing.
+
+`--resume` uses last staged bhavcopy (or 2000-01-01) through today. `--days` caps that window only when `--from` is omitted; an explicit `--from` is not clamped.
 
 ## Python
 

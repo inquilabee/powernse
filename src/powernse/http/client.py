@@ -130,18 +130,18 @@ class NseHttpClient:
             reraise=True,
         )
         def _once() -> bytes:
-            try:
-                response = self._session.get(url, headers={**DEFAULT_HEADERS, "Accept": accept}, timeout=60)
-                response.raise_for_status()
-            except RequestException as exc:
-                raise DownloadError(self._format_http_failure(url, exc)) from exc
+            response = self._session.get(url, headers={**DEFAULT_HEADERS, "Accept": accept}, timeout=60)
+            response.raise_for_status()
             content_type = response.headers.get("Content-Type")
             payload = response.content
             if looks_like_html(payload, content_type=content_type):
                 raise DownloadError(f"NSE returned HTML instead of data for {url}")
             return payload
 
-        return _once()
+        try:
+            return _once()
+        except RequestException as exc:
+            raise DownloadError(self._format_http_failure(url, exc)) from exc
 
     @staticmethod
     def _format_http_failure(url: str, exc: RequestException) -> str:

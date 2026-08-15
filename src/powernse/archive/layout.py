@@ -88,7 +88,3 @@ class ArchiveRoot:
         if search.is_file():
             return [search]
         return sorted(path for path in search.rglob("*") if path.is_file() and path.name != ".keep")
-
-    def dated_raw_path(self, prefix: Path, trade_date_year: int, filename: str) -> Path:
-        """Build a staged path under raw/<prefix>/<year>/<filename>."""
-        return self.path_for(prefix, str(trade_date_year), filename)

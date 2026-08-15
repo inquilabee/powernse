@@ -77,10 +77,34 @@ def test_actions_for(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     data = NSEData(tmp_path)
-    # Force window without needing bhavcopy latest
-    matches = data.actions_for("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 1))
+    # CA-only archive (no bhavcopy) must still resolve via staged CA dates
+    matches = data.actions_for("RELIANCE")
     assert len(matches) == 1
     assert matches[0]["subject"] == "Dividend"
+
+
+def test_ohlc_skips_bad_numerics(tmp_path: Path) -> None:
+    _write_legacy(
+        tmp_path,
+        date(2024, 1, 2),
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\n"
+        "RELIANCE,EQ,bad,2520,2490,2510,100\n"
+        "RELIANCE,EQ,2500,2520,2490,2510,100\n",
+    )
+    bars = NSEData(tmp_path).ohlc("RELIANCE", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2))
+    assert len(bars) == 1
+    assert bars[0].open == 2500.0
+
+
+def test_ohlc_frame(tmp_path: Path) -> None:
+    _write_legacy(
+        tmp_path,
+        date(2024, 1, 2),
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,2500,2520,2490,2510,100\n",
+    )
+    frame = NSEData(tmp_path).ohlc_frame("RELIANCE", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2))
+    assert len(frame) == 1
+    assert float(frame.iloc[0]["close"]) == 2510.0
 
 
 def test_ohlc_cli(tmp_path: Path) -> None:
@@ -93,3 +117,10 @@ def test_ohlc_cli(tmp_path: Path) -> None:
     )
     code = main(["ohlc", "RELIANCE", "--from", "2024-01-02", "--to", "2024-01-02", "--root", str(tmp_path)])
     assert code == 0
+
+
+def test_ohlc_cli_empty_archive(tmp_path: Path) -> None:
+    from powernse.cli import main
+
+    code = main(["ohlc", "RELIANCE", "--root", str(tmp_path)])
+    assert code == 1

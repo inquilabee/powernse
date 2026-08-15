@@ -120,8 +120,19 @@ class IndexConstituentsDownloader(ArchiveDownloader):
 
 def parse_index_constituent_records(payload: bytes) -> list[IndexConstituentRecord]:
     """Parse NSE index constituents JSON into typed records."""
+
+    def extract_raw_records(decoded: object) -> list[object]:
+        if isinstance(decoded, dict):
+            data = decoded.get("data")
+            if isinstance(data, list):
+                return data
+        if isinstance(decoded, list):
+            return decoded
+        msg = "Unexpected index constituents JSON shape"
+        raise PayloadError(msg)
+
     decoded = json.loads(payload)
-    raw_records = _extract_raw_records(decoded)
+    raw_records = extract_raw_records(decoded)
     records: list[IndexConstituentRecord] = []
     for item in raw_records:
         if not isinstance(item, dict):
@@ -132,17 +143,6 @@ def parse_index_constituent_records(payload: bytes) -> list[IndexConstituentReco
         series = str(item.get("series") or "")
         records.append(IndexConstituentRecord(symbol=symbol, series=series))
     return records
-
-
-def _extract_raw_records(decoded: object) -> list[object]:
-    if isinstance(decoded, dict):
-        data = decoded.get("data")
-        if isinstance(data, list):
-            return data
-    if isinstance(decoded, list):
-        return decoded
-    msg = "Unexpected index constituents JSON shape"
-    raise PayloadError(msg)
 
 
 def parse_index_constituent_symbols(payload: bytes) -> list[str]:

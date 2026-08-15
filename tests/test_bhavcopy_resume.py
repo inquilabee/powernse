@@ -57,6 +57,18 @@ def test_resume_clamps_old_last_to_days(tmp_path: Path) -> None:
     assert resolved_to == today
 
 
+def test_resume_explicit_from_not_clamped(tmp_path: Path) -> None:
+    today = date(2024, 8, 15)
+    resolved_from, resolved_to = resolve_bhavcopy_resume_range(
+        tmp_path,
+        today=today,
+        days=30,
+        from_date=date(2020, 1, 1),
+    )
+    assert resolved_from == date(2020, 1, 1)
+    assert resolved_to == today
+
+
 def test_resume_rejects_non_positive_days(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="--days"):
         resolve_bhavcopy_resume_range(tmp_path, days=0)

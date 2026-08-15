@@ -30,7 +30,7 @@ def parse_iso_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
-def _exit_for_summary(summary_failed: int) -> None:
+def exit_for_summary(summary_failed: int) -> None:
     if summary_failed > 0:
         raise typer.Exit(code=1)
 
@@ -51,7 +51,10 @@ def bhavcopy_cmd(
     ] = None,
     days: Annotated[
         int,
-        typer.Option("--days", help="Max calendar-day span when using --resume (default: 100)"),
+        typer.Option(
+            "--days",
+            help="Max calendar-day span when --resume and --from are omitted (default: 100)",
+        ),
     ] = DEFAULT_RESUME_DAYS,
     root: Annotated[Path | None, typer.Option(help="Archive root (default: POWERNSE_ROOT or ./nse-data)")] = None,
     skip_existing: Annotated[bool, typer.Option(help="Skip dates that already exist")] = True,
@@ -94,7 +97,7 @@ def bhavcopy_cmd(
         f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
         f"root={downloader.root}"
     )
-    _exit_for_summary(summary.failed_count)
+    exit_for_summary(summary.failed_count)
 
 
 @app.command("corporate-actions")
@@ -128,7 +131,7 @@ def corporate_actions_cmd(
         f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
         f"root={downloader.root}"
     )
-    _exit_for_summary(summary.failed_count)
+    exit_for_summary(summary.failed_count)
 
 
 @app.command("index-constituents")
@@ -168,7 +171,7 @@ def index_constituents_cmd(
         f"skipped={summary.skipped_existing_count} failed={summary.failed_count} "
         f"root={downloader.root}"
     )
-    _exit_for_summary(summary.failed_count)
+    exit_for_summary(summary.failed_count)
 
 
 @app.command("status")
