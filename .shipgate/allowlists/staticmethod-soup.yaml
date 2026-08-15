@@ -1,0 +1,2 @@
+# Path prefixes or files exempt from staticmethod-soup (classes of only @staticmethod).
+entries: []

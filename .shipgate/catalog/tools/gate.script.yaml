@@ -1,0 +1,14 @@
+gate.script:
+  executable: python
+  subcommand: []
+  modes:
+    - check
+    - apply
+  normalizer: generic_exit
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    delivery: root

@@ -1,0 +1,18 @@
+gate.class-local-functions:
+  executable: python
+  module: shipgate.policy.class_local_functions
+  modes:
+    - check
+  normalizer: gate_json
+  configuration:
+    bundled: configs/gates/class-local-functions.yaml
+    discover:
+      - .shipgate/configs/gates/gate.class-local-functions.yaml
+    precedence:
+      - repo
+      - bundled
+  option_order: []
+  scope:
+    extensions:
+      - .py
+    delivery: files

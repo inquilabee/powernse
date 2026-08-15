@@ -1,0 +1,46 @@
+# Audits declared project dependencies for known CVEs (supply-chain).
+# Prefer project-path mode (positional root) over bare environment audit so
+# managed tool venvs are not treated as the product dependency set.
+# Requires network access to the vulnerability service (default: PyPI).
+# `shipgate init` creates a minimal pyproject.toml when missing.
+# Skipped when pyproject.toml is absent (require_if).
+pip-audit.audit:
+  executable: pip-audit
+  display_name: pip-audit
+  description: Audit Python dependencies for known vulnerabilities
+  documentation_url: https://github.com/pypa/pip-audit
+  subcommand:
+    - --progress-spinner
+    - "off"
+  modes:
+    - check
+  normalizer: pip_audit
+  install:
+    manager: python
+    package: pip-audit
+    version: 2.10.1
+  tags:
+    - security
+  cache:
+    results: true
+    ttl_seconds: 3600
+  cli:
+    paths:
+      style: positional
+      aggregate: root
+    format:
+      flag: -f
+      style: scalar
+      default: json
+    output:
+      flag: -o
+      style: scalar
+  option_order:
+    - format
+    - output
+    - paths
+  scope:
+    delivery: root
+  require_if:
+    files_present:
+      - pyproject.toml

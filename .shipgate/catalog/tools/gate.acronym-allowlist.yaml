@@ -1,0 +1,20 @@
+gate.acronym-allowlist:
+  executable: python
+  module: shipgate.policy.acronym_allowlist
+  modes:
+    - check
+  normalizer: gate_json
+  configuration:
+    bundled: configs/gates/acronym-allowlist.yaml
+    discover:
+      - .shipgate/configs/gates/gate.acronym-allowlist.yaml
+    precedence:
+      - repo
+      - bundled
+  option_order: []
+  scope:
+    extensions:
+      - .md
+    globs:
+      - "**/*.mdc"
+    delivery: files

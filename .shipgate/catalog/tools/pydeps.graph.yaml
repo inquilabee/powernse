@@ -1,0 +1,19 @@
+pydeps.graph:
+  executable: pydeps
+  subcommand: []
+  modes:
+    - check
+  normalizer: generic_exit
+  install:
+    manager: python
+    package: pydeps
+    version: 3.0.6
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    extensions:
+      - .py
+    delivery: root

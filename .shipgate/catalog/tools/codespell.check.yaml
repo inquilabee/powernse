@@ -1,0 +1,21 @@
+codespell.check:
+  executable: codespell
+  subcommand: []
+  modes:
+    - check
+  normalizer: codespell
+  install:
+    manager: python
+    package: codespell
+    version: 2.4.3
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    extensions:
+      - .md
+      - .rst
+      - .txt
+    delivery: files

@@ -54,6 +54,7 @@ dev = [
     "pre-commit>=4.6",
     "pytest>=8.3",
     "ruff>=0.9",
+    "shipgate>=0.1.11",
 ]
 
 [tool.ruff]

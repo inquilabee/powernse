@@ -1,0 +1,44 @@
+ruff.format:
+  executable: ruff
+  subcommand:
+    - format
+  modes:
+    - apply
+    - check
+  normalizer: generic_exit
+  install:
+    manager: python
+    package: ruff
+    version: 0.15.22
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config
+      style: repeated
+    check:
+      flag: --check
+      style: boolean
+  configuration:
+    bundled: configs/ruff.toml
+    discover:
+      - .shipgate/configs/ruff.toml
+      - .ruff.toml
+      - ruff.toml
+      - pyproject.toml
+    pyproject_section: tool.ruff
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - check
+    - paths
+  scope:
+    extensions:
+      - .py
+      - .pyi
+      - .ipynb
+    delivery: root

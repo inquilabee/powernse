@@ -1,0 +1,52 @@
+# PowerNSE ShipGate policy — see https://inquilabee.github.io/shipgate/
+# Day-to-day suite is standard (ruff.lint + ty.check). Escalate with:
+#   shipgate check --suite full --full-tree
+suite: standard
+env: managed
+target: .
+changed-only: true
+error-format: compact
+configs:
+  mode: auto
+checks:
+  semgrep.scan:
+    scope: semgrep
+  ty.check:
+    scope: ty-src
+  radon.cc:
+    # Letter rank is per-block. Median / p95 gate typical and tail complexity.
+    threshold: B
+    median-mode: threshold
+    median-threshold: 3
+    p95-mode: threshold
+    p95-threshold: 7
+  radon.mi:
+    # Letter rank is per-file. Distribution floors are progressive (portable init);
+    # pin absolute median/p5/p10 via calibrate when ready.
+    threshold: B
+    median-mode: progressive
+    p5-mode: progressive
+    p10-mode: progressive
+    minimum-mode: progressive
+  jscpd.check.python:
+    threshold: "2"
+  jscpd.check.other:
+    threshold: "5"
+scopes:
+  semgrep:
+    target: .
+  python-src:
+    target: src
+  ty-src:
+    target: src
+  python-test-src:
+    target: tests
+allowlists:
+  gate.acronym-allowlist: .shipgate/allowlists/acronyms.yaml
+  gate.folder-breadth: .shipgate/allowlists/folder-breadth.yaml
+  gate.module-size: .shipgate/allowlists/module-size.yaml
+  gate.module-private-vars: .shipgate/allowlists/module-private-vars.yaml
+  gate.test-only-symbols: .shipgate/allowlists/test-only-symbols.yaml
+  gate.repeated-strings: .shipgate/allowlists/repeated-strings.yaml
+  gate.class-local-functions: .shipgate/allowlists/class-local-functions.yaml
+  gate.staticmethod-soup: .shipgate/allowlists/staticmethod-soup.yaml

@@ -1,0 +1,18 @@
+gate.module-private-vars:
+  executable: python
+  module: shipgate.policy.module_private_vars
+  modes:
+    - check
+  normalizer: gate_json
+  configuration:
+    bundled: configs/gates/module-private-vars.yaml
+    discover:
+      - .shipgate/configs/gates/gate.module-private-vars.yaml
+    precedence:
+      - repo
+      - bundled
+  option_order: []
+  scope:
+    extensions:
+      - .py
+    delivery: files

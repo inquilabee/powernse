@@ -1,0 +1,52 @@
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+exclude = [".shipgate", ".venv", "venv", "build", "reports", "__pycache__"]
+
+[lint]
+preview = true
+select = [
+  "E",
+  "F",
+  "I",
+  "UP",
+  "B",
+  "SIM",
+  "RUF",
+  "C4",
+  "PTH",
+  "TCH",
+  "ASYNC",
+  "S",
+  "N",
+  "W",
+  "complex-structure",
+  "ERA",
+  "PERF",
+  "PIE",
+  "RET",
+  "ARG",
+  "PT",
+  "A",
+  "BLE",
+  "FBT",
+  "no-self-use",
+  "DTZ",
+  "SLOT",
+  "LOG",
+  "G",
+]
+# S404: orchestrator intentionally imports subprocess (never shell=True).
+# RUF067: package __init__ modules own registries / get_* helpers by design.
+# TC002: keep third-party typing imports at module scope (runtime clarity).
+ignore = [
+  "suspicious-subprocess-import",
+  "non-empty-init-module",
+  "typing-only-third-party-import",
+]
+
+[lint.mccabe]
+max-complexity = 8
+
+[lint.per-file-ignores]
+"tests/**" = ["assert", "subprocess-without-shell-equals-true"]

@@ -1,0 +1,34 @@
+hadolint.check:
+  executable: hadolint
+  subcommand: []
+  modes:
+    - check
+  normalizer: generic_exit
+  install:
+    manager: binary
+    package: hadolint
+    version: 2.14.0
+    binary: hadolint
+    allow_path: false
+    download:
+      repo: hadolint/hadolint
+      asset_template: hadolint-{os}-{arch}
+      binary_name: hadolint
+      os_map:
+        darwin: macos
+        linux: linux
+        windows: windows
+  suggest_if:
+    files_present:
+      - "**/Dockerfile*"
+      - "**/*.dockerfile"
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    globs:
+      - "**/Dockerfile*"
+      - "**/*.dockerfile"
+    delivery: files

@@ -1,0 +1,45 @@
+yamlfmt.apply:
+  executable: yamlfmt
+  subcommand: []
+  modes:
+    - apply
+    - check
+  normalizer: generic_exit
+  install:
+    manager: binary
+    package: yamlfmt
+    version: 0.21.0
+    binary: yamlfmt
+    allow_path: false
+    download:
+      repo: google/yamlfmt
+      asset_template: yamlfmt_{version}_Linux_{arch}.tar.gz
+      binary_name: yamlfmt
+      arch_map:
+        x86_64: x86_64
+        arm64: arm64
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: -conf
+      style: scalar
+  configuration:
+    bundled: configs/yamlfmt.yaml
+    discover:
+      - .shipgate/configs/yamlfmt.yaml
+      - .yamlfmt
+      - yamlfmt.yaml
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - paths
+  scope:
+    extensions:
+      - .yaml
+      - .yml
+    delivery: files

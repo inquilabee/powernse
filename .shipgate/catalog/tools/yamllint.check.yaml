@@ -1,0 +1,38 @@
+yamllint.check:
+  executable: yamllint
+  subcommand: []
+  modes:
+    - check
+  normalizer: generic_exit
+  install:
+    manager: python
+    package: yamllint
+    version: 1.38.0
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config-file
+      style: scalar
+  configuration:
+    bundled: configs/yamllint.yaml
+    discover:
+      - .shipgate/configs/yamllint.yaml
+      - .yamllint
+      - .yamllint.yaml
+      - .yamllint.yml
+      - yamllint.yaml
+      - yamllint.yml
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - paths
+  scope:
+    extensions:
+      - .yaml
+      - .yml
+    delivery: files

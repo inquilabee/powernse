@@ -1,0 +1,5 @@
+# ShipGate default yamlfmt settings (bundled; copied to .shipgate/configs/yamlfmt.yaml on init).
+# File paths are filtered by ShipGate scope (gitignore-aware) before yamlfmt runs.
+formatter:
+  type: basic
+  force_quote_style: double

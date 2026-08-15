@@ -1,0 +1,17 @@
+{
+  "minLines": 5,
+  "minTokens": 50,
+  "threshold": 5,
+  "reporters": ["console", "json"],
+  "output": ".shipgate/reports/jscpd-other",
+  "ignore": [
+    ".shipgate/**",
+    "**/.venv/**",
+    "**/venv/**",
+    "**/.ruff_cache/**",
+    "**/__pycache__/**",
+    "**/*.py",
+    "**/*.pyi",
+    "**/catalog/tools/jscpd.check.*.yaml"
+  ]
+}

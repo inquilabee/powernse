@@ -1,0 +1,18 @@
+gate.staticmethod-soup:
+  executable: python
+  module: shipgate.policy.staticmethod_soup
+  modes:
+    - check
+  normalizer: gate_json
+  configuration:
+    bundled: configs/gates/staticmethod-soup.yaml
+    discover:
+      - .shipgate/configs/gates/gate.staticmethod-soup.yaml
+    precedence:
+      - repo
+      - bundled
+  option_order: []
+  scope:
+    extensions:
+      - .py
+    delivery: files

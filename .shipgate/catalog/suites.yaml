@@ -1,0 +1,106 @@
+suites:
+  python-quality:
+    members:
+      - ruff.lint
+      - ty.check
+    parallel: false
+    fail_fast: false
+  format:
+    members:
+      - ruff.lint
+      - ruff.format
+      - mdformat.apply
+      - shfmt.apply
+      - yamlfmt.apply
+    parallel: false
+    fail_fast: true
+  security:
+    members:
+      - bandit.scan
+      - gitleaks.scan
+      - semgrep.scan
+      - pip-audit.audit
+    parallel: true
+    fail_fast: false
+  extended:
+    members:
+      - ty.check
+      - codespell.check
+      - deadcode.check
+      - vulture.check
+      - radon.cc
+      - radon.mi
+      - jscpd.check.python
+      - jscpd.check.other
+      - markdownlint.check
+      - yamllint.check
+      - deptry.check
+    parallel: true
+    fail_fast: false
+  standard:
+    members:
+      - python-quality
+    parallel: false
+    fail_fast: false
+  full:
+    members:
+      - standard
+      - security
+      - extended
+      - policy
+    parallel: true
+    fail_fast: false
+  docs:
+    members:
+      - markdownlint.check
+      - mdformat.apply
+      - yamllint.check
+    parallel: false
+    fail_fast: false
+  shell:
+    members:
+      - shellcheck.check
+      - shfmt.apply
+    parallel: false
+    fail_fast: false
+  policy:
+    members:
+      - gate.module-size
+      - gate.module-private-vars
+      - gate.folder-breadth
+      - gate.acronym-allowlist
+      - gate.test-only-symbols
+      - gate.repeated-strings
+      - gate.class-local-functions
+      - gate.staticmethod-soup
+      - import-linter.check
+    parallel: true
+    fail_fast: true
+  docker:
+    members:
+      - hadolint.check
+    parallel: false
+    fail_fast: false
+  ci:
+    members:
+      - standard
+      - security
+      - policy
+    parallel: false
+    fail_fast: true
+  nightly:
+    members:
+      - full
+    parallel: false
+    fail_fast: false
+  release:
+    members:
+      - full
+    parallel: false
+    fail_fast: true
+  pre-commit:
+    members:
+      - format
+      - python-quality
+    parallel: false
+    fail_fast: true

@@ -1,0 +1,38 @@
+jscpd.check.other:
+  executable: jscpd
+  subcommand: []
+  modes:
+    - check
+  normalizer: jscpd
+  install:
+    manager: binary
+    package: jscpd
+    version: 5.0.12
+    binary: jscpd
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config
+      style: scalar
+    threshold:
+      flag: --threshold
+      style: scalar
+      default: "5"
+  configuration:
+    bundled: configs/jscpd.other.json
+    discover:
+      - .shipgate/configs/jscpd.other.json
+      - .jscpd.other.json
+      - jscpd.other.json
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - threshold
+    - paths
+  scope:
+    delivery: root
