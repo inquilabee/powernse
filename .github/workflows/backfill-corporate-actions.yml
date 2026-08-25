@@ -1,0 +1,62 @@
+name: Backfill corporate actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      from_date:
+        description: "Start date (YYYY-MM-DD)"
+        required: false
+        default: "1994-11-03"
+      to_date:
+        description: "End date (YYYY-MM-DD, blank = today)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync package
+        run: uv sync
+
+      - name: Backfill corporate actions, one year at a time (newest first)
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          FROM="${{ inputs.from_date }}"
+          TO="${{ inputs.to_date }}"
+          if [ -z "$TO" ]; then
+            TO=$(date -u +%F)
+          fi
+          FROM_YEAR=$(date -u -d "$FROM" +%Y)
+          TO_YEAR=$(date -u -d "$TO" +%Y)
+
+          for YEAR in $(seq "$TO_YEAR" -1 "$FROM_YEAR"); do
+            YEAR_FROM="${YEAR}-01-01"
+            YEAR_TO="${YEAR}-12-31"
+            [ "$YEAR" -eq "$FROM_YEAR" ] && YEAR_FROM="$FROM"
+            [ "$YEAR" -eq "$TO_YEAR" ] && YEAR_TO="$TO"
+
+            echo "== $YEAR ($YEAR_FROM .. $YEAR_TO) =="
+            uv run powernse corporate-actions --from "$YEAR_FROM" --to "$YEAR_TO" --root ./nse-data --sleep 0.2 --strict
+
+            git add nse-data
+            if git diff --staged --quiet; then
+              echo "No changes for $YEAR"
+              continue
+            fi
+            git commit -m "Backfill corporate actions: $YEAR"
+            git push
+          done
