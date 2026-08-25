@@ -11,6 +11,7 @@ import requests
 
 from powernse.archive import extract_zip_payload_to_csv_bytes, manifest_path, sha256_file
 from powernse.calendar import is_weekend, iter_trading_dates
+from powernse.data import NSEData
 from powernse.downloaders.bhavcopy import (
     BhavcopyDownloader,
     bhavcopy_archive_url,
@@ -19,7 +20,6 @@ from powernse.downloaders.bhavcopy import (
 )
 from powernse.errors import DownloadError, PayloadError
 from powernse.http import NseHttpClient, RequestThrottler
-from powernse.loaders import ArchiveReader
 
 
 def test_bhavcopy_archive_url_legacy_format() -> None:
@@ -110,7 +110,7 @@ def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
     assert record["sha256"] == sha256_file(staged)
     assert record["local_path"] == staged_bhavcopy_csv_key(trade_date)
 
-    rows = ArchiveReader(tmp_path).bhavcopy_rows(trade_date)
+    rows = NSEData(tmp_path).bhavcopy_rows(trade_date)
     assert rows[0]["SYMBOL"] == "RELIANCE"
 
 

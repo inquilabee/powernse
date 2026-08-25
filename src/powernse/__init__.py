@@ -17,13 +17,11 @@ from powernse.downloaders import (
     IndexConstituentsDownloader,
 )
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
-from powernse.loaders import ArchiveReader
 from powernse.settings import Settings
 from powernse.types import AdjustedOhlcBar, DownloadSummary, FoBar, IndexBar, OhlcBar
 
 __all__ = [
     "ArchiveError",
-    "ArchiveReader",
     "ArchiveRoot",
     "AdjustedOhlcBar",
     "BhavcopyDownloader",

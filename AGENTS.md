@@ -41,6 +41,6 @@ Policy: [`.shipgate/shipgate.yaml`](.shipgate/shipgate.yaml) (`suite: standard`)
 
 - Prefer `nsearchives.nseindia.com` and documented NSE JSON APIs.
 - Do not add a Kaggle (or other third-party dump) download path.
-- Keep the public API small: `NSEData` + downloaders + settings/errors (`ArchiveReader` is a compatibility alias).
+- Keep the public API small: `NSEData` + downloaders + settings/errors.
 - Never bypass quality hooks when they are installed (`make check` / pre-commit ShipGate gates).
 - Do not `git add` local multi-year `nse-data/` dumps unless the user asked to publish that archive tree.

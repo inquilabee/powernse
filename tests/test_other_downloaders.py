@@ -4,6 +4,7 @@ import json
 from datetime import date
 from pathlib import Path
 
+from powernse.data import NSEData
 from powernse.downloaders.corporate_actions import (
     CorporateActionsDownloader,
     corporate_actions_request_url,
@@ -15,7 +16,6 @@ from powernse.downloaders.index_constituents import (
     index_constituents_staged_path,
     parse_index_constituent_symbols,
 )
-from powernse.loaders import ArchiveReader
 from powernse.settings import Settings
 from powernse.types import DownloadSummary
 
@@ -39,7 +39,7 @@ def test_corporate_actions_download(tmp_path: Path) -> None:
     assert summary.downloaded_count == 1
     path = corporate_actions_staged_path(tmp_path, trade_date)
     assert json.loads(path.read_text(encoding="utf-8"))[0]["symbol"] == "RELIANCE"
-    assert ArchiveReader(tmp_path).corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
+    assert NSEData(tmp_path).corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
 
 
 def test_corporate_actions_invalid_json_non_strict(tmp_path: Path) -> None:
@@ -77,7 +77,7 @@ def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
     path = index_constituents_staged_path(tmp_path, trade_date, "NIFTY 50")
     assert path.is_file()
 
-    reader = ArchiveReader(tmp_path)
+    reader = NSEData(tmp_path)
     assert reader.index_symbols(trade_date, "NIFTY 50") == ["RELIANCE"]
     inv = reader.inventory()
     assert inv["index_constituents"] == 1
