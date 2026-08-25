@@ -12,7 +12,12 @@ SPLIT_RATIO = re.compile(
     re.IGNORECASE,
 )
 SPLIT_TO_FROM = re.compile(
-    r"face\s*value\s*split.*?from\s*(?:rs\.?\s*)?(\d+(?:\.\d+)?).*?to\s*(?:rs\.?\s*)?(\d+(?:\.\d+)?)",
+    r"face\s*value\s*split.*?from\s*(?:rs\.?|re\.?)?\s*(\d+(?:\.\d+)?)"
+    r".*?to\s*(?:rs\.?|re\.?)?\s*(\d+(?:\.\d+)?)",
+    re.IGNORECASE,
+)
+DIVIDEND_AMOUNT = re.compile(
+    r"^(?:interim\s+)?dividend\s*-\s*(?:rs\.?|re\.?)\s*(\d+(?:\.\d+)?)\s*per\s*sh",
     re.IGNORECASE,
 )
 
@@ -50,6 +55,24 @@ def price_adjustment_factor_from_subject(subject: str) -> float | None:
     return None
 
 
+def dividend_amount_from_subject(subject: str) -> float | None:
+    """Return the per-share rupee amount for a plain dividend CA subject, or None.
+
+    Deliberately anchored to the start of the subject and requires the
+    "Per Share"/"Per Sh" suffix, so composite records (e.g. REIT/InvIT
+    distributions that mention "dividend" as one component among several)
+    don't get misread as a plain per-share dividend.
+    """
+    text = subject.strip()
+    if not text:
+        return None
+    match = DIVIDEND_AMOUNT.match(text)
+    if match is None:
+        return None
+    amount = float(match.group(1))
+    return amount if amount > 0 else None
+
+
 def corporate_action_price_events(records: list[dict[str, object]]) -> list[tuple[date, float]]:
     """Extract ``(ex_date, price_divisor)`` pairs from corporate-action records."""
     events: list[tuple[date, float]] = []
@@ -62,6 +85,50 @@ def corporate_action_price_events(records: list[dict[str, object]]) -> list[tupl
         if ex_date is None:
             continue
         events.append((ex_date, factor))
+    events.sort(key=lambda item: item[0])
+    return events
+
+
+def corporate_action_dividend_events(records: list[dict[str, object]]) -> list[tuple[date, float]]:
+    """Extract ``(ex_date, dividend_amount)`` pairs from corporate-action records."""
+    events: list[tuple[date, float]] = []
+    for record in records:
+        subject = str(record.get("subject") or record.get("SUBJECT") or "")
+        amount = dividend_amount_from_subject(subject)
+        if amount is None:
+            continue
+        ex_date = parse_corporate_action_date(record)
+        if ex_date is None:
+            continue
+        events.append((ex_date, amount))
+    events.sort(key=lambda item: item[0])
+    return events
+
+
+def dividend_price_events(bars: list[OhlcBar], dividend_events: list[tuple[date, float]]) -> list[tuple[date, float]]:
+    """Convert ``(ex_date, dividend_amount)`` pairs into ``apply_price_adjustments`` divisor events.
+
+    Unlike a split/bonus ratio, a dividend adjustment factor isn't derivable
+    from the announcement text alone -- it needs the close on the last
+    trading day before the ex-date. The standard total-return convention is
+    ``factor = 1 - dividend / prior_close``; stored here as its divisor
+    ``prior_close / (prior_close - dividend)`` so the result plugs directly
+    into ``apply_price_adjustments``, which always divides older bars by the
+    cumulative event factor. Events with no prior bar, or a dividend at or
+    above the prior close, are skipped rather than producing a division
+    error or a negative adjusted price.
+    """
+    by_date = {bar.trade_date: bar for bar in bars}
+    ordered_dates = sorted(by_date)
+    events: list[tuple[date, float]] = []
+    for ex_date, amount in dividend_events:
+        prior_dates = [d for d in ordered_dates if d < ex_date]
+        if not prior_dates:
+            continue
+        prior_close = by_date[prior_dates[-1]].close
+        if amount <= 0 or prior_close <= amount:
+            continue
+        events.append((ex_date, prior_close / (prior_close - amount)))
     events.sort(key=lambda item: item[0])
     return events
 
