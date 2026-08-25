@@ -9,7 +9,6 @@ from typing import Self
 
 import pandas as pd
 
-from powernse.adjust import apply_price_adjustments, corporate_action_price_events
 from powernse.archive import (
     RAW_BHAVCOPY_DIR,
     RAW_BLOCK_DEALS_DIR,
@@ -180,29 +179,29 @@ class NSEData:
         to_date: date | None = None,
         series: str = "EQ",
     ) -> list[AdjustedOhlcBar]:
-        """Return equity OHLC with opt-in bonus/split adjustments from staged CA files.
+        """Return equity OHLC with opt-in bonus/split/dividend adjustments from staged CA files.
 
-        Corporate-action JSON files are selected by filename date in
-        ``[window_start - lookback, end]`` (see ``CA_ADJUSTMENT_LOOKBACK_DAYS``) so an
-        ex-date inside the OHLC window is found even when the file is labeled before
-        ``from_date``, without scanning the entire multi-year CA tree day-by-day.
+        See ``powernse.corporate_actions.CorporateActions`` for the adjustment logic;
+        this just wires it to this archive's bars and CA records.
         """
-        bars = self.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
-        if not bars:
-            return []
-        end = to_date or bars[-1].trade_date
-        window_start = from_date or bars[0].trade_date
-        records = self._adjustment_corporate_actions(symbol, window_start=window_start, end=end)
-        events = corporate_action_price_events(records)
-        return apply_price_adjustments(bars, events)
+        from powernse.corporate_actions import CorporateActions  # avoid a data<->corporate_actions import cycle
 
-    def _adjustment_corporate_actions(
+        return CorporateActions(self).adjusted_ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+
+    def corporate_actions_in_window(
         self,
         symbol: str,
         *,
         window_start: date,
         end: date,
     ) -> list[dict[str, object]]:
+        """Corporate-action records for ``symbol`` with an ex-date plausibly in ``[window_start, end]``.
+
+        CA JSON files are selected by filename date in
+        ``[window_start - lookback, end]`` (see ``CA_ADJUSTMENT_LOOKBACK_DAYS``) so an
+        ex-date inside the window is found even when the file is labeled before
+        ``window_start``, without scanning the entire multi-year CA tree day-by-day.
+        """
         floor = window_start - timedelta(days=CA_ADJUSTMENT_LOOKBACK_DAYS)
         earliest = self.earliest_corporate_actions_date()
         if earliest is not None and earliest > floor:

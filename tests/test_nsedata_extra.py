@@ -3,18 +3,13 @@
 from datetime import date
 from pathlib import Path
 
-from powernse.adjust import price_adjustment_factor_from_subject
 from powernse.data import NSEData
 from powernse.downloaders.bhavcopy import staged_bhavcopy_csv_path
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
 from powernse.downloaders.fo_bhavcopy import staged_fo_bhavcopy_csv_path
 from powernse.downloaders.index_closes import staged_index_closes_csv_path
 
-
-def test_bonus_factor_parse() -> None:
-    assert price_adjustment_factor_from_subject("Bonus 1:1") == 2.0
-    assert price_adjustment_factor_from_subject("Face Value Split from Rs 10 to Rs 5") == 2.0
-    assert price_adjustment_factor_from_subject("Dividend") is None
+# Bonus/split/dividend subject parsing is covered by tests/test_corporate_actions.py.
 
 
 def test_fo_and_index_queries(tmp_path: Path) -> None:

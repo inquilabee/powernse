@@ -4,6 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
+from powernse.corporate_actions import CorporateActions, CorporateActionType
 from powernse.data import NSEData
 from powernse.downloaders import (
     BhavcopyDownloader,
@@ -27,7 +28,9 @@ __all__ = [
     "BhavcopyDownloader",
     "BlockDealsDownloader",
     "BulkDealsDownloader",
+    "CorporateActions",
     "CorporateActionsDownloader",
+    "CorporateActionType",
     "DownloadError",
     "DownloadSummary",
     "FoBar",
