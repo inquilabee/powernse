@@ -1,7 +1,50 @@
 from datetime import date
+from typing import TypedDict
 
 import pandas as pd
 from pdschema import Column, Schema
+
+
+class OhlcRow(TypedDict):
+    """One parsed bhavcopy row, matching ``OhlcSchema``'s columns."""
+
+    trade_date: date
+    symbol: str
+    series: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    isin: str | None
+
+
+class FoRow(TypedDict):
+    """One parsed F&O bhavcopy row, matching ``FoSchema``'s columns."""
+
+    trade_date: date
+    symbol: str
+    instrument_type: str
+    expiry: date | None
+    strike: float | None
+    option_type: str | None
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: int
+    open_interest: int | None
+
+
+class IndexRow(TypedDict):
+    """One parsed index-closes row, matching ``IndexSchema``'s columns."""
+
+    trade_date: date
+    index_name: str
+    open: float
+    high: float
+    low: float
+    close: float
 
 
 class OhlcSchema(Schema):

@@ -256,11 +256,12 @@ class CorporateActions:
             allow_exact_matches=False,
         )
         results: list[tuple[date, float]] = []
-        for row in merged.itertuples(index=False):
-            prior_close = row.close
-            if pd.isna(prior_close) or row.amount <= 0 or prior_close <= row.amount:
+        for ex_date, amount, prior_close in zip(
+            merged["ex_date"], merged["amount"], merged["close"], strict=True
+        ):
+            if pd.isna(prior_close) or amount <= 0 or prior_close <= amount:
                 continue
-            results.append((row.ex_date, prior_close / (prior_close - row.amount)))
+            results.append((ex_date, prior_close / (prior_close - amount)))
         return results
 
     @staticmethod

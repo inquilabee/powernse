@@ -3,10 +3,10 @@
 import csv
 import json
 import logging
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Self
+from typing import ClassVar, Self
 
 import pandas as pd
 
@@ -40,7 +40,7 @@ from powernse.downloaders.index_constituents import (
 )
 from powernse.errors import ArchiveError, PayloadError
 from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
-from powernse.schemas import FO_SCHEMA, INDEX_SCHEMA, OHLC_SCHEMA, empty_frame
+from powernse.schemas import FO_SCHEMA, INDEX_SCHEMA, OHLC_SCHEMA, FoRow, IndexRow, OhlcRow, empty_frame
 from powernse.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -111,7 +111,17 @@ class NSEData:
     def bhavcopy_frame(self, trade_date: date) -> pd.DataFrame:
         return pd.read_csv(self.bhavcopy_path(trade_date))
 
-    def _iter_bhavcopy_rows(self, trade_date: date, *, series_needle: str) -> Iterator[dict[str, object]]:
+    # Literal-keyed getters so wide_frame()'s dynamic `column` argument stays type-safe
+    # (an OhlcRow TypedDict can't be subscripted with a non-literal key).
+    _WIDE_FRAME_GETTERS: ClassVar[dict[str, Callable[[OhlcRow], float]]] = {
+        "open": lambda row: row["open"],
+        "high": lambda row: row["high"],
+        "low": lambda row: row["low"],
+        "close": lambda row: row["close"],
+        "volume": lambda row: row["volume"],
+    }
+
+    def _iter_bhavcopy_rows(self, trade_date: date, *, series_needle: str) -> Iterator[OhlcRow]:
         """Parsed, series-filtered OhlcSchema-shaped rows from one staged bhavcopy day, if staged."""
         path = staged_bhavcopy_csv_path(self.root, trade_date)
         if not path.is_file():
@@ -134,7 +144,7 @@ class NSEData:
         start, end = self._resolve_bhavcopy_window(from_date, to_date)
         needle = symbol.strip().upper()
         series_needle = series.strip().upper()
-        rows: list[dict[str, object]] = []
+        rows: list[OhlcRow] = []
         for trade_date in iter_trading_dates(start, end):
             for bar in self._iter_bhavcopy_rows(trade_date, series_needle=series_needle):
                 if bar["symbol"] == needle:
@@ -162,10 +172,10 @@ class NSEData:
         ``CorporateActions.adjusted_ohlc`` per symbol first if you need
         split/bonus/dividend-adjusted prices.
         """
-        columns = ("open", "high", "low", "close", "volume")
         key = column.strip().lower()
-        if key not in columns:
-            msg = f"column must be one of {columns}, got {column!r}"
+        getter = self._WIDE_FRAME_GETTERS.get(key)
+        if getter is None:
+            msg = f"column must be one of {tuple(self._WIDE_FRAME_GETTERS)}, got {column!r}"
             raise ValueError(msg)
 
         start, end = self._resolve_bhavcopy_window(from_date, to_date)
@@ -177,7 +187,7 @@ class NSEData:
             values: dict[str, float] = {}
             for bar in self._iter_bhavcopy_rows(trade_date, series_needle=series_needle):
                 if wanted is None or bar["symbol"] in wanted:
-                    values[bar["symbol"]] = bar[key]
+                    values[bar["symbol"]] = getter(bar)
             if values:
                 rows[trade_date] = values
 
@@ -261,7 +271,7 @@ class NSEData:
         needle = symbol.strip().upper()
         instrument_needle = instrument_type.strip().upper() if instrument_type else None
         option_needle = option_type.strip().upper() if option_type else None
-        rows: list[dict[str, object]] = []
+        rows: list[FoRow] = []
         for trade_date in iter_trading_dates(start, end):
             path = staged_fo_bhavcopy_csv_path(self.root, trade_date)
             if not path.is_file():
@@ -275,7 +285,8 @@ class NSEData:
                         continue
                     if expiry is not None and bar["expiry"] != expiry:
                         continue
-                    if strike is not None and (bar["strike"] is None or abs(bar["strike"] - strike) > 1e-9):
+                    bar_strike = bar["strike"]
+                    if strike is not None and (bar_strike is None or abs(bar_strike - strike) > 1e-9):
                         continue
                     if option_needle is not None and bar["option_type"] != option_needle:
                         continue
@@ -297,7 +308,7 @@ class NSEData:
         """OHLC for one index name across staged index-closes files, as an IndexSchema-shaped DataFrame."""
         start, end = self._resolve_index_closes_window(from_date, to_date)
         needle = index_name.strip().casefold()
-        rows: list[dict[str, object]] = []
+        rows: list[IndexRow] = []
         for trade_date in iter_trading_dates(start, end):
             path = staged_index_closes_csv_path(self.root, trade_date)
             if not path.is_file():

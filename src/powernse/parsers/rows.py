@@ -3,11 +3,13 @@
 import logging
 from datetime import date, datetime
 
+from powernse.schemas import FoRow, IndexRow, OhlcRow
+
 logger = logging.getLogger(__name__)
 
 
 class BhavcopyRow:
-    """Normalize one legacy or UDIFF bhavcopy CSV row into an OhlcSchema-shaped dict."""
+    """Normalize one legacy or UDIFF bhavcopy CSV row into an OhlcRow."""
 
     SYMBOL_KEYS = ("SYMBOL", "TckrSymb")
     SERIES_KEYS = ("SERIES", "SctySrs")
@@ -20,7 +22,7 @@ class BhavcopyRow:
     DATE_KEYS = ("TradDt", "TIMESTAMP")
 
     @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> dict[str, object] | None:
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> OhlcRow | None:
         symbol = cls.first(row, cls.SYMBOL_KEYS)
         series = cls.first(row, cls.SERIES_KEYS)
         open_ = cls.first(row, cls.OPEN_KEYS)
@@ -88,10 +90,10 @@ class BhavcopyRow:
 
 
 class FoBhavcopyRow:
-    """Normalize one F&O bhavcopy CSV row into an FoSchema-shaped dict."""
+    """Normalize one F&O bhavcopy CSV row into an FoRow."""
 
     @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> dict[str, object] | None:
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> FoRow | None:
         symbol = BhavcopyRow.first(row, ("TckrSymb", "SYMBOL"))
         instrument = BhavcopyRow.first(row, ("FinInstrmTp", "INSTRUMENT"))
         open_ = BhavcopyRow.first(row, ("OpnPric", "OPEN"))
@@ -157,10 +159,10 @@ class FoBhavcopyRow:
 
 
 class IndexClosesRow:
-    """Normalize one index-closes CSV row into an IndexSchema-shaped dict."""
+    """Normalize one index-closes CSV row into an IndexRow."""
 
     @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> dict[str, object] | None:
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> IndexRow | None:
         name = BhavcopyRow.first(row, ("Index Name", "IndexName"))
         open_ = BhavcopyRow.first(row, ("Open Index Value", "Open"))
         high = BhavcopyRow.first(row, ("High Index Value", "High"))
