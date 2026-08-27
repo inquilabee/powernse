@@ -3,7 +3,7 @@
 Maintainer checklist for shipping `powernse`. Clients install from
 [PyPI](https://pypi.org/project/powernse/) — see [Install](../user/install.md).
 
-Live project: https://pypi.org/project/powernse/ (first release: **0.1.0**).
+Live project: <https://pypi.org/project/powernse/> (first release: **0.1.0**).
 
 Do **not** push a `v*` tag until the Trusted Publisher below is registered for
 this repo. A mismatched publisher fails the Publish job.
@@ -51,7 +51,7 @@ git push origin v0.2.0
 5. GitHub Actions [publish.yml](https://github.com/inquilabee/powernse/blob/main/.github/workflows/publish.yml)
    builds the sdist/wheel, asserts the tag matches the package version, smokes
    `import powernse`, and runs `uv publish` via OIDC.
-6. Confirm https://pypi.org/project/powernse/ and `pip install -U powernse`.
+6. Confirm <https://pypi.org/project/powernse/> and `pip install -U powernse`.
 
 ## Local dry-run (no upload)
 

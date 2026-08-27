@@ -18,7 +18,7 @@ def test_status_empty_archive(tmp_path: Path) -> None:
 
 def test_bhavcopy_cli_failed_days_soft_exit(tmp_path: Path, monkeypatch) -> None:
     class FakeDownloader:
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.root = tmp_path
 
         def download_range(self, *_args, **_kwargs) -> DownloadSummary:
@@ -31,7 +31,7 @@ def test_bhavcopy_cli_failed_days_soft_exit(tmp_path: Path, monkeypatch) -> None
 
 def test_bhavcopy_cli_strict_exit_on_failures(tmp_path: Path, monkeypatch) -> None:
     class FakeDownloader:
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.root = tmp_path
 
         def download_range(self, *_args, **_kwargs) -> DownloadSummary:
@@ -44,7 +44,7 @@ def test_bhavcopy_cli_strict_exit_on_failures(tmp_path: Path, monkeypatch) -> No
 
 def test_bhavcopy_cli_success_exit(tmp_path: Path, monkeypatch) -> None:
     class FakeDownloader:
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.root = tmp_path
 
         def download_range(self, *_args, **_kwargs) -> DownloadSummary:

@@ -104,7 +104,6 @@ class BhavcopyRowParser(RowParser[OhlcRow]):
         "volume": ("TOTTRDQTY", "TtlTradgVol"),
     }
     NUMERIC = ("open", "high", "low", "close", "volume")
-    DATE_FORMATS = ("%d-%b-%Y", "%d-%b-%y")
     ISIN_KEYS = ("ISIN",)
     DATE_KEYS = ("TradDt", "TIMESTAMP")
 

@@ -1,7 +1,7 @@
 extends: default
 rules:
   line-length:
-    max: 100
+    max: 140  # workflow run: blocks carry long shell one-liners
   document-start: disable
   truthy:
     check-keys: false
@@ -9,6 +9,6 @@ rules:
   key-duplicates: enable
   indentation:
     spaces: 2
-  quoted-strings:
-    quote-type: any
-    required: only-when-needed
+  # GitHub Actions workflows have their own quoting conventions (e.g. "3.13"
+  # must stay quoted to not parse as a float); don't lint YAML quoting style.
+  quoted-strings: disable

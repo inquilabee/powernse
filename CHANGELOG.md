@@ -61,7 +61,7 @@ pandas is now the core interface, not a bolt-on:
 - DataFrame helpers (`ohlc_frame`, `bhavcopy_frame`) via pandas
 - Weekly GitHub Actions refresh workflow for the tracked `nse-data/` tree
 - ShipGate quality gates (`make check` / `make format`) and tag-triggered PyPI publish workflow
-- MkDocs Material docs site at https://inquilabee.github.io/powernse/
+- MkDocs Material docs site at <https://inquilabee.github.io/powernse/>
 
 ### Fixed
 
