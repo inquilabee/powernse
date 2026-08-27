@@ -24,6 +24,7 @@ dependencies = [
     "exchange-calendars>=4.5",
     "filelock>=3.32",
     "pandas>=2.2",
+    "pdschema>=0.2.1",
     "pydantic-settings>=2.15",
     "requests>=2.32",
     "tenacity>=9.0",
