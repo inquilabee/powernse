@@ -182,3 +182,6 @@ pyrightconfig.json
 
 # MkDocs
 /site/
+
+# ShipGate: local tool cache and policy, not versioned
+.shipgate/
