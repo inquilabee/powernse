@@ -9,7 +9,7 @@ import requests
 from support import staged_key, staged_path, zip_bytes
 
 from powernse.archive import extract_zip_payload_to_csv_bytes, manifest_path, sha256_file
-from powernse.calendar import is_weekend, iter_trading_dates
+from powernse.calendar import TradingCalendar, iter_trading_dates
 from powernse.data import NSEData
 from powernse.datasets import BHAVCOPY
 from powernse.downloaders.bhavcopy import BhavcopyDownloader, bhavcopy_archive_url
@@ -41,8 +41,8 @@ def test_staged_bhavcopy_csv_path_layout() -> None:
 
 
 def test_is_weekend() -> None:
-    assert is_weekend(date(2024, 1, 6)) is True
-    assert is_weekend(date(2024, 1, 5)) is False
+    assert TradingCalendar.is_weekend(date(2024, 1, 6)) is True
+    assert TradingCalendar.is_weekend(date(2024, 1, 5)) is False
 
 
 def test_all_calendar_days_includes_weekend() -> None:

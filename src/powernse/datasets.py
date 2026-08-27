@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-_RAW = Path("raw")
+RAW_ROOT = Path("raw")
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,7 +29,7 @@ class Dataset:
 
     @property
     def raw_dir(self) -> Path:
-        return _RAW / self.key
+        return RAW_ROOT / self.key
 
     def relpath(self, day: date, *, discriminator: str = "") -> Path:
         """Archive-relative path for one staged day (optionally discriminated)."""

@@ -28,6 +28,12 @@ checks:
     scope: no-vendor
   gate.acronym-allowlist:
     scope: no-vendor
+  # Module-private naming discipline is about the shipped package surface, not
+  # test fixtures (a leading-underscore helper in a test module is standard
+  # pytest style and imports nothing). Mirrors gate.repeated-strings' bundled
+  # include_tests: false.
+  gate.module-private-vars:
+    scope: python-src
   radon.cc:
     # Letter rank is per-block. Median / p95 gate typical and tail complexity.
     scope: python-src
