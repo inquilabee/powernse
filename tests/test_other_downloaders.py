@@ -37,7 +37,7 @@ def test_corporate_actions_download(tmp_path: Path) -> None:
     assert summary.downloaded_count == 1
     path = staged_path(tmp_path, CORPORATE_ACTIONS, trade_date)
     assert json.loads(path.read_text(encoding="utf-8"))[0]["symbol"] == "RELIANCE"
-    assert NSEData(tmp_path).corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
+    assert NSEData(tmp_path).raw_corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
 
 
 def test_corporate_actions_invalid_json_non_strict(tmp_path: Path) -> None:

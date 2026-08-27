@@ -2,12 +2,13 @@
 
 import json
 import logging
-from datetime import date, datetime
+from datetime import date
 from typing import ClassVar
 from urllib.parse import urlencode
 
 from powernse.calendar import iter_trading_dates
 from powernse.constants import CORPORATE_ACTIONS_API_URL
+from powernse.corporate_actions import ex_date_of
 from powernse.datasets import CORPORATE_ACTIONS
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
@@ -15,34 +16,7 @@ from powernse.types import DownloadSummary
 
 logger = logging.getLogger(__name__)
 
-CA_DATE_KEYS = ("exDate", "exdate", "recDate", "recordDate", "anouncementDate", "date")
-CA_DATE_FORMATS = ("%d-%m-%Y", "%d-%b-%Y", "%d-%b-%y", "%d/%m/%Y")
 CA_BATCH_DAYS = 7
-
-
-def parse_corporate_action_date(record: dict[str, object]) -> date | None:
-    """Ex/record/announcement date from a raw CA record (tries several keys and formats).
-
-    Shared by the downloader (day bucketing) and ``powernse.corporate_actions``
-    (ex-date classification).
-    """
-    for key in CA_DATE_KEYS:
-        raw = record.get(key)
-        if raw is None:
-            continue
-        text = str(raw).strip()
-        if not text:
-            continue
-        try:
-            return date.fromisoformat(text[:10])
-        except ValueError:
-            pass
-        for fmt in CA_DATE_FORMATS:
-            try:
-                return datetime.strptime(text, fmt).date()  # noqa: DTZ007 -- naive date is intended
-            except ValueError:
-                continue
-    return None
 
 
 class CorporateActionsDownloader(ArchiveDownloader):
@@ -110,7 +84,7 @@ class CorporateActionsDownloader(ArchiveDownloader):
         for item in decoded:
             if not isinstance(item, dict):
                 continue
-            item_date = parse_corporate_action_date(item)
+            item_date = ex_date_of(item)
             if item_date is None:
                 undated_count += 1
                 logger.warning("Skipping undated corporate-action record in batch %s–%s", span_start, span_end)

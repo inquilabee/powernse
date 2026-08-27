@@ -5,8 +5,11 @@ import zipfile
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
+
 from powernse.archive import ArchiveRoot
 from powernse.datasets import Dataset
+from powernse.schemas import OHLC_SCHEMA
 
 
 def staged_path(root: Path, dataset: Dataset, day: date, *, discriminator: str = "") -> Path:
@@ -33,3 +36,24 @@ def zip_bytes(*members: tuple[str, str]) -> bytes:
         for name, text in members:
             archive.writestr(name, text)
     return buffer.getvalue()
+
+
+def bars_frame(*rows: tuple[date, float]) -> pd.DataFrame:
+    """An OhlcSchema-shaped frame for symbol "TEST" from (trade_date, close) pairs (open=high=low=close)."""
+    return pd.DataFrame(
+        [
+            {
+                "trade_date": trade_date,
+                "symbol": "TEST",
+                "series": "EQ",
+                "open": close,
+                "high": close,
+                "low": close,
+                "close": close,
+                "volume": 1000,
+                "isin": None,
+            }
+            for trade_date, close in rows
+        ],
+        columns=list(OHLC_SCHEMA.columns),
+    )

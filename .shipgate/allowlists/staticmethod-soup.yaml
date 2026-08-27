@@ -1,2 +1,11 @@
 # Path prefixes or files exempt from staticmethod-soup (classes of only @staticmethod).
-entries: []
+entries:
+  - path: src/powernse/downloaders/full_bhavcopy.py
+    reason: >-
+      Concrete DatedCsvArchiveDownloader leaf: it inherits the whole download /
+      skip / persist loop and only customizes via the `dataset` class attr and a
+      static `archive_url`. The gate counts just the locally-defined method.
+  - path: src/powernse/downloaders/index_closes.py
+    reason: >-
+      Same as full_bhavcopy.py -- a Template Method concrete subclass whose one
+      local method is the URL builder.

@@ -14,7 +14,9 @@ from typing import Self
 import pandas as pd
 
 from powernse.archive import ArchiveRoot
+from powernse.corporate_actions import CorporateActions
 from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, IndexReader, SnapshotReader
+from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
 
 Record = dict[str, object]
@@ -123,25 +125,32 @@ class NSEData:
 
     # -- corporate actions -------------------------------------------------
 
-    def corporate_actions(self, trade_date: date) -> list[Record]:
-        """Raw CA records from one staged JSON file."""
+    def corporate_actions(
+        self, symbol: str, *, from_date: date | None = None, to_date: date | None = None
+    ) -> pd.DataFrame:
+        """Classified CA history for a symbol: type / subject / price_factor / dividend_amount per ex-date."""
+        records = self._actions.records(symbol, from_date=from_date, to_date=to_date)
+        return CorporateActions(records).classified()
+
+    def raw_corporate_actions(self, trade_date: date) -> list[Record]:
+        """Unclassified CA records from one staged JSON file."""
         return self._actions.raw(trade_date)
 
     def actions_for(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> list[Record]:
-        """Raw CA records mentioning ``symbol`` across the staged window."""
+        """Unclassified CA records mentioning ``symbol`` across the staged window."""
         return self._actions.records(symbol, from_date=from_date, to_date=to_date)
-
-    def corporate_actions_in_window(self, symbol: str, *, window_start: date, end: date) -> list[Record]:
-        """Raw CA records for ``symbol`` with a label date near ``[window_start, end]``."""
-        return self._actions.records_in_adjustment_window(symbol, window_start=window_start, end=end)
 
     def ohlc_adjusted(
         self, symbol: str, *, from_date: date | None = None, to_date: date | None = None, series: str = "EQ"
     ) -> pd.DataFrame:
         """Equity OHLC with opt-in bonus/split/dividend adjustments (AdjustedOhlcSchema-shaped)."""
-        from powernse.corporate_actions import CorporateActions  # avoid a data<->corporate_actions cycle
-
-        return CorporateActions(self).adjusted_ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+        bars = self._bhavcopy.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+        if bars.empty:
+            return empty_frame(ADJUSTED_OHLC_SCHEMA)
+        window_start = from_date or bars["trade_date"].min()
+        end = to_date or bars["trade_date"].max()
+        records = self._actions.records_in_adjustment_window(symbol, window_start=window_start, end=end)
+        return CorporateActions(records).adjust(bars)
 
     # -- snapshots + inventory ----------------------------------------------
 

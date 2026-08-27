@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from datetime import date, timedelta
 
 from powernse.constants import CA_ADJUSTMENT_LOOKBACK_DAYS
+from powernse.corporate_actions import symbol_of
 from powernse.datasets import CORPORATE_ACTIONS
 from powernse.errors import ArchiveError, PayloadError
 from powernse.reading.base import ArchiveReader
@@ -71,8 +72,4 @@ class CorporateActionReader(ArchiveReader):
 
     def _collect(self, symbol: str, days: Iterable[date]) -> list[Record]:
         needle = symbol.strip().upper()
-        return [record for day in days for record in self.raw(day) if self._symbol_of(record) == needle]
-
-    @staticmethod
-    def _symbol_of(record: Record) -> str:
-        return str(record.get("symbol") or record.get("SYMBOL") or "").upper()
+        return [record for day in days for record in self.raw(day) if symbol_of(record).upper() == needle]
