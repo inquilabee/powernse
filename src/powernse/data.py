@@ -3,7 +3,7 @@
 import csv
 import json
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Self
@@ -40,8 +40,9 @@ from powernse.downloaders.index_constituents import (
 )
 from powernse.errors import ArchiveError, PayloadError
 from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
+from powernse.schemas import FO_SCHEMA, INDEX_SCHEMA, OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
-from powernse.types import AdjustedOhlcBar, FoBar, IndexBar, OhlcBar
+from powernse.types import AdjustedOhlcBar
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,17 @@ class NSEData:
     def bhavcopy_frame(self, trade_date: date) -> pd.DataFrame:
         return pd.read_csv(self.bhavcopy_path(trade_date))
 
+    def _iter_bhavcopy_rows(self, trade_date: date, *, series_needle: str) -> Iterator[dict[str, object]]:
+        """Parsed, series-filtered OhlcSchema-shaped rows from one staged bhavcopy day, if staged."""
+        path = staged_bhavcopy_csv_path(self.root, trade_date)
+        if not path.is_file():
+            return
+        with path.open(newline="", encoding="utf-8") as handle:
+            for row in csv.DictReader(handle):
+                bar = BhavcopyRow.from_row(row, trade_date=trade_date)
+                if bar is not None and bar["series"] == series_needle:
+                    yield bar
+
     def ohlc(
         self,
         symbol: str,
@@ -118,51 +130,22 @@ class NSEData:
         from_date: date | None = None,
         to_date: date | None = None,
         series: str = "EQ",
-    ) -> list[OhlcBar]:
-        """Return OHLC bars for one symbol across staged bhavcopy days."""
+    ) -> pd.DataFrame:
+        """OHLC bars for one symbol across staged bhavcopy days, as an OhlcSchema-shaped DataFrame."""
         start, end = self._resolve_bhavcopy_window(from_date, to_date)
         needle = symbol.strip().upper()
         series_needle = series.strip().upper()
-        bars: list[OhlcBar] = []
+        rows: list[dict[str, object]] = []
         for trade_date in iter_trading_dates(start, end):
-            path = staged_bhavcopy_csv_path(self.root, trade_date)
-            if not path.is_file():
-                continue
-            with path.open(newline="", encoding="utf-8") as handle:
-                for row in csv.DictReader(handle):
-                    bar = BhavcopyRow.from_row(row, trade_date=trade_date)
-                    if bar is None:
-                        continue
-                    if bar.symbol == needle and bar.series == series_needle:
-                        bars.append(bar)
-                        break
-        return bars
-
-    def ohlc_frame(
-        self,
-        symbol: str,
-        *,
-        from_date: date | None = None,
-        to_date: date | None = None,
-        series: str = "EQ",
-    ) -> pd.DataFrame:
-        bars = self.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
-        return pd.DataFrame(
-            [
-                {
-                    "trade_date": bar.trade_date,
-                    "symbol": bar.symbol,
-                    "series": bar.series,
-                    "open": bar.open,
-                    "high": bar.high,
-                    "low": bar.low,
-                    "close": bar.close,
-                    "volume": bar.volume,
-                    "isin": bar.isin,
-                }
-                for bar in bars
-            ]
-        )
+            for bar in self._iter_bhavcopy_rows(trade_date, series_needle=series_needle):
+                if bar["symbol"] == needle:
+                    rows.append(bar)
+                    break
+        if not rows:
+            return empty_frame(OHLC_SCHEMA)
+        frame = pd.DataFrame(rows, columns=list(OHLC_SCHEMA.columns))
+        OHLC_SCHEMA.validate(frame)
+        return frame
 
     def wide_frame(
         self,
@@ -192,18 +175,10 @@ class NSEData:
 
         rows: dict[date, dict[str, float]] = {}
         for trade_date in iter_trading_dates(start, end):
-            path = staged_bhavcopy_csv_path(self.root, trade_date)
-            if not path.is_file():
-                continue
             values: dict[str, float] = {}
-            with path.open(newline="", encoding="utf-8") as handle:
-                for row in csv.DictReader(handle):
-                    bar = BhavcopyRow.from_row(row, trade_date=trade_date)
-                    if bar is None or bar.series != series_needle:
-                        continue
-                    if wanted is not None and bar.symbol not in wanted:
-                        continue
-                    values[bar.symbol] = getattr(bar, key)
+            for bar in self._iter_bhavcopy_rows(trade_date, series_needle=series_needle):
+                if wanted is None or bar["symbol"] in wanted:
+                    values[bar["symbol"]] = bar[key]
             if values:
                 rows[trade_date] = values
 
@@ -211,13 +186,13 @@ class NSEData:
         frame.index.name = "Date"
         return frame
 
-    def latest(self, symbol: str, *, series: str = "EQ") -> OhlcBar | None:
-        """Most recent staged OHLC bar for a symbol, if present."""
+    def latest(self, symbol: str, *, series: str = "EQ") -> pd.Series | None:
+        """Most recent staged OHLC bar for a symbol, as a one-row Series, if present."""
         latest_day = self.latest_bhavcopy_date()
         if latest_day is None:
             return None
-        bars = self.ohlc(symbol, from_date=latest_day, to_date=latest_day, series=series)
-        return bars[0] if bars else None
+        frame = self.ohlc(symbol, from_date=latest_day, to_date=latest_day, series=series)
+        return frame.iloc[0] if not frame.empty else None
 
     def ohlc_adjusted(
         self,
@@ -281,13 +256,13 @@ class NSEData:
         expiry: date | None = None,
         strike: float | None = None,
         option_type: str | None = None,
-    ) -> list[FoBar]:
-        """Return F&O bars for one underlying across staged F&O bhavcopy days."""
+    ) -> pd.DataFrame:
+        """F&O bars for one underlying across staged F&O bhavcopy days, as an FoSchema-shaped DataFrame."""
         start, end = self._resolve_fo_window(from_date, to_date)
         needle = symbol.strip().upper()
         instrument_needle = instrument_type.strip().upper() if instrument_type else None
         option_needle = option_type.strip().upper() if option_type else None
-        bars: list[FoBar] = []
+        rows: list[dict[str, object]] = []
         for trade_date in iter_trading_dates(start, end):
             path = staged_fo_bhavcopy_csv_path(self.root, trade_date)
             if not path.is_file():
@@ -295,18 +270,23 @@ class NSEData:
             with path.open(newline="", encoding="utf-8") as handle:
                 for row in csv.DictReader(handle):
                     bar = FoBhavcopyRow.from_row(row, trade_date=trade_date)
-                    if bar is None or bar.symbol != needle:
+                    if bar is None or bar["symbol"] != needle:
                         continue
-                    if instrument_needle is not None and bar.instrument_type != instrument_needle:
+                    if instrument_needle is not None and bar["instrument_type"] != instrument_needle:
                         continue
-                    if expiry is not None and bar.expiry != expiry:
+                    if expiry is not None and bar["expiry"] != expiry:
                         continue
-                    if strike is not None and (bar.strike is None or abs(bar.strike - strike) > 1e-9):
+                    if strike is not None and (bar["strike"] is None or abs(bar["strike"] - strike) > 1e-9):
                         continue
-                    if option_needle is not None and bar.option_type != option_needle:
+                    if option_needle is not None and bar["option_type"] != option_needle:
                         continue
-                    bars.append(bar)
-        return bars
+                    rows.append(bar)
+        if not rows:
+            return empty_frame(FO_SCHEMA)
+        frame = pd.DataFrame(rows, columns=list(FO_SCHEMA.columns))
+        frame["open_interest"] = frame["open_interest"].astype("Int64")
+        FO_SCHEMA.validate(frame)
+        return frame
 
     def index_ohlc(
         self,
@@ -314,11 +294,11 @@ class NSEData:
         *,
         from_date: date | None = None,
         to_date: date | None = None,
-    ) -> list[IndexBar]:
-        """Return OHLC for one index name across staged index-closes files."""
+    ) -> pd.DataFrame:
+        """OHLC for one index name across staged index-closes files, as an IndexSchema-shaped DataFrame."""
         start, end = self._resolve_index_closes_window(from_date, to_date)
         needle = index_name.strip().casefold()
-        bars: list[IndexBar] = []
+        rows: list[dict[str, object]] = []
         for trade_date in iter_trading_dates(start, end):
             path = staged_index_closes_csv_path(self.root, trade_date)
             if not path.is_file():
@@ -328,10 +308,14 @@ class NSEData:
                     bar = IndexClosesRow.from_row(row, trade_date=trade_date)
                     if bar is None:
                         continue
-                    if bar.index_name.casefold() == needle:
-                        bars.append(bar)
+                    if bar["index_name"].casefold() == needle:
+                        rows.append(bar)
                         break
-        return bars
+        if not rows:
+            return empty_frame(INDEX_SCHEMA)
+        frame = pd.DataFrame(rows, columns=list(INDEX_SCHEMA.columns))
+        INDEX_SCHEMA.validate(frame)
+        return frame
 
     def full_bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
         path = staged_full_bhavcopy_csv_path(self.root, trade_date)
@@ -350,21 +334,21 @@ class NSEData:
     def fo_secban(self, label_date: date) -> list[dict[str, str]]:
         return self._read_csv_rows(staged_fo_secban_csv_path(self.root, label_date), "fo secban", label_date)
 
-    def on(self, trade_date: date, *, symbol: str | None = None, series: str = "EQ") -> list[OhlcBar]:
-        """All (or one) OHLC bars from a single staged bhavcopy day."""
-        path = self.bhavcopy_path(trade_date)
+    def on(self, trade_date: date, *, symbol: str | None = None, series: str = "EQ") -> pd.DataFrame:
+        """All (or one) OHLC bars from a single staged bhavcopy day, as an OhlcSchema-shaped DataFrame."""
+        self.bhavcopy_path(trade_date)  # raises ArchiveError if the day isn't staged
         series_needle = series.strip().upper()
         symbol_needle = symbol.strip().upper() if symbol else None
-        bars: list[OhlcBar] = []
-        with path.open(newline="", encoding="utf-8") as handle:
-            for row in csv.DictReader(handle):
-                bar = BhavcopyRow.from_row(row, trade_date=trade_date)
-                if bar is None or bar.series != series_needle:
-                    continue
-                if symbol_needle is not None and bar.symbol != symbol_needle:
-                    continue
-                bars.append(bar)
-        return bars
+        rows = [
+            bar
+            for bar in self._iter_bhavcopy_rows(trade_date, series_needle=series_needle)
+            if symbol_needle is None or bar["symbol"] == symbol_needle
+        ]
+        if not rows:
+            return empty_frame(OHLC_SCHEMA)
+        frame = pd.DataFrame(rows, columns=list(OHLC_SCHEMA.columns))
+        OHLC_SCHEMA.validate(frame)
+        return frame
 
     def actions_for(
         self,

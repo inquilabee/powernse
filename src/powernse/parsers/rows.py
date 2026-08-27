@@ -3,13 +3,11 @@
 import logging
 from datetime import date, datetime
 
-from powernse.types import FoBar, IndexBar, OhlcBar
-
 logger = logging.getLogger(__name__)
 
 
 class BhavcopyRow:
-    """Normalize one legacy or UDIFF bhavcopy CSV row into an OhlcBar."""
+    """Normalize one legacy or UDIFF bhavcopy CSV row into an OhlcSchema-shaped dict."""
 
     SYMBOL_KEYS = ("SYMBOL", "TckrSymb")
     SERIES_KEYS = ("SERIES", "SctySrs")
@@ -22,7 +20,7 @@ class BhavcopyRow:
     DATE_KEYS = ("TradDt", "TIMESTAMP")
 
     @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> OhlcBar | None:
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> dict[str, object] | None:
         symbol = cls.first(row, cls.SYMBOL_KEYS)
         series = cls.first(row, cls.SERIES_KEYS)
         open_ = cls.first(row, cls.OPEN_KEYS)
@@ -51,17 +49,17 @@ class BhavcopyRow:
             return None
         isin = cls.first(row, cls.ISIN_KEYS)
         row_date = cls.parse_row_date(row) or trade_date
-        return OhlcBar(
-            trade_date=row_date,
-            symbol=symbol.strip().upper(),
-            series=series.strip().upper(),
-            open=open_f,
-            high=high_f,
-            low=low_f,
-            close=close_f,
-            volume=volume_i,
-            isin=isin.strip() if isin else None,
-        )
+        return {
+            "trade_date": row_date,
+            "symbol": symbol.strip().upper(),
+            "series": series.strip().upper(),
+            "open": open_f,
+            "high": high_f,
+            "low": low_f,
+            "close": close_f,
+            "volume": volume_i,
+            "isin": isin.strip() if isin else None,
+        }
 
     @staticmethod
     def first(row: dict[str, str], keys: tuple[str, ...]) -> str | None:
@@ -90,10 +88,10 @@ class BhavcopyRow:
 
 
 class FoBhavcopyRow:
-    """Normalize one F&O bhavcopy CSV row into an FoBar."""
+    """Normalize one F&O bhavcopy CSV row into an FoSchema-shaped dict."""
 
     @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> FoBar | None:
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> dict[str, object] | None:
         symbol = BhavcopyRow.first(row, ("TckrSymb", "SYMBOL"))
         instrument = BhavcopyRow.first(row, ("FinInstrmTp", "INSTRUMENT"))
         open_ = BhavcopyRow.first(row, ("OpnPric", "OPEN"))
@@ -126,20 +124,20 @@ class FoBhavcopyRow:
         expiry = cls._parse_date(BhavcopyRow.first(row, ("XpryDt", "EXPIRY_DT")))
         option_type = BhavcopyRow.first(row, ("OptnTp", "OPTION_TYP"))
         row_date = BhavcopyRow.parse_row_date(row) or trade_date
-        return FoBar(
-            trade_date=row_date,
-            symbol=symbol.strip().upper(),
-            instrument_type=instrument.strip().upper(),
-            expiry=expiry,
-            strike=strike,
-            option_type=option_type.strip().upper() if option_type else None,
-            open=open_f,
-            high=high_f,
-            low=low_f,
-            close=close_f,
-            volume=volume_i,
-            open_interest=open_interest,
-        )
+        return {
+            "trade_date": row_date,
+            "symbol": symbol.strip().upper(),
+            "instrument_type": instrument.strip().upper(),
+            "expiry": expiry,
+            "strike": strike,
+            "option_type": option_type.strip().upper() if option_type else None,
+            "open": open_f,
+            "high": high_f,
+            "low": low_f,
+            "close": close_f,
+            "volume": volume_i,
+            "open_interest": open_interest,
+        }
 
     @staticmethod
     def _parse_date(raw: str | None) -> date | None:
@@ -159,10 +157,10 @@ class FoBhavcopyRow:
 
 
 class IndexClosesRow:
-    """Normalize one index-closes CSV row into an IndexBar."""
+    """Normalize one index-closes CSV row into an IndexSchema-shaped dict."""
 
     @classmethod
-    def from_row(cls, row: dict[str, str], *, trade_date: date) -> IndexBar | None:
+    def from_row(cls, row: dict[str, str], *, trade_date: date) -> dict[str, object] | None:
         name = BhavcopyRow.first(row, ("Index Name", "IndexName"))
         open_ = BhavcopyRow.first(row, ("Open Index Value", "Open"))
         high = BhavcopyRow.first(row, ("High Index Value", "High"))
@@ -173,13 +171,13 @@ class IndexClosesRow:
         if open_ in ("-", "") or high in ("-", "") or low in ("-", "") or close in ("-", ""):
             return None
         try:
-            return IndexBar(
-                trade_date=trade_date,
-                index_name=name.strip(),
-                open=float(open_),
-                high=float(high),
-                low=float(low),
-                close=float(close),
-            )
+            return {
+                "trade_date": trade_date,
+                "index_name": name.strip(),
+                "open": float(open_),
+                "high": float(high),
+                "low": float(low),
+                "close": float(close),
+            }
         except ValueError:
             return None

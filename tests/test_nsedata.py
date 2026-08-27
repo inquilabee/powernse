@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from powernse import NSEData, OhlcBar
+from powernse import NSEData
 from powernse.downloaders.bhavcopy import staged_bhavcopy_csv_path
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
 
@@ -33,29 +33,29 @@ def test_ohlc_legacy_and_udiff(tmp_path: Path) -> None:
     )
 
     data = NSEData(tmp_path)
-    bars = data.ohlc("reliance", from_date=date(2024, 1, 2), to_date=date(2024, 8, 1))
-    assert len(bars) == 2
-    assert bars[0] == OhlcBar(
-        trade_date=date(2024, 1, 2),
-        symbol="RELIANCE",
-        series="EQ",
-        open=2500.0,
-        high=2520.0,
-        low=2490.0,
-        close=2510.0,
-        volume=1_000_000,
-        isin="INE002A01018",
-    )
-    assert bars[1].close == 2525.0
-    assert bars[1].trade_date == date(2024, 8, 1)
+    frame = data.ohlc("reliance", from_date=date(2024, 1, 2), to_date=date(2024, 8, 1))
+    assert len(frame) == 2
+    assert frame.iloc[0].to_dict() == {
+        "trade_date": date(2024, 1, 2),
+        "symbol": "RELIANCE",
+        "series": "EQ",
+        "open": 2500.0,
+        "high": 2520.0,
+        "low": 2490.0,
+        "close": 2510.0,
+        "volume": 1_000_000,
+        "isin": "INE002A01018",
+    }
+    assert frame.iloc[1]["close"] == 2525.0
+    assert frame.iloc[1]["trade_date"] == date(2024, 8, 1)
 
     latest = data.latest("RELIANCE")
     assert latest is not None
-    assert latest.trade_date == date(2024, 8, 1)
+    assert latest["trade_date"] == date(2024, 8, 1)
 
     day = data.on(date(2024, 1, 2), symbol="TCS")
     assert len(day) == 1
-    assert day[0].symbol == "TCS"
+    assert day.iloc[0]["symbol"] == "TCS"
 
 
 def test_coverage_gaps(tmp_path: Path) -> None:
@@ -93,20 +93,9 @@ def test_ohlc_skips_bad_numerics(tmp_path: Path) -> None:
         "RELIANCE,EQ,bad,2520,2490,2510,100\n"
         "RELIANCE,EQ,2500,2520,2490,2510,100\n",
     )
-    bars = NSEData(tmp_path).ohlc("RELIANCE", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2))
-    assert len(bars) == 1
-    assert bars[0].open == 2500.0
-
-
-def test_ohlc_frame(tmp_path: Path) -> None:
-    _write_legacy(
-        tmp_path,
-        date(2024, 1, 2),
-        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,2500,2520,2490,2510,100\n",
-    )
-    frame = NSEData(tmp_path).ohlc_frame("RELIANCE", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2))
+    frame = NSEData(tmp_path).ohlc("RELIANCE", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2))
     assert len(frame) == 1
-    assert float(frame.iloc[0]["close"]) == 2510.0
+    assert frame.iloc[0]["open"] == 2500.0
 
 
 def test_wide_frame_pivots_one_column_across_symbols(tmp_path: Path) -> None:

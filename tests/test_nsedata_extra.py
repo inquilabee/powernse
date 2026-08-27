@@ -33,12 +33,12 @@ def test_fo_and_index_queries(tmp_path: Path) -> None:
     data = NSEData(tmp_path)
     fo = data.fo_bars("RELIANCE", instrument_type="FUTSTK")
     assert len(fo) == 1
-    assert fo[0].close == 2505.0
+    assert fo.iloc[0]["close"] == 2505.0
     ce = data.fo_bars("RELIANCE", option_type="CE", strike=770.0)
     assert len(ce) == 1
     indexes = data.index_ohlc("Nifty 50")
     assert len(indexes) == 1
-    assert indexes[0].close == 24367.5
+    assert indexes.iloc[0]["close"] == 24367.5
 
 
 def test_ohlc_adjusted_bonus(tmp_path: Path) -> None:
