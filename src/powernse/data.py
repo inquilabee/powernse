@@ -3,6 +3,7 @@
 import csv
 import json
 import logging
+from collections.abc import Iterable
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Self
@@ -162,6 +163,53 @@ class NSEData:
                 for bar in bars
             ]
         )
+
+    def wide_frame(
+        self,
+        *,
+        column: str = "close",
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+    ) -> pd.DataFrame:
+        """Date x Symbol wide matrix for one OHLCV column, in a single pass over staged bhavcopy days.
+
+        ``symbols=None`` keeps every symbol seen in the range. Column values
+        come straight from the raw (unadjusted) bhavcopy; use
+        ``CorporateActions.adjusted_ohlc`` per symbol first if you need
+        split/bonus/dividend-adjusted prices.
+        """
+        columns = ("open", "high", "low", "close", "volume")
+        key = column.strip().lower()
+        if key not in columns:
+            msg = f"column must be one of {columns}, got {column!r}"
+            raise ValueError(msg)
+
+        start, end = self._resolve_bhavcopy_window(from_date, to_date)
+        series_needle = series.strip().upper()
+        wanted = {s.strip().upper() for s in symbols} if symbols is not None else None
+
+        rows: dict[date, dict[str, float]] = {}
+        for trade_date in iter_trading_dates(start, end):
+            path = staged_bhavcopy_csv_path(self.root, trade_date)
+            if not path.is_file():
+                continue
+            values: dict[str, float] = {}
+            with path.open(newline="", encoding="utf-8") as handle:
+                for row in csv.DictReader(handle):
+                    bar = BhavcopyRow.from_row(row, trade_date=trade_date)
+                    if bar is None or bar.series != series_needle:
+                        continue
+                    if wanted is not None and bar.symbol not in wanted:
+                        continue
+                    values[bar.symbol] = getattr(bar, key)
+            if values:
+                rows[trade_date] = values
+
+        frame = pd.DataFrame.from_dict(rows, orient="index").sort_index()
+        frame.index.name = "Date"
+        return frame
 
     def latest(self, symbol: str, *, series: str = "EQ") -> OhlcBar | None:
         """Most recent staged OHLC bar for a symbol, if present."""

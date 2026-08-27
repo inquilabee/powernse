@@ -3,6 +3,8 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from powernse import NSEData, OhlcBar
 from powernse.downloaders.bhavcopy import staged_bhavcopy_csv_path
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
@@ -105,6 +107,39 @@ def test_ohlc_frame(tmp_path: Path) -> None:
     frame = NSEData(tmp_path).ohlc_frame("RELIANCE", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2))
     assert len(frame) == 1
     assert float(frame.iloc[0]["close"]) == 2510.0
+
+
+def test_wide_frame_pivots_one_column_across_symbols(tmp_path: Path) -> None:
+    _write_legacy(
+        tmp_path,
+        date(2024, 1, 2),
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\n"
+        "RELIANCE,EQ,2500,2520,2490,2510,100\n"
+        "TCS,EQ,3600,3625,3590,3610,80\n",
+    )
+    _write_legacy(
+        tmp_path,
+        date(2024, 1, 3),
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\n"
+        "RELIANCE,EQ,2510,2530,2505,2525,120\n"
+        "TCS,EQ,3610,3630,3600,3620,90\n",
+    )
+
+    close = NSEData(tmp_path).wide_frame(column="close", from_date=date(2024, 1, 2), to_date=date(2024, 1, 3))
+    assert list(close.columns) == ["RELIANCE", "TCS"]
+    assert close.loc[date(2024, 1, 2), "RELIANCE"] == 2510.0
+    assert close.loc[date(2024, 1, 3), "TCS"] == 3620.0
+
+    volume = NSEData(tmp_path).wide_frame(
+        column="volume", symbols=["TCS"], from_date=date(2024, 1, 2), to_date=date(2024, 1, 3)
+    )
+    assert list(volume.columns) == ["TCS"]
+    assert volume.loc[date(2024, 1, 2), "TCS"] == 80
+
+
+def test_wide_frame_rejects_unknown_column(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="column must be one of"):
+        NSEData(tmp_path).wide_frame(column="not-a-real-column")
 
 
 def test_ohlc_cli(tmp_path: Path) -> None:
