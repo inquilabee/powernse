@@ -2,6 +2,7 @@ import json
 from datetime import date
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from powernse.corporate_actions import (
@@ -13,7 +14,7 @@ from powernse.corporate_actions import (
 )
 from powernse.data import NSEData
 from powernse.downloaders.corporate_actions import corporate_actions_staged_path
-from powernse.types import OhlcBar
+from powernse.schemas import OHLC_SCHEMA
 
 
 @pytest.mark.parametrize(
@@ -96,30 +97,38 @@ def test_frame_classifies_and_sorts(tmp_path: Path) -> None:
     assert list(frame["price_affecting"]) == [True, True]
 
 
-def _bar(trade_date: date, close: float) -> OhlcBar:
-    return OhlcBar(
-        trade_date=trade_date,
-        symbol="TEST",
-        series="EQ",
-        open=close,
-        high=close,
-        low=close,
-        close=close,
-        volume=1000,
+def _bars_frame(*rows: tuple[date, float]) -> pd.DataFrame:
+    """An OhlcSchema-shaped frame for symbol "TEST" from (trade_date, close) pairs (open=high=low=close)."""
+    return pd.DataFrame(
+        [
+            {
+                "trade_date": trade_date,
+                "symbol": "TEST",
+                "series": "EQ",
+                "open": close,
+                "high": close,
+                "low": close,
+                "close": close,
+                "volume": 1000,
+                "isin": None,
+            }
+            for trade_date, close in rows
+        ],
+        columns=list(OHLC_SCHEMA.columns),
     )
 
 
 def test_dividend_adjustment_reduces_only_prior_bars() -> None:
-    bars = [_bar(date(2024, 1, 1), 100.0), _bar(date(2024, 1, 2), 95.0)]
+    bars = _bars_frame((date(2024, 1, 1), 100.0), (date(2024, 1, 2), 95.0))
     records = [{"subject": "Dividend - Rs 5 Per Share", "exDate": "2024-01-02"}]
     corp_actions = CorporateActions(archive=None)  # .apply()/.price_events() never touch self.archive
 
     price_events = corp_actions.price_events(records, bars)
-    assert price_events == [(date(2024, 1, 2), 100.0 / (100.0 - 5.0))]
+    assert price_events.to_dict() == {date(2024, 1, 2): 100.0 / (100.0 - 5.0)}
 
     adjusted = corp_actions.apply(bars, records)
-    assert adjusted[0].close == pytest.approx(95.0)  # pre-ex-date bar, adjusted down
-    assert adjusted[1].close == pytest.approx(95.0)  # ex-date bar itself, untouched
+    assert adjusted.iloc[0]["close"] == pytest.approx(95.0)  # pre-ex-date bar, adjusted down
+    assert adjusted.iloc[1]["close"] == pytest.approx(95.0)  # ex-date bar itself, untouched
 
 
 def test_apply_ignores_events_not_yet_effective() -> None:
@@ -129,15 +138,16 @@ def test_apply_ignores_events_not_yet_effective() -> None:
     ex-date is beyond the newest loaded bar (the announcement file is selected by
     file-day, not ex-date). Regression for a bug where such an event's factor was
     applied to every bar in the window because the newest bar's upper bound was
-    unbounded (``date.max``).
+    unbounded (``date.max``). Re-verified explicitly here (not just "still passes")
+    after the vectorized rewrite of ``_apply_adjustments`` in commit 7439f050's wake.
     """
-    bars = [_bar(date(2024, 8, 1), 200.0), _bar(date(2024, 8, 2), 202.0)]
+    bars = _bars_frame((date(2024, 8, 1), 200.0), (date(2024, 8, 2), 202.0))
     records = [{"subject": "Bonus 1:1", "exDate": "2024-09-15"}]  # ex-date after both bars
     corp_actions = CorporateActions(archive=None)
 
     # price_events() derives the raw (ex_date, factor) pair regardless of the bar window;
     # apply()/_apply_adjustments() is what must drop events beyond the newest bar.
-    assert corp_actions.price_events(records, bars) == [(date(2024, 9, 15), 2.0)]
+    assert corp_actions.price_events(records, bars).to_dict() == {date(2024, 9, 15): 2.0}
     adjusted = corp_actions.apply(bars, records)
-    assert [bar.factor for bar in adjusted] == [1.0, 1.0]
-    assert [bar.close for bar in adjusted] == [200.0, 202.0]
+    assert adjusted["factor"].tolist() == [1.0, 1.0]
+    assert adjusted["close"].tolist() == [200.0, 202.0]

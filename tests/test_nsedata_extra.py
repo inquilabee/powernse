@@ -63,10 +63,10 @@ def test_ohlc_adjusted_bonus(tmp_path: Path) -> None:
         to_date=ex_day,
     )
     assert len(adjusted) == 2
-    assert adjusted[1].factor == 1.0
-    assert adjusted[1].close == 100.0
-    assert adjusted[0].factor == 2.0
-    assert adjusted[0].close == 100.0
+    assert adjusted.iloc[1]["factor"] == 1.0
+    assert adjusted.iloc[1]["close"] == 100.0
+    assert adjusted.iloc[0]["factor"] == 2.0
+    assert adjusted.iloc[0]["close"] == 100.0
 
 
 def test_ohlc_adjusted_loads_ca_file_before_from_date(tmp_path: Path) -> None:
@@ -92,7 +92,7 @@ def test_ohlc_adjusted_loads_ca_file_before_from_date(tmp_path: Path) -> None:
         to_date=ex_day,
     )
     assert len(adjusted) == 2
-    assert adjusted[0].factor == 2.0
-    assert adjusted[0].close == 100.0
-    assert adjusted[1].factor == 1.0
-    assert adjusted[1].close == 100.0
+    assert adjusted.iloc[0]["factor"] == 2.0
+    assert adjusted.iloc[0]["close"] == 100.0
+    assert adjusted.iloc[1]["factor"] == 1.0
+    assert adjusted.iloc[1]["close"] == 100.0

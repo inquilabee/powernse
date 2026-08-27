@@ -42,7 +42,6 @@ from powernse.errors import ArchiveError, PayloadError
 from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
 from powernse.schemas import FO_SCHEMA, INDEX_SCHEMA, OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
-from powernse.types import AdjustedOhlcBar
 
 logger = logging.getLogger(__name__)
 
@@ -201,8 +200,8 @@ class NSEData:
         from_date: date | None = None,
         to_date: date | None = None,
         series: str = "EQ",
-    ) -> list[AdjustedOhlcBar]:
-        """Return equity OHLC with opt-in bonus/split/dividend adjustments from staged CA files.
+    ) -> pd.DataFrame:
+        """AdjustedOhlcSchema frame: equity OHLC with opt-in bonus/split/dividend adjustments from staged CA files.
 
         See ``powernse.corporate_actions.CorporateActions`` for the adjustment logic;
         this just wires it to this archive's bars and CA records.

@@ -18,13 +18,14 @@ from powernse.downloaders import (
     IndexConstituentsDownloader,
 )
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
+from powernse.schemas import AdjustedOhlcSchema, FoSchema, IndexSchema, OhlcSchema
 from powernse.settings import Settings
-from powernse.types import AdjustedOhlcBar, DownloadSummary, FoBar, IndexBar, OhlcBar
+from powernse.types import DownloadSummary
 
 __all__ = [
+    "AdjustedOhlcSchema",
     "ArchiveError",
     "ArchiveRoot",
-    "AdjustedOhlcBar",
     "BhavcopyDownloader",
     "BlockDealsDownloader",
     "BulkDealsDownloader",
@@ -33,15 +34,15 @@ __all__ = [
     "CorporateActionType",
     "DownloadError",
     "DownloadSummary",
-    "FoBar",
     "FoBhavcopyDownloader",
+    "FoSchema",
     "FoSecbanDownloader",
     "FullBhavcopyDownloader",
-    "IndexBar",
     "IndexClosesDownloader",
     "IndexConstituentsDownloader",
+    "IndexSchema",
     "NSEData",
-    "OhlcBar",
+    "OhlcSchema",
     "PayloadError",
     "PowerNseError",
     "Settings",

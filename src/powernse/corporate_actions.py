@@ -2,11 +2,12 @@ import re
 from datetime import date
 from enum import StrEnum
 
+import numpy as np
 import pandas as pd
 
 from powernse.data import NSEData
 from powernse.downloaders.corporate_actions import parse_corporate_action_date
-from powernse.types import AdjustedOhlcBar, OhlcBar
+from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
 
 
 class CorporateActionType(StrEnum):
@@ -227,73 +228,83 @@ class CorporateActions:
 
     @staticmethod
     def _dividend_price_events(
-        bars: list[OhlcBar], dividend_events: list[tuple[date, float]]
+        bars: pd.DataFrame, dividend_events: list[tuple[date, float]]
     ) -> list[tuple[date, float]]:
         """Convert (ex_date, dividend_amount) pairs into divisor events for ``_apply_adjustments``.
 
         Unlike a split/bonus ratio, a dividend adjustment factor isn't derivable
         from the announcement text alone -- it needs the close on the last trading
-        day before the ex-date. The standard total-return convention is
+        day before the ex-date, found here with a backward as-of join (strictly
+        prior, not on the ex-date itself). The standard total-return convention is
         ``factor = 1 - dividend / prior_close``, stored here as its divisor
         ``prior_close / (prior_close - dividend)``. Events with no prior bar, or a
         dividend at or above the prior close, are skipped rather than producing a
         division error or a negative adjusted price.
         """
-        by_date = {bar.trade_date: bar for bar in bars}
-        ordered_dates = sorted(by_date)
-        events: list[tuple[date, float]] = []
-        for ex_date, amount in dividend_events:
-            prior_dates = [d for d in ordered_dates if d < ex_date]
-            if not prior_dates:
+        if not dividend_events or bars.empty:
+            return []
+        events_frame = pd.DataFrame(dividend_events, columns=["ex_date", "amount"]).sort_values("ex_date")
+        closes = bars[["trade_date", "close"]].sort_values("trade_date")
+        # merge_asof needs sortable numeric/datetime keys, not plain `date` objects (object dtype);
+        # join on a throwaway datetime64 view of each column, keep the original date values.
+        merged = pd.merge_asof(
+            events_frame.assign(_ex_dt=pd.to_datetime(events_frame["ex_date"])),
+            closes.assign(_trade_dt=pd.to_datetime(closes["trade_date"])),
+            left_on="_ex_dt",
+            right_on="_trade_dt",
+            direction="backward",
+            allow_exact_matches=False,
+        )
+        results: list[tuple[date, float]] = []
+        for row in merged.itertuples(index=False):
+            prior_close = row.close
+            if pd.isna(prior_close) or row.amount <= 0 or prior_close <= row.amount:
                 continue
-            prior_close = by_date[prior_dates[-1]].close
-            if amount <= 0 or prior_close <= amount:
-                continue
-            events.append((ex_date, prior_close / (prior_close - amount)))
-        return events
+            results.append((row.ex_date, prior_close / (prior_close - row.amount)))
+        return results
 
     @staticmethod
-    def _apply_adjustments(bars: list[OhlcBar], events: list[tuple[date, float]]) -> list[AdjustedOhlcBar]:
+    def _apply_adjustments(bars: pd.DataFrame, events: pd.Series) -> pd.DataFrame:
         """Apply cumulative CA factors so the newest bar keeps factor 1.0.
 
+        For bar date ``d``, the cumulative factor is the product of every
+        event's multiplier where ``d < event.ex_date <= newest_bar_date``
+        (i.e. every corporate action strictly after this bar, up to the last
+        loaded bar). Vectorized as a suffix cumulative-product over the
+        sorted events, looked up per bar via ``numpy.searchsorted``.
+
         Events with an ex-date after the newest bar (announced but not yet
-        effective within the loaded window) are dropped rather than applied to
-        every bar -- the upper bound for the newest bar is its own date, not
-        an open-ended ``date.max``.
+        effective within the loaded window) are dropped before computing
+        anything -- ``events.index <= newest_date`` -- rather than an
+        open-ended upper bound that would apply them to every bar. This is
+        the exact bug class fixed in commit 7439f050; keep this filter
+        explicit and easy to eyeball on any future change here.
         """
-        if not bars:
-            return []
-        ordered = sorted(bars, key=lambda bar: bar.trade_date)
-        newest_date = ordered[-1].trade_date
-        events = [event for event in events if event[0] <= newest_date]
-        events.sort(key=lambda item: item[0])
-        cumulative = 1.0
-        event_index = len(events) - 1
-        result_rev: list[AdjustedOhlcBar] = []
-        for i, bar in enumerate(reversed(ordered)):
-            newer = ordered[len(ordered) - i] if i > 0 else None
-            upper = newer.trade_date if newer is not None else date.max
-            while event_index >= 0 and bar.trade_date < events[event_index][0] <= upper:
-                cumulative *= events[event_index][1]
-                event_index -= 1
-            result_rev.append(
-                AdjustedOhlcBar(
-                    trade_date=bar.trade_date,
-                    symbol=bar.symbol,
-                    series=bar.series,
-                    open=bar.open / cumulative,
-                    high=bar.high / cumulative,
-                    low=bar.low / cumulative,
-                    close=bar.close / cumulative,
-                    volume=round(bar.volume * cumulative),
-                    factor=cumulative,
-                    isin=bar.isin,
-                )
-            )
-            while event_index >= 0 and events[event_index][0] == bar.trade_date:
-                cumulative *= events[event_index][1]
-                event_index -= 1
-        return list(reversed(result_rev))
+        if bars.empty:
+            return empty_frame(ADJUSTED_OHLC_SCHEMA)
+        ordered = bars.sort_values("trade_date").reset_index(drop=True)
+        newest_date = ordered["trade_date"].max()
+        events = events[events.index <= newest_date].sort_index()
+
+        if events.empty:
+            factors = np.ones(len(ordered))
+        else:
+            ex_dates = events.index.to_numpy()
+            # suffix_cumprod[k] = product of events[k:]; trailing 1.0 = "no events after".
+            suffix_cumprod = np.append(events.to_numpy()[::-1].cumprod()[::-1], 1.0)
+            positions = np.searchsorted(ex_dates, ordered["trade_date"].to_numpy(), side="right")
+            factors = suffix_cumprod[positions]
+
+        adjusted = ordered.assign(
+            open=ordered["open"] / factors,
+            high=ordered["high"] / factors,
+            low=ordered["low"] / factors,
+            close=ordered["close"] / factors,
+            volume=(ordered["volume"] * factors).round().astype(int),
+            factor=factors,
+        )[list(ADJUSTED_OHLC_SCHEMA.columns)]
+        ADJUSTED_OHLC_SCHEMA.validate(adjusted)
+        return adjusted
 
     def frame(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> pd.DataFrame:
         archive = self._require_archive()
@@ -304,12 +315,22 @@ class CorporateActions:
             return frame
         return frame.sort_values("ex_date", kind="stable").reset_index(drop=True)
 
-    def price_events(self, records: list[dict[str, object]], bars: list[OhlcBar]) -> list[tuple[date, float]]:
-        """Combined bonus/split/dividend price-adjustment events, ready for ``apply``."""
-        dividend_events = self._dividend_events(records)
-        return sorted(self._bonus_split_events(records) + self._dividend_price_events(bars, dividend_events))
+    def price_events(self, records: list[dict[str, object]], bars: pd.DataFrame) -> pd.Series:
+        """Combined bonus/split/dividend price-adjustment events, ready for ``apply``.
 
-    def apply(self, bars: list[OhlcBar], records: list[dict[str, object]]) -> list[AdjustedOhlcBar]:
+        A ``pd.Series`` indexed by ex-date with the multiplier as its value
+        (duplicate ex-dates are kept as separate entries, not pre-combined --
+        ``_apply_adjustments``'s cumulative product multiplies them in
+        correctly either way).
+        """
+        dividend_events = self._dividend_events(records)
+        combined = sorted(self._bonus_split_events(records) + self._dividend_price_events(bars, dividend_events))
+        if not combined:
+            return pd.Series(dtype=float)
+        dates, factors = zip(*combined, strict=True)
+        return pd.Series(factors, index=pd.Index(dates, name="ex_date"), dtype=float)
+
+    def apply(self, bars: pd.DataFrame, records: list[dict[str, object]]) -> pd.DataFrame:
         """Bonus/split/dividend-adjusted bars, cumulative so the newest bar keeps factor 1.0."""
         return self._apply_adjustments(bars, self.price_events(records, bars))
 
@@ -320,13 +341,13 @@ class CorporateActions:
         from_date: date | None = None,
         to_date: date | None = None,
         series: str = "EQ",
-    ) -> list[AdjustedOhlcBar]:
-        """Equity OHLC with bonus/split/dividend adjustments from staged CA files."""
+    ) -> pd.DataFrame:
+        """Equity OHLC with bonus/split/dividend adjustments from staged CA files, as an AdjustedOhlcSchema frame."""
         archive = self._require_archive()
         bars = archive.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
-        if not bars:
-            return []
-        end = to_date or bars[-1].trade_date
-        window_start = from_date or bars[0].trade_date
+        if bars.empty:
+            return empty_frame(ADJUSTED_OHLC_SCHEMA)
+        end = to_date or bars["trade_date"].max()
+        window_start = from_date or bars["trade_date"].min()
         records = archive.corporate_actions_in_window(symbol, window_start=window_start, end=end)
         return self.apply(bars, records)
