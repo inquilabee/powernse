@@ -41,17 +41,11 @@ def register_read_commands(app: typer.Typer) -> None:
     ) -> None:
         """Print equity OHLC bars from staged CM bhavcopy (modest windows; full-file scan per day)."""
         data = NSEData(root, create=False)
-        bars = data.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
-        if not bars:
+        frame = data.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+        if frame.empty:
             typer.echo(f"No OHLC rows for {symbol.upper()} series={series} under {data.root}", err=True)
             raise typer.Exit(code=1)
-        typer.echo("trade_date,symbol,series,open,high,low,close,volume,isin")
-        for bar in bars:
-            isin = bar.isin or ""
-            typer.echo(
-                f"{bar.trade_date.isoformat()},{bar.symbol},{bar.series},"
-                f"{bar.open},{bar.high},{bar.low},{bar.close},{bar.volume},{isin}"
-            )
+        typer.echo(frame.to_csv(index=False).rstrip("\n"))
 
     @app.command("ohlc-adjusted")
     def ohlc_adjusted_cmd(
@@ -69,17 +63,11 @@ def register_read_commands(app: typer.Typer) -> None:
     ) -> None:
         """Print equity OHLC with opt-in bonus/split/dividend adjustments from staged corporate actions."""
         data = NSEData(root, create=False)
-        bars = data.ohlc_adjusted(symbol, from_date=from_date, to_date=to_date, series=series)
-        if not bars:
+        frame = data.ohlc_adjusted(symbol, from_date=from_date, to_date=to_date, series=series)
+        if frame.empty:
             typer.echo(f"No adjusted OHLC rows for {symbol.upper()} under {data.root}", err=True)
             raise typer.Exit(code=1)
-        typer.echo("trade_date,symbol,series,open,high,low,close,volume,factor,isin")
-        for bar in bars:
-            isin = bar.isin or ""
-            typer.echo(
-                f"{bar.trade_date.isoformat()},{bar.symbol},{bar.series},"
-                f"{bar.open},{bar.high},{bar.low},{bar.close},{bar.volume},{bar.factor},{isin}"
-            )
+        typer.echo(frame.to_csv(index=False).rstrip("\n"))
 
     @app.command("fo-ohlc")
     def fo_ohlc_cmd(
@@ -100,7 +88,7 @@ def register_read_commands(app: typer.Typer) -> None:
     ) -> None:
         """Print F&O bars from staged F&O bhavcopy (modest windows)."""
         data = NSEData(root, create=False)
-        bars = data.fo_bars(
+        frame = data.fo_bars(
             symbol,
             from_date=from_date,
             to_date=to_date,
@@ -109,19 +97,10 @@ def register_read_commands(app: typer.Typer) -> None:
             strike=strike,
             option_type=option_type,
         )
-        if not bars:
+        if frame.empty:
             typer.echo(f"No F&O rows for {symbol.upper()} under {data.root}", err=True)
             raise typer.Exit(code=1)
-        typer.echo("trade_date,symbol,instrument,expiry,strike,option,open,high,low,close,volume,oi")
-        for bar in bars:
-            expiry_s = bar.expiry.isoformat() if bar.expiry else ""
-            strike_s = "" if bar.strike is None else str(bar.strike)
-            opt = bar.option_type or ""
-            oi = "" if bar.open_interest is None else str(bar.open_interest)
-            typer.echo(
-                f"{bar.trade_date.isoformat()},{bar.symbol},{bar.instrument_type},"
-                f"{expiry_s},{strike_s},{opt},{bar.open},{bar.high},{bar.low},{bar.close},{bar.volume},{oi}"
-            )
+        typer.echo(frame.to_csv(index=False).rstrip("\n"))
 
     @app.command("index-ohlc")
     def index_ohlc_cmd(
@@ -138,13 +117,11 @@ def register_read_commands(app: typer.Typer) -> None:
     ) -> None:
         """Print index OHLC from staged index-closes files (modest windows)."""
         data = NSEData(root, create=False)
-        bars = data.index_ohlc(index_name, from_date=from_date, to_date=to_date)
-        if not bars:
+        frame = data.index_ohlc(index_name, from_date=from_date, to_date=to_date)
+        if frame.empty:
             typer.echo(f"No index rows for {index_name!r} under {data.root}", err=True)
             raise typer.Exit(code=1)
-        typer.echo("trade_date,index_name,open,high,low,close")
-        for bar in bars:
-            typer.echo(f"{bar.trade_date.isoformat()},{bar.index_name},{bar.open},{bar.high},{bar.low},{bar.close}")
+        typer.echo(frame.to_csv(index=False).rstrip("\n"))
 
     @app.command("doctor")
     def doctor_cmd() -> None:
