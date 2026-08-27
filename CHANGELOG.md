@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `powernse.corporate_actions` module: `CorporateActions` class (classification + `frame()` + `adjusted_ohlc()`), `CorporateActionType`, `classify_subject()`. Replaces `powernse.adjust` (deleted, no compatibility shim). Top-level exports: `from powernse import CorporateActions, CorporateActionType`
+- `NSEData.wide_frame()`: Date x Symbol matrix for one OHLCV column, read across staged bhavcopy days in a single pass (values are unadjusted)
+
+### Fixed
+
+- `CorporateActions.apply()` / `NSEData.ohlc_adjusted()` no longer apply a corporate action to the entire loaded bar range when its ex-date falls after the newest bar (e.g. an announced-but-not-yet-effective bonus/split/dividend) — such events are now dropped instead of retroactively adjusting bars that predate the action taking effect
+
 ## 0.1.3 — 2026-08-25
 
 ### Added

@@ -120,3 +120,24 @@ def test_dividend_adjustment_reduces_only_prior_bars() -> None:
     adjusted = corp_actions.apply(bars, records)
     assert adjusted[0].close == pytest.approx(95.0)  # pre-ex-date bar, adjusted down
     assert adjusted[1].close == pytest.approx(95.0)  # ex-date bar itself, untouched
+
+
+def test_apply_ignores_events_not_yet_effective() -> None:
+    """A CA announced (and staged) ahead of its ex-date must not adjust bars before it happens.
+
+    ``corporate_actions_in_window`` can legitimately hand back a record whose real
+    ex-date is beyond the newest loaded bar (the announcement file is selected by
+    file-day, not ex-date). Regression for a bug where such an event's factor was
+    applied to every bar in the window because the newest bar's upper bound was
+    unbounded (``date.max``).
+    """
+    bars = [_bar(date(2024, 8, 1), 200.0), _bar(date(2024, 8, 2), 202.0)]
+    records = [{"subject": "Bonus 1:1", "exDate": "2024-09-15"}]  # ex-date after both bars
+    corp_actions = CorporateActions(archive=None)
+
+    # price_events() derives the raw (ex_date, factor) pair regardless of the bar window;
+    # apply()/_apply_adjustments() is what must drop events beyond the newest bar.
+    assert corp_actions.price_events(records, bars) == [(date(2024, 9, 15), 2.0)]
+    adjusted = corp_actions.apply(bars, records)
+    assert [bar.factor for bar in adjusted] == [1.0, 1.0]
+    assert [bar.close for bar in adjusted] == [200.0, 202.0]

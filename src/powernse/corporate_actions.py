@@ -1,3 +1,5 @@
+"""Corporate-action classification and bonus/split/dividend price adjustment."""
+
 import re
 from datetime import date
 from enum import StrEnum
@@ -254,11 +256,19 @@ class CorporateActions:
 
     @staticmethod
     def _apply_adjustments(bars: list[OhlcBar], events: list[tuple[date, float]]) -> list[AdjustedOhlcBar]:
-        """Apply cumulative CA factors so the newest bar keeps factor 1.0."""
+        """Apply cumulative CA factors so the newest bar keeps factor 1.0.
+
+        Events with an ex-date after the newest bar (announced but not yet
+        effective within the loaded window) are dropped rather than applied to
+        every bar -- the upper bound for the newest bar is its own date, not
+        an open-ended ``date.max``.
+        """
         if not bars:
             return []
         ordered = sorted(bars, key=lambda bar: bar.trade_date)
-        events = sorted(events, key=lambda item: item[0])
+        newest_date = ordered[-1].trade_date
+        events = [event for event in events if event[0] <= newest_date]
+        events.sort(key=lambda item: item[0])
         cumulative = 1.0
         event_index = len(events) - 1
         result_rev: list[AdjustedOhlcBar] = []
