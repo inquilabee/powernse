@@ -61,7 +61,7 @@ DIVIDEND_AMOUNT = re.compile(
 # Order matters: more specific patterns (scheme/meeting/buyback) must be checked
 # before generic ones (bonus/dividend) that would otherwise false-positive on
 # subjects like "Scheme Of Arrangement - Bonus - ...".
-_PATTERNS: list[tuple[CorporateActionType, re.Pattern[str]]] = [
+CLASSIFICATION_PATTERNS: list[tuple[CorporateActionType, re.Pattern[str]]] = [
     (
         CorporateActionType.MEETING,
         re.compile(r"general\s*meeting|board\s*meeting|postal\s*ballot", re.IGNORECASE),
@@ -96,7 +96,7 @@ _PATTERNS: list[tuple[CorporateActionType, re.Pattern[str]]] = [
 
 def classify_subject(subject: str) -> CorporateActionType:
     text = subject.strip()
-    for action_type, pattern in _PATTERNS:
+    for action_type, pattern in CLASSIFICATION_PATTERNS:
         if pattern.search(text):
             return action_type
     return CorporateActionType.OTHER
@@ -153,127 +153,19 @@ def dividend_amount_from_subject(subject: str) -> float | None:
     return amount if amount > 0 else None
 
 
-def _classify_record(record: dict[str, object]) -> dict[str, object]:
-    subject = str(record.get("subject") or record.get("SUBJECT") or "").strip()
-    action_type = classify_subject(subject)
-    row: dict[str, object] = {
-        "symbol": str(record.get("symbol") or record.get("SYMBOL") or ""),
-        "ex_date": parse_corporate_action_date(record),
-        "type": action_type,
-        "subject": subject,
-        "price_affecting": action_type in PRICE_AFFECTING_TYPES,
-        "dividend_amount": None,
-        "price_factor": None,
-    }
-    if action_type == CorporateActionType.DIVIDEND:
-        row["dividend_amount"] = dividend_amount_from_subject(subject)
-    elif action_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT):
-        row["price_factor"] = price_adjustment_factor_from_subject(subject)
-    return row
-
-
-_FRAME_COLUMNS = [
-    "symbol",
-    "ex_date",
-    "type",
-    "subject",
-    "price_affecting",
-    "dividend_amount",
-    "price_factor",
-]
-
-
-def _bonus_split_events(records: list[dict[str, object]]) -> list[tuple[date, float]]:
-    events: list[tuple[date, float]] = []
-    for record in records:
-        subject = str(record.get("subject") or record.get("SUBJECT") or "")
-        factor = price_adjustment_factor_from_subject(subject)
-        if factor is None or factor == 1.0:
-            continue
-        ex_date = parse_corporate_action_date(record)
-        if ex_date is None:
-            continue
-        events.append((ex_date, factor))
-    return events
-
-
-def _dividend_events(records: list[dict[str, object]]) -> list[tuple[date, float]]:
-    events: list[tuple[date, float]] = []
-    for record in records:
-        subject = str(record.get("subject") or record.get("SUBJECT") or "")
-        amount = dividend_amount_from_subject(subject)
-        if amount is None:
-            continue
-        ex_date = parse_corporate_action_date(record)
-        if ex_date is None:
-            continue
-        events.append((ex_date, amount))
-    return events
-
-
-def _dividend_price_events(bars: list[OhlcBar], dividend_events: list[tuple[date, float]]) -> list[tuple[date, float]]:
-    """Convert (ex_date, dividend_amount) pairs into divisor events for _apply_adjustments.
-
-    Unlike a split/bonus ratio, a dividend adjustment factor isn't derivable
-    from the announcement text alone -- it needs the close on the last trading
-    day before the ex-date. The standard total-return convention is
-    ``factor = 1 - dividend / prior_close``, stored here as its divisor
-    ``prior_close / (prior_close - dividend)``. Events with no prior bar, or a
-    dividend at or above the prior close, are skipped rather than producing a
-    division error or a negative adjusted price.
-    """
-    by_date = {bar.trade_date: bar for bar in bars}
-    ordered_dates = sorted(by_date)
-    events: list[tuple[date, float]] = []
-    for ex_date, amount in dividend_events:
-        prior_dates = [d for d in ordered_dates if d < ex_date]
-        if not prior_dates:
-            continue
-        prior_close = by_date[prior_dates[-1]].close
-        if amount <= 0 or prior_close <= amount:
-            continue
-        events.append((ex_date, prior_close / (prior_close - amount)))
-    return events
-
-
-def _apply_adjustments(bars: list[OhlcBar], events: list[tuple[date, float]]) -> list[AdjustedOhlcBar]:
-    """Apply cumulative CA factors so the newest bar keeps factor 1.0."""
-    if not bars:
-        return []
-    ordered = sorted(bars, key=lambda bar: bar.trade_date)
-    events = sorted(events, key=lambda item: item[0])
-    cumulative = 1.0
-    event_index = len(events) - 1
-    result_rev: list[AdjustedOhlcBar] = []
-    for i, bar in enumerate(reversed(ordered)):
-        newer = ordered[len(ordered) - i] if i > 0 else None
-        upper = newer.trade_date if newer is not None else date.max
-        while event_index >= 0 and bar.trade_date < events[event_index][0] <= upper:
-            cumulative *= events[event_index][1]
-            event_index -= 1
-        result_rev.append(
-            AdjustedOhlcBar(
-                trade_date=bar.trade_date,
-                symbol=bar.symbol,
-                series=bar.series,
-                open=bar.open / cumulative,
-                high=bar.high / cumulative,
-                low=bar.low / cumulative,
-                close=bar.close / cumulative,
-                volume=round(bar.volume * cumulative),
-                factor=cumulative,
-                isin=bar.isin,
-            )
-        )
-        while event_index >= 0 and events[event_index][0] == bar.trade_date:
-            cumulative *= events[event_index][1]
-            event_index -= 1
-    return list(reversed(result_rev))
-
-
 class CorporateActions:
     """A DataFrame view over one symbol's corporate-action history, classified by type,
     and the price adjustments (bonus/split/dividend) derived from it."""
+
+    FRAME_COLUMNS = (
+        "symbol",
+        "ex_date",
+        "type",
+        "subject",
+        "price_affecting",
+        "dividend_amount",
+        "price_factor",
+    )
 
     def __init__(self, archive: NSEData | None = None) -> None:
         """``archive`` is only needed for ``frame`` and ``adjusted_ohlc``; ``apply``/``price_events``
@@ -286,22 +178,132 @@ class CorporateActions:
             raise ValueError(msg)
         return self.archive
 
+    @staticmethod
+    def _classify_record(record: dict[str, object]) -> dict[str, object]:
+        subject = str(record.get("subject") or record.get("SUBJECT") or "").strip()
+        action_type = classify_subject(subject)
+        row: dict[str, object] = {
+            "symbol": str(record.get("symbol") or record.get("SYMBOL") or ""),
+            "ex_date": parse_corporate_action_date(record),
+            "type": action_type,
+            "subject": subject,
+            "price_affecting": action_type in PRICE_AFFECTING_TYPES,
+            "dividend_amount": None,
+            "price_factor": None,
+        }
+        if action_type == CorporateActionType.DIVIDEND:
+            row["dividend_amount"] = dividend_amount_from_subject(subject)
+        elif action_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT):
+            row["price_factor"] = price_adjustment_factor_from_subject(subject)
+        return row
+
+    @staticmethod
+    def _bonus_split_events(records: list[dict[str, object]]) -> list[tuple[date, float]]:
+        events: list[tuple[date, float]] = []
+        for record in records:
+            subject = str(record.get("subject") or record.get("SUBJECT") or "")
+            factor = price_adjustment_factor_from_subject(subject)
+            if factor is None or factor == 1.0:
+                continue
+            ex_date = parse_corporate_action_date(record)
+            if ex_date is None:
+                continue
+            events.append((ex_date, factor))
+        return events
+
+    @staticmethod
+    def _dividend_events(records: list[dict[str, object]]) -> list[tuple[date, float]]:
+        events: list[tuple[date, float]] = []
+        for record in records:
+            subject = str(record.get("subject") or record.get("SUBJECT") or "")
+            amount = dividend_amount_from_subject(subject)
+            if amount is None:
+                continue
+            ex_date = parse_corporate_action_date(record)
+            if ex_date is None:
+                continue
+            events.append((ex_date, amount))
+        return events
+
+    @staticmethod
+    def _dividend_price_events(
+        bars: list[OhlcBar], dividend_events: list[tuple[date, float]]
+    ) -> list[tuple[date, float]]:
+        """Convert (ex_date, dividend_amount) pairs into divisor events for ``_apply_adjustments``.
+
+        Unlike a split/bonus ratio, a dividend adjustment factor isn't derivable
+        from the announcement text alone -- it needs the close on the last trading
+        day before the ex-date. The standard total-return convention is
+        ``factor = 1 - dividend / prior_close``, stored here as its divisor
+        ``prior_close / (prior_close - dividend)``. Events with no prior bar, or a
+        dividend at or above the prior close, are skipped rather than producing a
+        division error or a negative adjusted price.
+        """
+        by_date = {bar.trade_date: bar for bar in bars}
+        ordered_dates = sorted(by_date)
+        events: list[tuple[date, float]] = []
+        for ex_date, amount in dividend_events:
+            prior_dates = [d for d in ordered_dates if d < ex_date]
+            if not prior_dates:
+                continue
+            prior_close = by_date[prior_dates[-1]].close
+            if amount <= 0 or prior_close <= amount:
+                continue
+            events.append((ex_date, prior_close / (prior_close - amount)))
+        return events
+
+    @staticmethod
+    def _apply_adjustments(bars: list[OhlcBar], events: list[tuple[date, float]]) -> list[AdjustedOhlcBar]:
+        """Apply cumulative CA factors so the newest bar keeps factor 1.0."""
+        if not bars:
+            return []
+        ordered = sorted(bars, key=lambda bar: bar.trade_date)
+        events = sorted(events, key=lambda item: item[0])
+        cumulative = 1.0
+        event_index = len(events) - 1
+        result_rev: list[AdjustedOhlcBar] = []
+        for i, bar in enumerate(reversed(ordered)):
+            newer = ordered[len(ordered) - i] if i > 0 else None
+            upper = newer.trade_date if newer is not None else date.max
+            while event_index >= 0 and bar.trade_date < events[event_index][0] <= upper:
+                cumulative *= events[event_index][1]
+                event_index -= 1
+            result_rev.append(
+                AdjustedOhlcBar(
+                    trade_date=bar.trade_date,
+                    symbol=bar.symbol,
+                    series=bar.series,
+                    open=bar.open / cumulative,
+                    high=bar.high / cumulative,
+                    low=bar.low / cumulative,
+                    close=bar.close / cumulative,
+                    volume=round(bar.volume * cumulative),
+                    factor=cumulative,
+                    isin=bar.isin,
+                )
+            )
+            while event_index >= 0 and events[event_index][0] == bar.trade_date:
+                cumulative *= events[event_index][1]
+                event_index -= 1
+        return list(reversed(result_rev))
+
     def frame(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> pd.DataFrame:
         archive = self._require_archive()
         records = archive.actions_for(symbol, from_date=from_date, to_date=to_date)
-        rows = [_classify_record(record) for record in records]
-        frame = pd.DataFrame(rows, columns=_FRAME_COLUMNS)
+        rows = [self._classify_record(record) for record in records]
+        frame = pd.DataFrame(rows, columns=self.FRAME_COLUMNS)
         if frame.empty:
             return frame
         return frame.sort_values("ex_date", kind="stable").reset_index(drop=True)
 
     def price_events(self, records: list[dict[str, object]], bars: list[OhlcBar]) -> list[tuple[date, float]]:
         """Combined bonus/split/dividend price-adjustment events, ready for ``apply``."""
-        return sorted(_bonus_split_events(records) + _dividend_price_events(bars, _dividend_events(records)))
+        dividend_events = self._dividend_events(records)
+        return sorted(self._bonus_split_events(records) + self._dividend_price_events(bars, dividend_events))
 
     def apply(self, bars: list[OhlcBar], records: list[dict[str, object]]) -> list[AdjustedOhlcBar]:
         """Bonus/split/dividend-adjusted bars, cumulative so the newest bar keeps factor 1.0."""
-        return _apply_adjustments(bars, self.price_events(records, bars))
+        return self._apply_adjustments(bars, self.price_events(records, bars))
 
     def adjusted_ohlc(
         self,
