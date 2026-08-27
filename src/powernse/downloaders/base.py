@@ -4,9 +4,9 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
-from powernse.archive import ArchiveRoot, record_download
+from powernse.archive import ArchiveRoot, looks_like_html, record_download
 from powernse.errors import DownloadError
-from powernse.http import NseHttpClient, looks_like_html
+from powernse.http import NseHttpClient
 from powernse.settings import Settings
 
 

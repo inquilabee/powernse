@@ -8,7 +8,7 @@ import pytest
 import requests
 from support import staged_key, staged_path, zip_bytes
 
-from powernse.archive import extract_zip_payload_to_csv_bytes, manifest_path, sha256_file
+from powernse.archive import extract_csv_from_zip, manifest_path, sha256_file
 from powernse.calendar import TradingCalendar, iter_trading_dates
 from powernse.data import NSEData
 from powernse.datasets import BHAVCOPY
@@ -207,4 +207,4 @@ def test_throttler_enforces_minimum_interval() -> None:
 def test_extract_zip_rejects_ambiguous_members() -> None:
     payload = zip_bytes(("a.csv", "a"), ("b.csv", "b"))
     with pytest.raises(PayloadError, match="Ambiguous"):
-        extract_zip_payload_to_csv_bytes(payload)
+        extract_csv_from_zip(payload)

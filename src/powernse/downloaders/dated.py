@@ -85,7 +85,7 @@ class DatedCsvArchiveDownloader(ArchiveDownloader, ABC):
         staged_key = self.staged_key(trade_date)
         url = self.archive_url(trade_date)
         payload = self.fetch_bytes_throttled(url)
-        from powernse.http import looks_like_html
+        from powernse.archive import looks_like_html
 
         if looks_like_html(payload):
             msg = f"{self.series_label} unavailable for {trade_date.isoformat()}: {url}"

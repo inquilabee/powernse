@@ -4,7 +4,7 @@ from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
-from powernse.archive import extract_zip_payload_to_csv_bytes
+from powernse.archive import extract_csv_from_zip
 from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_SLEEP_SECONDS, UDIFF_SWITCH_DATE_ISO
 from powernse.datasets import FO_BHAVCOPY
 from powernse.downloaders.dated import DatedCsvArchiveDownloader, RootLike
@@ -58,4 +58,4 @@ class FoBhavcopyDownloader(DatedCsvArchiveDownloader):
         del trade_date
         preferred = Path(url).name.replace(".zip", "").replace(".ZIP", "")
         preferred_member = preferred if preferred.lower().endswith(".csv") else None
-        return extract_zip_payload_to_csv_bytes(payload, preferred_member=preferred_member)
+        return extract_csv_from_zip(payload, preferred_member=preferred_member)
