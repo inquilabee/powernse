@@ -32,6 +32,17 @@ DataFrames (pandas is a core dependency):
 ```python
 frame = data.ohlc_frame("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 day = data.bhavcopy_frame(date(2024, 8, 5))
+
+# Date x Symbol matrix for one OHLCV column, read across staged days in a single pass
+close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+```
+
+Corporate actions (see `powernse.CorporateActions` for the classifier and per-record frame):
+
+```python
+from powernse import CorporateActions
+
+actions = CorporateActions(data).frame("RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 5))
 ```
 
 ## What you should see
@@ -40,7 +51,7 @@ day = data.bhavcopy_frame(date(2024, 8, 5))
 - `inventory()` counts files per archive prefix
 - Missing required files raise `ArchiveError`
 
-`ohlc_adjusted` only applies ratios it can parse from corporate-action subjects (bonus `A:B`, common face-value splits). Unrecognized subjects are skipped.
+`ohlc_adjusted` applies bonus (`A:B`), face-value split, and dividend adjustments parsed from corporate-action subjects; unrecognized subjects are skipped. Dividend adjustment uses the close on the prior trading day, so it needs OHLC bars loaded before the CA records.
 
 ## Next
 

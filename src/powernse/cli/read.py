@@ -67,7 +67,7 @@ def register_read_commands(app: typer.Typer) -> None:
         series: Annotated[str, typer.Option(help="Security series filter")] = "EQ",
         root: Annotated[Path | None, typer.Option(help="Archive root")] = None,
     ) -> None:
-        """Print equity OHLC with opt-in bonus/split adjustments from staged corporate actions."""
+        """Print equity OHLC with opt-in bonus/split/dividend adjustments from staged corporate actions."""
         data = NSEData(root, create=False)
         bars = data.ohlc_adjusted(symbol, from_date=from_date, to_date=to_date, series=series)
         if not bars:
