@@ -16,7 +16,7 @@ from powernse.calendar import iter_trading_dates
 from powernse.constants import CA_ADJUSTMENT_LOOKBACK_DAYS
 from powernse.downloaders import index_slug, parse_index_constituent_symbols
 from powernse.errors import ArchiveError, PayloadError
-from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
+from powernse.parsers.rows import BHAVCOPY_ROWS, FO_BHAVCOPY_ROWS, INDEX_CLOSES_ROWS
 from powernse.schemas import FO_SCHEMA, INDEX_SCHEMA, OHLC_SCHEMA, FoRow, IndexRow, OhlcRow, empty_frame
 from powernse.settings import Settings
 
@@ -105,7 +105,7 @@ class NSEData:
             return
         with path.open(newline="", encoding="utf-8") as handle:
             for row in csv.DictReader(handle):
-                bar = BhavcopyRow.from_row(row, trade_date=trade_date)
+                bar = BHAVCOPY_ROWS.from_row(row, trade_date=trade_date)
                 if bar is not None and bar["series"] == series_needle:
                     yield bar
 
@@ -255,7 +255,7 @@ class NSEData:
                 continue
             with path.open(newline="", encoding="utf-8") as handle:
                 for row in csv.DictReader(handle):
-                    bar = FoBhavcopyRow.from_row(row, trade_date=trade_date)
+                    bar = FO_BHAVCOPY_ROWS.from_row(row, trade_date=trade_date)
                     if bar is None or bar["symbol"] != needle:
                         continue
                     if instrument_needle is not None and bar["instrument_type"] != instrument_needle:
@@ -292,7 +292,7 @@ class NSEData:
                 continue
             with path.open(newline="", encoding="utf-8") as handle:
                 for row in csv.DictReader(handle):
-                    bar = IndexClosesRow.from_row(row, trade_date=trade_date)
+                    bar = INDEX_CLOSES_ROWS.from_row(row, trade_date=trade_date)
                     if bar is None:
                         continue
                     if bar["index_name"].casefold() == needle:
