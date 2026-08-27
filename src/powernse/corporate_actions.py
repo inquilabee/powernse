@@ -1,5 +1,3 @@
-"""Corporate-action classification and bonus/split/dividend price adjustment."""
-
 import re
 from datetime import date
 from enum import StrEnum
