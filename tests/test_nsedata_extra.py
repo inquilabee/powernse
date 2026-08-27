@@ -7,8 +7,31 @@ from support import staged_path, write_staged
 
 from powernse.data import NSEData
 from powernse.datasets import BHAVCOPY, CORPORATE_ACTIONS, FO_BHAVCOPY, INDEX_CLOSES
+from powernse.reading.futures import FoFilter
 
 # Bonus/split/dividend subject parsing is covered by tests/test_corporate_actions.py.
+
+
+def _fo_row(**over: object) -> dict[str, object]:
+    base = {
+        "symbol": "RELIANCE",
+        "instrument_type": "OPTSTK",
+        "expiry": date(2024, 8, 29),
+        "strike": 770.0,
+        "option_type": "CE",
+    }
+    return {**base, **over}  # type: ignore[return-value]
+
+
+def test_fofilter_matches_strike_tolerance_and_optional_fields() -> None:
+    bar = _fo_row()
+    assert FoFilter("RELIANCE").matches(bar)  # bare symbol match
+    assert FoFilter("RELIANCE", strike=770.0 + 1e-10).matches(bar)  # within 1e-9
+    assert not FoFilter("RELIANCE", strike=770.001).matches(bar)  # outside tolerance
+    assert not FoFilter("RELIANCE", strike=100.0).matches(_fo_row(strike=None))  # None strike, wanted set
+    assert not FoFilter("TCS").matches(bar)
+    assert not FoFilter("RELIANCE", option_type="PE").matches(bar)
+    assert FoFilter("RELIANCE", instrument_type="OPTSTK", expiry=date(2024, 8, 29)).matches(bar)
 
 
 def test_fo_and_index_queries(tmp_path: Path) -> None:

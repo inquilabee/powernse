@@ -37,11 +37,12 @@ class Dataset:
         return self.raw_dir / str(day.year) / f"{stem}.{self.extension}"
 
     def date_of(self, staged: Path) -> date | None:
-        """The staged day parsed from a file name, or ``None`` if it doesn't match."""
-        if staged.suffix != f".{self.extension}":
+        """The staged day from a ``<iso>.<ext>`` or ``<iso>_<discriminator>.<ext>`` name, else ``None``."""
+        stem = staged.stem
+        if staged.suffix != f".{self.extension}" or (len(stem) > 10 and stem[10] != "_"):
             return None
         try:
-            return date.fromisoformat(staged.stem[:10])
+            return date.fromisoformat(stem[:10])
         except ValueError:
             return None
 

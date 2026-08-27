@@ -111,24 +111,21 @@ CLASSIFICATION_PATTERNS: list[tuple[CorporateActionType, re.Pattern[str]]] = [
 ]
 
 
-def subject_of(record: Record) -> str:
-    return str(record.get("subject") or record.get("SUBJECT") or "").strip()
-
-
 def symbol_of(record: Record) -> str:
+    """Symbol from a raw CA record (shared with reading.CorporateActionReader)."""
     return str(record.get("symbol") or record.get("SYMBOL") or "")
 
 
 class SubjectClassifier:
     """Reads a CA record's free-text ``subject`` into a type and the numbers it implies."""
 
-    def __init__(
-        self,
-        patterns: list[tuple[CorporateActionType, re.Pattern[str]]] = CLASSIFICATION_PATTERNS,
-        price_affecting: frozenset[CorporateActionType] = PRICE_AFFECTING_TYPES,
-    ) -> None:
-        self._patterns = patterns
-        self._price_affecting = price_affecting
+    def __init__(self) -> None:
+        self._patterns = CLASSIFICATION_PATTERNS
+        self._price_affecting = PRICE_AFFECTING_TYPES
+
+    @staticmethod
+    def subject_of(record: Record) -> str:
+        return str(record.get("subject") or record.get("SUBJECT") or "").strip()
 
     def classify(self, subject: str) -> CorporateActionType:
         text = subject.strip()
@@ -172,7 +169,7 @@ class SubjectClassifier:
 
     def describe(self, record: Record) -> Record:
         """One classified row: symbol, ex_date, type, subject, and any derived numbers."""
-        subject = subject_of(record)
+        subject = self.subject_of(record)
         action_type = self.classify(subject)
         row: Record = {
             "symbol": symbol_of(record),
@@ -233,7 +230,7 @@ class CorporateActions:
     def _bonus_split_events(self) -> list[tuple[date, float]]:
         events: list[tuple[date, float]] = []
         for record in self._records:
-            factor = self._classifier.price_factor(subject_of(record))
+            factor = self._classifier.price_factor(self._classifier.subject_of(record))
             ex_date = ex_date_of(record)
             if factor is not None and factor != 1.0 and ex_date is not None:
                 events.append((ex_date, factor))
@@ -242,7 +239,7 @@ class CorporateActions:
     def _dividend_events(self) -> list[tuple[date, float]]:
         events: list[tuple[date, float]] = []
         for record in self._records:
-            amount = self._classifier.dividend_amount(subject_of(record))
+            amount = self._classifier.dividend_amount(self._classifier.subject_of(record))
             ex_date = ex_date_of(record)
             if amount is not None and ex_date is not None:
                 events.append((ex_date, amount))

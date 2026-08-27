@@ -1,8 +1,9 @@
 """NSEData -- the read facade over a local NSE archive.
 
-Thin: it owns the :class:`ArchiveRoot` and a reader per data family
-(:mod:`powernse.reading`), and delegates. The only real logic here is
-``ohlc_adjusted`` / ``corporate_actions``, which compose a reader with
+The published entry point for reading a staged archive: it owns the
+:class:`ArchiveRoot` and one reader per data family (:mod:`powernse.reading`,
+internal), and its verbs delegate there. ``ohlc_adjusted`` / ``corporate_actions``
+additionally compose a reader with
 :class:`powernse.corporate_actions.CorporateActions`.
 """
 
@@ -23,7 +24,7 @@ Record = dict[str, object]
 
 
 class NSEData:
-    """Read and query a staged NSE archive: OHLC, F&O, indices, corporate actions, snapshots."""
+    """Facade over the staged-archive read subsystem: OHLC, F&O, indices, corporate actions, snapshots."""
 
     def __init__(self, root: Path | str | ArchiveRoot | None = None, *, create: bool = False) -> None:
         if isinstance(root, ArchiveRoot):
@@ -132,12 +133,8 @@ class NSEData:
         records = self._actions.records(symbol, from_date=from_date, to_date=to_date)
         return CorporateActions(records).classified()
 
-    def raw_corporate_actions(self, trade_date: date) -> list[Record]:
-        """Unclassified CA records from one staged JSON file."""
-        return self._actions.raw(trade_date)
-
     def actions_for(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> list[Record]:
-        """Unclassified CA records mentioning ``symbol`` across the staged window."""
+        """Unclassified CA records mentioning ``symbol`` across the staged window (escape hatch)."""
         return self._actions.records(symbol, from_date=from_date, to_date=to_date)
 
     def ohlc_adjusted(

@@ -29,14 +29,16 @@ class RowParser[RowT: SchemaRow](ABC):
     REQUIRED: ClassVar[FieldMap] = {}
     #: subset of REQUIRED whose values must parse as ``float``
     NUMERIC: ClassVar[tuple[str, ...]] = ()
-    #: values treated as "missing" in addition to the empty string
-    BLANKS: ClassVar[frozenset[str]] = frozenset({""})
-    #: strptime formats tried (after ISO) for any date this parser reads
+    #: extra sentinel values that count as "missing" for a NUMERIC field
+    NUMERIC_BLANKS: ClassVar[frozenset[str]] = frozenset()
+    #: strptime formats tried (after ISO) for the row's trade-date
     DATE_FORMATS: ClassVar[tuple[str, ...]] = ("%d-%b-%Y", "%d-%b-%y")
 
     def from_row(self, row: RawRow, *, trade_date: date) -> RowT | None:
         picked = self._pick(row, self.REQUIRED)
         if picked is None:
+            return None
+        if any(picked[name] in self.NUMERIC_BLANKS for name in self.NUMERIC):
             return None
         numbers = self._floats(picked, self.NUMERIC)
         if numbers is None:
@@ -53,10 +55,11 @@ class RowParser[RowT: SchemaRow](ABC):
 
     # -- shared helpers -------------------------------------------------------
 
-    def first(self, row: RawRow, keys: tuple[str, ...]) -> str | None:
+    @staticmethod
+    def first(row: RawRow, keys: tuple[str, ...]) -> str | None:
         for key in keys:
             value = row.get(key)
-            if value is not None and (text := str(value).strip()) not in self.BLANKS:
+            if value is not None and (text := str(value).strip()):
                 return text
         return None
 
@@ -76,14 +79,14 @@ class RowParser[RowT: SchemaRow](ABC):
         except ValueError:
             return None
 
-    def parse_date(self, raw: str | None) -> date | None:
+    def parse_date(self, raw: str | None, *, formats: tuple[str, ...] | None = None) -> date | None:
         if raw is None or not (text := raw.strip()):
             return None
         try:
             return date.fromisoformat(text[:10])
         except ValueError:
             pass
-        for fmt in self.DATE_FORMATS:
+        for fmt in formats or self.DATE_FORMATS:
             try:
                 return datetime.strptime(text, fmt).date()  # noqa: DTZ007 -- naive date is intended
             except ValueError:
@@ -138,8 +141,9 @@ class FoBhavcopyRowParser(RowParser[FoRow]):
         "volume": ("TtlTradgVol", "CONTRACTS", "Tottrdqty"),
     }
     NUMERIC = ("open", "high", "low", "close", "volume")
-    DATE_FORMATS = ("%d-%b-%Y", "%d-%b-%y", "%d-%m-%Y")
     DATE_KEYS = ("TradDt", "TIMESTAMP")
+    #: expiry accepts a numeric-month form the trade-date field never uses
+    EXPIRY_FORMATS = ("%d-%b-%Y", "%d-%b-%y", "%d-%m-%Y")
     STRIKE_KEYS = ("StrkPric", "STRIKE_PR")
     OI_KEYS = ("OpnIntrst", "OPEN_INT")
     EXPIRY_KEYS = ("XpryDt", "EXPIRY_DT")
@@ -153,7 +157,7 @@ class FoBhavcopyRowParser(RowParser[FoRow]):
             "trade_date": self.parse_date(self.first(row, self.DATE_KEYS)) or trade_date,
             "symbol": picked["symbol"].upper(),
             "instrument_type": picked["instrument_type"].upper(),
-            "expiry": self.parse_date(self.first(row, self.EXPIRY_KEYS)),
+            "expiry": self.parse_date(self.first(row, self.EXPIRY_KEYS), formats=self.EXPIRY_FORMATS),
             "strike": float(strike) if strike is not None else None,
             "option_type": option_type.upper() if option_type else None,
             "open": numbers["open"],
@@ -176,7 +180,7 @@ class IndexClosesRowParser(RowParser[IndexRow]):
         "close": ("Closing Index Value", "Close"),
     }
     NUMERIC = ("open", "high", "low", "close")
-    BLANKS = frozenset({"", "-"})
+    NUMERIC_BLANKS = frozenset({"-"})
 
     def _build(self, row: RawRow, picked: dict[str, str], numbers: dict[str, float], trade_date: date) -> IndexRow:
         del row

@@ -1,9 +1,11 @@
 {
+  "_comment": "MD046 off: the docs mix fenced code blocks with MkDocs Material admonitions (!!! note + 4-space body), which markdownlint reads as indented code blocks -- no single MD046 style value passes both. MD024 siblings_only: Keep-a-Changelog repeats ### Added / ### Fixed per version.",
   "default": true,
   "MD013": false,
   "MD033": false,
   "MD041": false,
-  "MD024": { "siblings_only": true },
-  "MD029": false,
+  "MD024": {
+    "siblings_only": true
+  },
   "MD046": false
 }

@@ -70,7 +70,19 @@ class CorporateActionsDownloader(ArchiveDownloader):
 
     def _download_batch(self, batch_days: list[date], span_start: date, span_end: date) -> int:
         url = self.request_url(span_start, span_end)
-        payload = self.fetch_bytes_throttled(url)
+        records = self._decode_records(self.fetch_bytes_throttled(url), url)
+        by_day = self._bucket_by_day(records, batch_days, span_start, span_end)
+        for day in batch_days:
+            self.persist_bytes(
+                url,
+                self.archive.staged_key(CORPORATE_ACTIONS, day),
+                json.dumps(by_day[day]).encode("utf-8"),
+                unavailable_message=f"Corporate actions unavailable for {day.isoformat()}: {url}",
+            )
+        return len(batch_days)
+
+    @staticmethod
+    def _decode_records(payload: bytes, url: str) -> list[dict[str, object]]:
         try:
             decoded = json.loads(payload)
         except json.JSONDecodeError as exc:
@@ -79,33 +91,20 @@ class CorporateActionsDownloader(ArchiveDownloader):
         if not isinstance(decoded, list):
             msg = f"Corporate actions payload must be a JSON list: {url}"
             raise PayloadError(msg)
+        return [item for item in decoded if isinstance(item, dict)]
+
+    @staticmethod
+    def _bucket_by_day(
+        records: list[dict[str, object]], batch_days: list[date], span_start: date, span_end: date
+    ) -> dict[date, list[dict[str, object]]]:
         by_day: dict[date, list[dict[str, object]]] = {day: [] for day in batch_days}
-        undated_count = 0
-        for item in decoded:
-            if not isinstance(item, dict):
-                continue
+        undated = 0
+        for item in records:
             item_date = ex_date_of(item)
             if item_date is None:
-                undated_count += 1
-                logger.warning("Skipping undated corporate-action record in batch %s–%s", span_start, span_end)
+                undated += 1
             elif item_date in by_day:
                 by_day[item_date].append(item)
-        if undated_count:
-            logger.warning(
-                "Dropped %s undated corporate-action record(s) for %s–%s",
-                undated_count,
-                span_start,
-                span_end,
-            )
-        written = 0
-        for day in batch_days:
-            relative = self.archive.staged_key(CORPORATE_ACTIONS, day)
-            day_payload = json.dumps(by_day[day]).encode("utf-8")
-            self.persist_bytes(
-                url,
-                relative,
-                day_payload,
-                unavailable_message=f"Corporate actions unavailable for {day.isoformat()}: {url}",
-            )
-            written += 1
-        return written
+        if undated:
+            logger.warning("Dropped %s undated corporate-action record(s) for %s-%s", undated, span_start, span_end)
+        return by_day

@@ -3,10 +3,6 @@ entries:
     reason: >-
       Public read API on the NSEData facade (classified CA history for a symbol);
       exercised by tests, kept for library consumers.
-  - path: src/powernse/data.py:NSEData.raw_corporate_actions
-    reason: >-
-      Public read API (unclassified CA records for one staged day); the
-      symmetric raw accessor to on()/ohlc().
   - path: src/powernse/data.py:NSEData.actions_for
     reason: >-
       Public read API (unclassified CA records mentioning a symbol across the

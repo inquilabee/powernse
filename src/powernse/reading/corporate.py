@@ -46,13 +46,13 @@ class CorporateActionReader(ArchiveReader):
 
     def records(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> list[Record]:
         """CA records mentioning ``symbol`` across the staged window (label-date driven)."""
+        # Only walk the CA tree for `latest` when an end is actually missing.
+        latest = None if (from_date is not None and to_date is not None) else self.latest_date()
         window = DateWindow.resolve(
             from_date,
             to_date,
-            latest=self.latest_date(),
-            missing=(
-                f"No staged corporate actions under {self._archive.root}; download data first or pass --from/--to"
-            ),
+            latest=latest,
+            missing=f"No staged corporate actions under {self._archive.root}; download data first or pass --from/--to",
         )
         staged = (day for day in window.calendar_days() if self._archive.has_staged(CORPORATE_ACTIONS, day))
         return self._collect(symbol, staged)

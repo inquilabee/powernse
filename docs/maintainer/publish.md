@@ -35,18 +35,18 @@ create it named exactly `pypi`.
 2. Commit on `main` and push.
 3. Pre-flight (copy-paste):
 
-```bash
-grep '^version' pyproject.toml
-# tag must match that version with a leading v, e.g. version = "0.2.0" → v0.2.0
-git status -sb   # clean tree on main
-```
+   ```bash
+   grep '^version' pyproject.toml
+   # tag must match that version with a leading v, e.g. version = "0.2.0" → v0.2.0
+   git status -sb   # clean tree on main
+   ```
 
 4. Tag and push:
 
-```bash
-git tag -a v0.2.0 -m "powernse 0.2.0"
-git push origin v0.2.0
-```
+   ```bash
+   git tag -a v0.2.0 -m "powernse 0.2.0"
+   git push origin v0.2.0
+   ```
 
 5. GitHub Actions [publish.yml](https://github.com/inquilabee/powernse/blob/main/.github/workflows/publish.yml)
    builds the sdist/wheel, asserts the tag matches the package version, smokes
