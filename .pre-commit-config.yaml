@@ -23,7 +23,7 @@ repos:
         always_run: true
       - id: shipgate-check
         name: shipgate check
-        entry: uv run shipgate check --target . --full-tree
+        entry: uv run shipgate check --target . --full-tree --suite standard
         language: system
         pass_filenames: false
         always_run: true
