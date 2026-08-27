@@ -32,12 +32,12 @@ def extract_csv_from_zip(payload: bytes, *, preferred_member: str | None = None)
         raise PayloadError(msg) from exc
     with archive_cm as archive:
         members = [name for name in archive.namelist() if name.lower().endswith(".csv")]
-        chosen = _choose_member(members, preferred_member)
+        chosen = pick_csv_member(members, preferred_member)
         with archive.open(chosen) as source:
             return source.read()
 
 
-def _choose_member(members: list[str], preferred: str | None) -> str:
+def pick_csv_member(members: list[str], preferred: str | None) -> str:
     if not members:
         msg = "No CSV member in archive"
         raise PayloadError(msg)

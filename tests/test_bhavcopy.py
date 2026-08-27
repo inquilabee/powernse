@@ -77,7 +77,8 @@ def test_iter_trading_dates_spans_pre_xbom_and_sessions() -> None:
 def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
     trade_date = date(2024, 1, 2)
     url = BhavcopyDownloader.archive_url(trade_date)
-    payload = zip_bytes(("cm02JAN2024bhav.csv", "SYMBOL,SERIES\nRELIANCE,EQ\n"))
+    csv_body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,2500,2520,2490,2510,100\n"
+    payload = zip_bytes(("cm02JAN2024bhav.csv", csv_body))
 
     def fetch(_url: str) -> bytes:
         assert _url == url
@@ -88,7 +89,7 @@ def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
 
     staged = staged_path(tmp_path, BHAVCOPY, trade_date)
     assert summary.downloaded_count == 1
-    assert staged.read_text(encoding="utf-8").startswith("SYMBOL,SERIES")
+    assert staged.read_text(encoding="utf-8").startswith("SYMBOL,SERIES,OPEN")
 
     manifest = manifest_path(downloader.archive).read_text(encoding="utf-8").strip().splitlines()
     assert len(manifest) == 1
@@ -97,8 +98,7 @@ def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
     assert record["sha256"] == sha256_file(staged)
     assert record["local_path"] == staged_key(tmp_path, BHAVCOPY, trade_date)
 
-    rows = NSEData(tmp_path).bhavcopy_rows(trade_date)
-    assert rows[0]["SYMBOL"] == "RELIANCE"
+    assert NSEData(tmp_path).on(trade_date).iloc[0]["symbol"] == "RELIANCE"
 
 
 def test_downloader_skip_existing(tmp_path: Path) -> None:
