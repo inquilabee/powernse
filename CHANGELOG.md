@@ -7,6 +7,16 @@
 - `powernse.corporate_actions` module: `CorporateActions` class (classification + `frame()` + `adjusted_ohlc()`), `CorporateActionType`, `classify_subject()`. Replaces `powernse.adjust` (deleted, no compatibility shim). Top-level exports: `from powernse import CorporateActions, CorporateActionType`
 - `NSEData.wide_frame()`: Date x Symbol matrix for one OHLCV column, read across staged bhavcopy days in a single pass (values are unadjusted)
 
+### Changed — breaking
+
+pandas is now the core interface, not a bolt-on:
+
+- `NSEData.ohlc()`, `NSEData.on()`, `NSEData.fo_bars()`, `NSEData.index_ohlc()`, `NSEData.ohlc_adjusted()`, and `CorporateActions.adjusted_ohlc()` / `CorporateActions.apply()` now return `pandas.DataFrame` instead of `list[OhlcBar]` / `list[AdjustedOhlcBar]` / `list[FoBar]` / `list[IndexBar]`. `NSEData.ohlc_frame()` is removed — `ohlc()` is now the one method (same for the other `_frame`-suffixed siblings, which never existed for these)
+- `NSEData.latest()` returns `pandas.Series | None` (one OHLC row) instead of `OhlcBar | None`
+- `OhlcBar`, `AdjustedOhlcBar`, `FoBar`, and `IndexBar` are removed entirely — no compatibility shim. `CorporateActions.price_events()` returns a `pandas.Series` (ex-date index, multiplier values) instead of `list[tuple[date, float]]`, and its `bars` parameter (like `apply()`'s) is now a DataFrame instead of `list[OhlcBar]`
+- Added `powernse.schemas`: `OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema` ([pdschema](https://github.com/inquilabee/pdschema) `Schema` subclasses) take over the type/nullability contract the four dataclasses used to enforce, validated at the point each method returns its DataFrame. New dependency: `pdschema` (pulls in `pyarrow` transitively)
+- `CorporateActions._apply_adjustments`'s cumulative-adjustment-factor walk is rewritten as a vectorized pandas/numpy computation (`searchsorted` into a suffix cumulative-product of sorted events) instead of a manual event-index-walking loop over dataclass instances
+
 ### Fixed
 
 - `CorporateActions.apply()` / `NSEData.ohlc_adjusted()` no longer apply a corporate action to the entire loaded bar range when its ex-date falls after the newest bar (e.g. an announced-but-not-yet-effective bonus/split/dividend) — such events are now dropped instead of retroactively adjusting bars that predate the action taking effect
