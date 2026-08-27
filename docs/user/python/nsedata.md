@@ -29,21 +29,28 @@ bulk = data.bulk_deals(date(2024, 8, 9))
 print(data.inventory())
 ```
 
-Other DataFrame helpers (pandas is a core dependency):
-
 ```python
-day = data.bhavcopy_frame(date(2024, 8, 5))  # full raw CSV columns, unnormalized
-
 # Date x Symbol matrix for one OHLCV column, read across staged days in a single pass
 close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
 
-Corporate actions (see `powernse.CorporateActions` for the classifier and per-record frame):
+Corporate actions — `data.corporate_actions(symbol, ...)` classifies each staged
+record (type, subject, derived `price_factor` / `dividend_amount`) into a frame;
+`raw_corporate_actions(day)` / `actions_for(symbol, ...)` return the untouched
+records:
 
 ```python
-from powernse import CorporateActions
+history = data.corporate_actions("RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 5))
+```
 
-actions = CorporateActions(data).frame("RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 5))
+For bars and records you already hold (no archive), use the classes directly:
+
+```python
+from powernse import CorporateActions, SubjectClassifier
+
+SubjectClassifier().classify("Bonus 1:1")               # CorporateActionType.BONUS
+CorporateActions(records).adjust(bars)                   # AdjustedOhlcSchema frame
+CorporateActions(records).classified()                  # classified history frame
 ```
 
 ## What you should see
