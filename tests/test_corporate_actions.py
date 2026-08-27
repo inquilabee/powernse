@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+from support import staged_path
 
 from powernse.corporate_actions import (
     CorporateActions,
@@ -13,7 +14,7 @@ from powernse.corporate_actions import (
     price_adjustment_factor_from_subject,
 )
 from powernse.data import NSEData
-from powernse.downloaders.corporate_actions import corporate_actions_staged_path
+from powernse.datasets import CORPORATE_ACTIONS
 from powernse.schemas import OHLC_SCHEMA
 
 
@@ -83,13 +84,11 @@ def test_frame_classifies_and_sorts(tmp_path: Path) -> None:
             [{"symbol": "RELIANCE", "subject": "Dividend - Rs 5 Per Share", "exDate": "2024-01-01"}],
         ),
     ]:
-        path = corporate_actions_staged_path(tmp_path, trade_date)
+        path = staged_path(tmp_path, CORPORATE_ACTIONS, trade_date)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(records), encoding="utf-8")
 
-    frame = CorporateActions(NSEData(tmp_path)).frame(
-        "RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 1)
-    )
+    frame = CorporateActions(NSEData(tmp_path)).frame("RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 1))
     assert list(frame["type"]) == [CorporateActionType.DIVIDEND, CorporateActionType.BONUS]
     assert list(frame["ex_date"]) == [date(2024, 1, 1), date(2024, 8, 1)]
     assert frame.loc[0, "dividend_amount"] == 5.0

@@ -9,6 +9,7 @@ from pathlib import Path
 from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
 from powernse.constants import DEFAULT_SLEEP_SECONDS
+from powernse.datasets import Dataset
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.settings import Settings
@@ -22,6 +23,7 @@ RootLike = Path | str | ArchiveRoot | Settings
 class DatedCsvArchiveDownloader(ArchiveDownloader, ABC):
     """Shared skip / strict / summary loop for one-file-per-trading-day archives."""
 
+    dataset: Dataset
     series_label: str = "archive"
 
     def __init__(
@@ -38,9 +40,8 @@ class DatedCsvArchiveDownloader(ArchiveDownloader, ABC):
         self._strict = strict
         self._all_calendar_days = all_calendar_days
 
-    @abstractmethod
     def staged_key(self, trade_date: date) -> str:
-        """Return the archive-relative key for ``trade_date``."""
+        return self.archive.staged_key(self.dataset, trade_date)
 
     @abstractmethod
     def archive_url(self, trade_date: date) -> str:

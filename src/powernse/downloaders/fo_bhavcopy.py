@@ -4,10 +4,10 @@ from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
-from powernse.archive import RAW_FO_BHAVCOPY_DIR, ArchiveRoot, archive_key, extract_zip_payload_to_csv_bytes
-from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS, UDIFF_SWITCH_DATE_ISO
+from powernse.archive import extract_zip_payload_to_csv_bytes
+from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_SLEEP_SECONDS, UDIFF_SWITCH_DATE_ISO
+from powernse.datasets import FO_BHAVCOPY
 from powernse.downloaders.dated import DatedCsvArchiveDownloader, RootLike
-from powernse.downloaders.resume import latest_staged_iso_csv_date, resolve_dated_resume_range
 
 UDIFF_SWITCH_DATE = date.fromisoformat(UDIFF_SWITCH_DATE_ISO)
 
@@ -26,39 +26,10 @@ def fo_bhavcopy_archive_url(trade_date: date) -> str:
     return f"{ARCHIVE_BASE_URL}/content/fo/BhavCopy_NSE_FO_0_0_0_{compact}_F_0000.csv.zip"
 
 
-def staged_fo_bhavcopy_csv_path(root: Path, trade_date: date) -> Path:
-    return root / RAW_FO_BHAVCOPY_DIR / str(trade_date.year) / f"{trade_date.isoformat()}.csv"
-
-
-def staged_fo_bhavcopy_csv_key(trade_date: date) -> str:
-    return archive_key(RAW_FO_BHAVCOPY_DIR.as_posix(), str(trade_date.year), f"{trade_date.isoformat()}.csv")
-
-
-def latest_staged_fo_bhavcopy_date(root: Path | ArchiveRoot) -> date | None:
-    return latest_staged_iso_csv_date(root, RAW_FO_BHAVCOPY_DIR)
-
-
-def resolve_fo_bhavcopy_resume_range(
-    root: Path | ArchiveRoot,
-    *,
-    today: date | None = None,
-    days: int = DEFAULT_RESUME_DAYS,
-    from_date: date | None = None,
-    to_date: date | None = None,
-) -> tuple[date, date]:
-    return resolve_dated_resume_range(
-        root,
-        RAW_FO_BHAVCOPY_DIR,
-        today=today,
-        days=days,
-        from_date=from_date,
-        to_date=to_date,
-    )
-
-
 class FoBhavcopyDownloader(DatedCsvArchiveDownloader):
     """Download F&O bhavcopy archives into the NSE archive staging tree."""
 
+    dataset = FO_BHAVCOPY
     series_label = "F&O bhavcopy"
 
     def __init__(
@@ -79,9 +50,6 @@ class FoBhavcopyDownloader(DatedCsvArchiveDownloader):
             all_calendar_days=all_calendar_days,
             fetch_bytes=fetch_bytes,
         )
-
-    def staged_key(self, trade_date: date) -> str:
-        return staged_fo_bhavcopy_csv_key(trade_date)
 
     def archive_url(self, trade_date: date) -> str:
         return fo_bhavcopy_archive_url(trade_date)

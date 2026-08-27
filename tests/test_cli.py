@@ -38,9 +38,7 @@ def test_bhavcopy_cli_strict_exit_on_failures(tmp_path: Path, monkeypatch) -> No
             return DownloadSummary(downloaded_count=0, skipped_existing_count=0, failed_count=2)
 
     monkeypatch.setattr("powernse.cli.app.BhavcopyDownloader", FakeDownloader)
-    code = main(
-        ["bhavcopy", "--from", "2024-01-02", "--to", "2024-01-02", "--root", str(tmp_path), "--strict"]
-    )
+    code = main(["bhavcopy", "--from", "2024-01-02", "--to", "2024-01-02", "--root", str(tmp_path), "--strict"])
     assert code == 1
 
 

@@ -7,9 +7,9 @@ from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlencode
 
-from powernse.archive import RAW_CORPORATE_ACTIONS_DIR, archive_key
 from powernse.calendar import iter_trading_dates
 from powernse.constants import CORPORATE_ACTIONS_API_URL, DEFAULT_SLEEP_SECONDS
+from powernse.datasets import CORPORATE_ACTIONS
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.types import DownloadSummary
@@ -18,19 +18,6 @@ logger = logging.getLogger(__name__)
 
 CA_DATE_KEYS = ("exDate", "exdate", "recDate", "recordDate", "anouncementDate", "date")
 CA_BATCH_DAYS = 7
-
-
-def corporate_actions_staged_path(root: Path, trade_date: date) -> Path:
-    """Path for a daily corporate actions JSON file under the archive root."""
-    return root / RAW_CORPORATE_ACTIONS_DIR / str(trade_date.year) / f"{trade_date.isoformat()}.json"
-
-
-def corporate_actions_staged_key(trade_date: date) -> str:
-    return archive_key(
-        RAW_CORPORATE_ACTIONS_DIR.as_posix(),
-        str(trade_date.year),
-        f"{trade_date.isoformat()}.json",
-    )
 
 
 def corporate_actions_request_url(from_date: date, to_date: date) -> str:
@@ -96,7 +83,7 @@ class CorporateActionsDownloader(ArchiveDownloader):
         failed = 0
         missing: list[date] = []
         for trade_date in iter_trading_dates(from_date, to_date, all_calendar_days=self._all_calendar_days):
-            relative = corporate_actions_staged_key(trade_date)
+            relative = self.archive.staged_key(CORPORATE_ACTIONS, trade_date)
             if self.skip_existing and self.destination_exists(relative):
                 skipped += 1
             else:
@@ -151,7 +138,7 @@ class CorporateActionsDownloader(ArchiveDownloader):
             )
         written = 0
         for day in batch_days:
-            relative = corporate_actions_staged_key(day)
+            relative = self.archive.staged_key(CORPORATE_ACTIONS, day)
             day_payload = json.dumps(by_day[day]).encode("utf-8")
             self.persist_bytes(
                 url,

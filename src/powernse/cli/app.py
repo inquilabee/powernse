@@ -2,6 +2,7 @@
 
 import typer
 
+from powernse import datasets
 from powernse.cli.bundle_cmd import register_bundle_commands
 from powernse.cli.dated import register_dated_download_command
 from powernse.cli.read import register_read_commands
@@ -11,10 +12,6 @@ from powernse.downloaders import (  # noqa: F401 — getattr targets for dated c
     FoBhavcopyDownloader,
     FullBhavcopyDownloader,
     IndexClosesDownloader,
-    resolve_bhavcopy_resume_range,
-    resolve_fo_bhavcopy_resume_range,
-    resolve_full_bhavcopy_resume_range,
-    resolve_index_closes_resume_range,
 )
 from powernse.errors import PowerNseError
 
@@ -29,28 +26,28 @@ register_dated_download_command(
     name="bhavcopy",
     help_text="Download CM bhavcopy CSV archives.",
     downloader_attr="BhavcopyDownloader",
-    resume_resolver_attr="resolve_bhavcopy_resume_range",
+    dataset=datasets.BHAVCOPY,
 )
 register_dated_download_command(
     app,
     name="fo-bhavcopy",
     help_text="Download F&O bhavcopy CSV archives.",
     downloader_attr="FoBhavcopyDownloader",
-    resume_resolver_attr="resolve_fo_bhavcopy_resume_range",
+    dataset=datasets.FO_BHAVCOPY,
 )
 register_dated_download_command(
     app,
     name="index-closes",
     help_text="Download daily all-index close CSV files.",
     downloader_attr="IndexClosesDownloader",
-    resume_resolver_attr="resolve_index_closes_resume_range",
+    dataset=datasets.INDEX_CLOSES,
 )
 register_dated_download_command(
     app,
     name="full-bhavcopy",
     help_text="Download security full bhavcopy CSV (includes delivery columns).",
     downloader_attr="FullBhavcopyDownloader",
-    resume_resolver_attr="resolve_full_bhavcopy_resume_range",
+    dataset=datasets.FULL_BHAVCOPY,
 )
 register_snapshot_commands(app)
 register_bundle_commands(app)

@@ -10,34 +10,11 @@ from typing import ClassVar, Self
 
 import pandas as pd
 
-from powernse.archive import (
-    RAW_BHAVCOPY_DIR,
-    RAW_BLOCK_DEALS_DIR,
-    RAW_BULK_DEALS_DIR,
-    RAW_CORPORATE_ACTIONS_DIR,
-    RAW_FO_BHAVCOPY_DIR,
-    RAW_FO_SECBAN_DIR,
-    RAW_FULL_BHAVCOPY_DIR,
-    RAW_INDEX_CLOSES_DIR,
-    RAW_INDEX_CONSTITUENTS_DIR,
-    ArchiveRoot,
-)
+from powernse import datasets
+from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
 from powernse.constants import CA_ADJUSTMENT_LOOKBACK_DAYS
-from powernse.downloaders.bhavcopy import latest_staged_bhavcopy_date, staged_bhavcopy_csv_path
-from powernse.downloaders.corporate_actions import corporate_actions_staged_path
-from powernse.downloaders.deals import (
-    staged_block_deals_csv_path,
-    staged_bulk_deals_csv_path,
-    staged_fo_secban_csv_path,
-)
-from powernse.downloaders.fo_bhavcopy import latest_staged_fo_bhavcopy_date, staged_fo_bhavcopy_csv_path
-from powernse.downloaders.full_bhavcopy import latest_staged_full_bhavcopy_date, staged_full_bhavcopy_csv_path
-from powernse.downloaders.index_closes import latest_staged_index_closes_date, staged_index_closes_csv_path
-from powernse.downloaders.index_constituents import (
-    index_constituents_staged_path,
-    parse_index_constituent_symbols,
-)
+from powernse.downloaders import index_slug, parse_index_constituent_symbols
 from powernse.errors import ArchiveError, PayloadError
 from powernse.parsers.rows import BhavcopyRow, FoBhavcopyRow, IndexClosesRow
 from powernse.schemas import FO_SCHEMA, INDEX_SCHEMA, OHLC_SCHEMA, FoRow, IndexRow, OhlcRow, empty_frame
@@ -68,7 +45,7 @@ class NSEData:
         return self._archive.root
 
     def bhavcopy_path(self, trade_date: date) -> Path:
-        path = staged_bhavcopy_csv_path(self.root, trade_date)
+        path = self._archive.staged_path(datasets.BHAVCOPY, trade_date)
         if not path.is_file():
             msg = f"No staged bhavcopy for {trade_date.isoformat()} under {self.root}"
             raise ArchiveError(msg)
@@ -76,7 +53,7 @@ class NSEData:
 
     def latest_bhavcopy_date(self) -> date | None:
         """Newest staged bhavcopy date under this archive, if any."""
-        return latest_staged_bhavcopy_date(self._archive)
+        return self._archive.latest_staged_date(datasets.BHAVCOPY)
 
     def latest_corporate_actions_date(self) -> date | None:
         """Newest staged corporate-actions date, if any."""
@@ -88,7 +65,7 @@ class NSEData:
 
     def _corporate_actions_bound(self, *, prefer_latest: bool) -> date | None:
         bound: date | None = None
-        for path in self._archive.list_files(RAW_CORPORATE_ACTIONS_DIR):
+        for path in self._archive.list_files(datasets.CORPORATE_ACTIONS.raw_dir):
             if not path.name.endswith(".json"):
                 continue
             try:
@@ -123,7 +100,7 @@ class NSEData:
 
     def _iter_bhavcopy_rows(self, trade_date: date, *, series_needle: str) -> Iterator[OhlcRow]:
         """Parsed, series-filtered OhlcSchema-shaped rows from one staged bhavcopy day, if staged."""
-        path = staged_bhavcopy_csv_path(self.root, trade_date)
+        path = self._archive.staged_path(datasets.BHAVCOPY, trade_date)
         if not path.is_file():
             return
         with path.open(newline="", encoding="utf-8") as handle:
@@ -240,7 +217,7 @@ class NSEData:
             floor = earliest
         needle = symbol.strip().upper()
         matches: list[dict[str, object]] = []
-        for path in self._archive.list_files(RAW_CORPORATE_ACTIONS_DIR):
+        for path in self._archive.list_files(datasets.CORPORATE_ACTIONS.raw_dir):
             if not path.name.endswith(".json"):
                 continue
             try:
@@ -273,7 +250,7 @@ class NSEData:
         option_needle = option_type.strip().upper() if option_type else None
         rows: list[FoRow] = []
         for trade_date in iter_trading_dates(start, end):
-            path = staged_fo_bhavcopy_csv_path(self.root, trade_date)
+            path = self._archive.staged_path(datasets.FO_BHAVCOPY, trade_date)
             if not path.is_file():
                 continue
             with path.open(newline="", encoding="utf-8") as handle:
@@ -310,7 +287,7 @@ class NSEData:
         needle = index_name.strip().casefold()
         rows: list[IndexRow] = []
         for trade_date in iter_trading_dates(start, end):
-            path = staged_index_closes_csv_path(self.root, trade_date)
+            path = self._archive.staged_path(datasets.INDEX_CLOSES, trade_date)
             if not path.is_file():
                 continue
             with path.open(newline="", encoding="utf-8") as handle:
@@ -328,7 +305,7 @@ class NSEData:
         return frame
 
     def full_bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
-        path = staged_full_bhavcopy_csv_path(self.root, trade_date)
+        path = self._archive.staged_path(datasets.FULL_BHAVCOPY, trade_date)
         if not path.is_file():
             msg = f"No staged full bhavcopy for {trade_date.isoformat()} under {self.root}"
             raise ArchiveError(msg)
@@ -336,13 +313,16 @@ class NSEData:
             return list(csv.DictReader(handle))
 
     def bulk_deals(self, label_date: date) -> list[dict[str, str]]:
-        return self._read_csv_rows(staged_bulk_deals_csv_path(self.root, label_date), "bulk deals", label_date)
+        return self._staged_csv_rows(datasets.BULK_DEALS, label_date, "bulk deals")
 
     def block_deals(self, label_date: date) -> list[dict[str, str]]:
-        return self._read_csv_rows(staged_block_deals_csv_path(self.root, label_date), "block deals", label_date)
+        return self._staged_csv_rows(datasets.BLOCK_DEALS, label_date, "block deals")
 
     def fo_secban(self, label_date: date) -> list[dict[str, str]]:
-        return self._read_csv_rows(staged_fo_secban_csv_path(self.root, label_date), "fo secban", label_date)
+        return self._staged_csv_rows(datasets.FO_SECBAN, label_date, "fo secban")
+
+    def _staged_csv_rows(self, dataset: datasets.Dataset, label_date: date, label: str) -> list[dict[str, str]]:
+        return self._read_csv_rows(self._archive.staged_path(dataset, label_date), label, label_date)
 
     def on(self, trade_date: date, *, symbol: str | None = None, series: str = "EQ") -> pd.DataFrame:
         """All (or one) OHLC bars from a single staged bhavcopy day, as an OhlcSchema-shaped DataFrame."""
@@ -372,7 +352,7 @@ class NSEData:
         needle = symbol.strip().upper()
         matches: list[dict[str, object]] = []
         for trade_date in iter_trading_dates(start, end, all_calendar_days=True):
-            path = corporate_actions_staged_path(self.root, trade_date)
+            path = self._archive.staged_path(datasets.CORPORATE_ACTIONS, trade_date)
             if not path.is_file():
                 continue
             for record in self.corporate_actions(trade_date):
@@ -382,7 +362,7 @@ class NSEData:
         return matches
 
     def corporate_actions(self, trade_date: date) -> list[dict[str, object]]:
-        path = corporate_actions_staged_path(self.root, trade_date)
+        path = self._archive.staged_path(datasets.CORPORATE_ACTIONS, trade_date)
         if not path.is_file():
             msg = f"No staged corporate actions for {trade_date.isoformat()} under {self.root}"
             raise ArchiveError(msg)
@@ -399,7 +379,7 @@ class NSEData:
         return records
 
     def index_symbols(self, trade_date: date, index_name: str) -> list[str]:
-        path = index_constituents_staged_path(self.root, trade_date, index_name)
+        path = self._archive.staged_path(datasets.INDEX_CONSTITUENTS, trade_date, discriminator=index_slug(index_name))
         if not path.is_file():
             msg = f"No staged index constituents for {index_name!r} on {trade_date.isoformat()}"
             raise ArchiveError(msg)
@@ -410,22 +390,22 @@ class NSEData:
         start, end = self._resolve_bhavcopy_window(from_date, to_date)
         missing: list[date] = []
         for trade_date in iter_trading_dates(start, end):
-            if not staged_bhavcopy_csv_path(self.root, trade_date).is_file():
+            if not self._archive.staged_path(datasets.BHAVCOPY, trade_date).is_file():
                 missing.append(trade_date)
         return missing
 
     def inventory(self) -> dict[str, int]:
         """Return file counts by archive prefix."""
         return {
-            "bhavcopy": len(self._archive.list_files(RAW_BHAVCOPY_DIR)),
-            "fo_bhavcopy": len(self._archive.list_files(RAW_FO_BHAVCOPY_DIR)),
-            "full_bhavcopy": len(self._archive.list_files(RAW_FULL_BHAVCOPY_DIR)),
-            "index_closes": len(self._archive.list_files(RAW_INDEX_CLOSES_DIR)),
-            "bulk_deals": len(self._archive.list_files(RAW_BULK_DEALS_DIR)),
-            "block_deals": len(self._archive.list_files(RAW_BLOCK_DEALS_DIR)),
-            "fo_secban": len(self._archive.list_files(RAW_FO_SECBAN_DIR)),
-            "corporate_actions": len(self._archive.list_files(RAW_CORPORATE_ACTIONS_DIR)),
-            "index_constituents": len(self._archive.list_files(RAW_INDEX_CONSTITUENTS_DIR)),
+            "bhavcopy": len(self._archive.list_files(datasets.BHAVCOPY.raw_dir)),
+            "fo_bhavcopy": len(self._archive.list_files(datasets.FO_BHAVCOPY.raw_dir)),
+            "full_bhavcopy": len(self._archive.list_files(datasets.FULL_BHAVCOPY.raw_dir)),
+            "index_closes": len(self._archive.list_files(datasets.INDEX_CLOSES.raw_dir)),
+            "bulk_deals": len(self._archive.list_files(datasets.BULK_DEALS.raw_dir)),
+            "block_deals": len(self._archive.list_files(datasets.BLOCK_DEALS.raw_dir)),
+            "fo_secban": len(self._archive.list_files(datasets.FO_SECBAN.raw_dir)),
+            "corporate_actions": len(self._archive.list_files(datasets.CORPORATE_ACTIONS.raw_dir)),
+            "index_constituents": len(self._archive.list_files(datasets.INDEX_CONSTITUENTS.raw_dir)),
             "manifest_bytes": self._manifest_bytes(),
         }
 
@@ -469,7 +449,7 @@ class NSEData:
         return self._resolve_window(
             from_date,
             to_date,
-            latest=latest_staged_fo_bhavcopy_date(self._archive),
+            latest=self._archive.latest_staged_date(datasets.FO_BHAVCOPY),
             empty_message=f"No staged F&O bhavcopy under {self.root}; download data first",
         )
 
@@ -477,12 +457,12 @@ class NSEData:
         return self._resolve_window(
             from_date,
             to_date,
-            latest=latest_staged_index_closes_date(self._archive),
+            latest=self._archive.latest_staged_date(datasets.INDEX_CLOSES),
             empty_message=f"No staged index closes under {self.root}; download data first",
         )
 
     def latest_full_bhavcopy_date(self) -> date | None:
-        return latest_staged_full_bhavcopy_date(self._archive)
+        return self._archive.latest_staged_date(datasets.FULL_BHAVCOPY)
 
     def _resolve_corporate_actions_window(
         self,

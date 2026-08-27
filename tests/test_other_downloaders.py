@@ -4,16 +4,15 @@ import json
 from datetime import date
 from pathlib import Path
 
+from support import staged_path
+
 from powernse.data import NSEData
-from powernse.downloaders.corporate_actions import (
-    CorporateActionsDownloader,
-    corporate_actions_request_url,
-    corporate_actions_staged_path,
-)
+from powernse.datasets import CORPORATE_ACTIONS, INDEX_CONSTITUENTS
+from powernse.downloaders.corporate_actions import CorporateActionsDownloader, corporate_actions_request_url
 from powernse.downloaders.index_constituents import (
     IndexConstituentsDownloader,
     index_constituents_request_url,
-    index_constituents_staged_path,
+    index_slug,
     parse_index_constituent_symbols,
 )
 from powernse.settings import Settings
@@ -37,7 +36,7 @@ def test_corporate_actions_download(tmp_path: Path) -> None:
     downloader = CorporateActionsDownloader(tmp_path, sleep_seconds=0, fetch_bytes=fetch)
     summary = downloader.download_range(trade_date, trade_date)
     assert summary.downloaded_count == 1
-    path = corporate_actions_staged_path(tmp_path, trade_date)
+    path = staged_path(tmp_path, CORPORATE_ACTIONS, trade_date)
     assert json.loads(path.read_text(encoding="utf-8"))[0]["symbol"] == "RELIANCE"
     assert NSEData(tmp_path).corporate_actions(trade_date)[0]["symbol"] == "RELIANCE"
 
@@ -51,7 +50,7 @@ def test_corporate_actions_invalid_json_non_strict(tmp_path: Path) -> None:
     downloader = CorporateActionsDownloader(tmp_path, sleep_seconds=0, fetch_bytes=fetch, strict=False)
     summary = downloader.download_range(trade_date, trade_date)
     assert summary == DownloadSummary(downloaded_count=0, skipped_existing_count=0, failed_count=1)
-    assert not corporate_actions_staged_path(tmp_path, trade_date).is_file()
+    assert not staged_path(tmp_path, CORPORATE_ACTIONS, trade_date).is_file()
 
 
 def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
@@ -74,7 +73,7 @@ def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
     downloader = IndexConstituentsDownloader(tmp_path, sleep_seconds=0, fetch_bytes=fetch)
     summary = downloader.download_indices(trade_date, ["NIFTY 50"])
     assert summary.downloaded_count == 1
-    path = index_constituents_staged_path(tmp_path, trade_date, "NIFTY 50")
+    path = staged_path(tmp_path, INDEX_CONSTITUENTS, trade_date, discriminator=index_slug("NIFTY 50"))
     assert path.is_file()
 
     reader = NSEData(tmp_path)

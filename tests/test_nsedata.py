@@ -4,16 +4,14 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from support import staged_path, write_staged
 
 from powernse import NSEData
-from powernse.downloaders.bhavcopy import staged_bhavcopy_csv_path
-from powernse.downloaders.corporate_actions import corporate_actions_staged_path
+from powernse.datasets import BHAVCOPY, CORPORATE_ACTIONS
 
 
 def _write_legacy(tmp_path: Path, trade_date: date, body: str) -> None:
-    path = staged_bhavcopy_csv_path(tmp_path, trade_date)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body, encoding="utf-8")
+    write_staged(tmp_path, BHAVCOPY, trade_date, body)
 
 
 def test_ohlc_legacy_and_udiff(tmp_path: Path) -> None:
@@ -72,7 +70,7 @@ def test_coverage_gaps(tmp_path: Path) -> None:
 
 
 def test_actions_for(tmp_path: Path) -> None:
-    path = corporate_actions_staged_path(tmp_path, date(2024, 8, 1))
+    path = staged_path(tmp_path, CORPORATE_ACTIONS, date(2024, 8, 1))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         '[{"symbol":"RELIANCE","subject":"Dividend"},{"symbol":"TCS","subject":"Bonus"}]',

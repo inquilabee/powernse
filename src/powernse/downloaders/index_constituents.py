@@ -9,8 +9,8 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlencode
 
-from powernse.archive import RAW_INDEX_CONSTITUENTS_DIR, archive_key
 from powernse.constants import DEFAULT_SLEEP_SECONDS, INDEX_CONSTITUENTS_API_URL
+from powernse.datasets import INDEX_CONSTITUENTS
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.types import DownloadSummary
@@ -34,24 +34,6 @@ def index_slug(index_name: str) -> str:
 def index_constituents_request_url(index_name: str) -> str:
     """Build the NSE equity-stock-indices API URL."""
     return f"{INDEX_CONSTITUENTS_API_URL}?{urlencode({'index': index_name.upper()})}"
-
-
-def index_constituents_staged_path(root: Path, trade_date: date, index_name: str) -> Path:
-    """Path for a daily index constituents JSON snapshot."""
-    return (
-        root
-        / RAW_INDEX_CONSTITUENTS_DIR
-        / str(trade_date.year)
-        / f"{trade_date.isoformat()}_{index_slug(index_name)}.json"
-    )
-
-
-def index_constituents_staged_key(trade_date: date, index_name: str) -> str:
-    return archive_key(
-        RAW_INDEX_CONSTITUENTS_DIR.as_posix(),
-        str(trade_date.year),
-        f"{trade_date.isoformat()}_{index_slug(index_name)}.json",
-    )
 
 
 class IndexConstituentsDownloader(ArchiveDownloader):
@@ -81,7 +63,7 @@ class IndexConstituentsDownloader(ArchiveDownloader):
 
     def download_snapshot(self, trade_date: date, index_name: str) -> Path:
         """Download one live index snapshot labeled with trade_date."""
-        relative = index_constituents_staged_key(trade_date, index_name)
+        relative = self.archive.staged_key(INDEX_CONSTITUENTS, trade_date, discriminator=index_slug(index_name))
         destination = self.archive.path_for(relative)
         if self.skip_existing and destination.is_file():
             return destination
@@ -99,7 +81,7 @@ class IndexConstituentsDownloader(ArchiveDownloader):
         skipped = 0
         failed = 0
         for index_name in index_names:
-            relative = index_constituents_staged_key(trade_date, index_name)
+            relative = self.archive.staged_key(INDEX_CONSTITUENTS, trade_date, discriminator=index_slug(index_name))
             if self.skip_existing and self.destination_exists(relative):
                 skipped += 1
                 continue
