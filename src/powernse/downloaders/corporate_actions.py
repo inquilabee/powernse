@@ -2,13 +2,12 @@
 
 import json
 import logging
-from collections.abc import Callable
 from datetime import date, datetime
-from pathlib import Path
+from typing import ClassVar
 from urllib.parse import urlencode
 
 from powernse.calendar import iter_trading_dates
-from powernse.constants import CORPORATE_ACTIONS_API_URL, DEFAULT_SLEEP_SECONDS
+from powernse.constants import CORPORATE_ACTIONS_API_URL
 from powernse.datasets import CORPORATE_ACTIONS
 from powernse.downloaders.base import ArchiveDownloader
 from powernse.errors import DownloadError, PayloadError
@@ -17,20 +16,16 @@ from powernse.types import DownloadSummary
 logger = logging.getLogger(__name__)
 
 CA_DATE_KEYS = ("exDate", "exdate", "recDate", "recordDate", "anouncementDate", "date")
+CA_DATE_FORMATS = ("%d-%m-%Y", "%d-%b-%Y", "%d-%b-%y", "%d/%m/%Y")
 CA_BATCH_DAYS = 7
 
 
-def corporate_actions_request_url(from_date: date, to_date: date) -> str:
-    """Build the NSE corporate actions API URL for a date span."""
-    params = {
-        "index": "equities",
-        "from_date": from_date.strftime("%d-%m-%Y"),
-        "to_date": to_date.strftime("%d-%m-%Y"),
-    }
-    return f"{CORPORATE_ACTIONS_API_URL}?{urlencode(params)}"
-
-
 def parse_corporate_action_date(record: dict[str, object]) -> date | None:
+    """Ex/record/announcement date from a raw CA record (tries several keys and formats).
+
+    Shared by the downloader (day bucketing) and ``powernse.corporate_actions``
+    (ex-date classification).
+    """
     for key in CA_DATE_KEYS:
         raw = record.get(key)
         if raw is None:
@@ -42,9 +37,9 @@ def parse_corporate_action_date(record: dict[str, object]) -> date | None:
             return date.fromisoformat(text[:10])
         except ValueError:
             pass
-        for fmt in ("%d-%m-%Y", "%d-%b-%Y", "%d-%b-%y", "%d/%m/%Y"):
+        for fmt in CA_DATE_FORMATS:
             try:
-                return datetime.strptime(text, fmt).date()
+                return datetime.strptime(text, fmt).date()  # noqa: DTZ007 -- naive date is intended
             except ValueError:
                 continue
     return None
@@ -53,25 +48,17 @@ def parse_corporate_action_date(record: dict[str, object]) -> date | None:
 class CorporateActionsDownloader(ArchiveDownloader):
     """Fetch corporate action JSON archives into the archive root."""
 
-    def __init__(
-        self,
-        root: Path | str,
-        *,
-        sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
-        skip_existing: bool = True,
-        strict: bool = False,
-        all_calendar_days: bool = False,
-        fetch_bytes: Callable[[str], bytes] | None = None,
-    ) -> None:
-        super().__init__(
-            root,
-            sleep_seconds=sleep_seconds,
-            skip_existing=skip_existing,
-            fetch_bytes=fetch_bytes,
-            default_accept="application/json",
-        )
-        self._strict = strict
-        self._all_calendar_days = all_calendar_days
+    accept: ClassVar[str] = "application/json"
+
+    @staticmethod
+    def request_url(from_date: date, to_date: date) -> str:
+        """NSE corporate-actions API URL for a date span."""
+        params = {
+            "index": "equities",
+            "from_date": from_date.strftime("%d-%m-%Y"),
+            "to_date": to_date.strftime("%d-%m-%Y"),
+        }
+        return f"{CORPORATE_ACTIONS_API_URL}?{urlencode(params)}"
 
     def download_range(self, from_date: date, to_date: date) -> DownloadSummary:
         if from_date > to_date:
@@ -108,7 +95,7 @@ class CorporateActionsDownloader(ArchiveDownloader):
         )
 
     def _download_batch(self, batch_days: list[date], span_start: date, span_end: date) -> int:
-        url = corporate_actions_request_url(span_start, span_end)
+        url = self.request_url(span_start, span_end)
         payload = self.fetch_bytes_throttled(url)
         try:
             decoded = json.loads(payload)

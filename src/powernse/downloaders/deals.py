@@ -2,13 +2,11 @@
 
 import logging
 from abc import ABC
-from collections.abc import Callable
 from datetime import date
 
-from powernse.constants import ARCHIVE_BASE_URL, DEFAULT_SLEEP_SECONDS
+from powernse.constants import ARCHIVE_BASE_URL
 from powernse.datasets import BLOCK_DEALS, BULK_DEALS, FO_SECBAN, Dataset
 from powernse.downloaders.base import ArchiveDownloader
-from powernse.downloaders.dated import RootLike
 from powernse.errors import DownloadError
 from powernse.types import DownloadSummary
 
@@ -25,18 +23,6 @@ class SnapshotCsvDownloader(ArchiveDownloader, ABC):
     dataset: Dataset
     snapshot_url: str
     snapshot_label: str
-
-    def __init__(
-        self,
-        root: RootLike,
-        *,
-        sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
-        skip_existing: bool = True,
-        strict: bool = False,
-        fetch_bytes: Callable[[str], bytes] | None = None,
-    ) -> None:
-        super().__init__(root, sleep_seconds=sleep_seconds, skip_existing=skip_existing, fetch_bytes=fetch_bytes)
-        self._strict = strict
 
     def key_for(self, label_date: date) -> str:
         return self.archive.staged_key(self.dataset, label_date)

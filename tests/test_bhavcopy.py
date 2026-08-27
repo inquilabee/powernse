@@ -12,26 +12,26 @@ from powernse.archive import extract_csv_from_zip, manifest_path, sha256_file
 from powernse.calendar import TradingCalendar, iter_trading_dates
 from powernse.data import NSEData
 from powernse.datasets import BHAVCOPY
-from powernse.downloaders.bhavcopy import BhavcopyDownloader, bhavcopy_archive_url
+from powernse.downloaders.bhavcopy import BhavcopyDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.http import NseHttpClient, RequestThrottler
 
 
 def test_bhavcopy_archive_url_legacy_format() -> None:
-    url = bhavcopy_archive_url(date(2024, 1, 2))
+    url = BhavcopyDownloader.archive_url(date(2024, 1, 2))
     assert url.endswith("/cm02JAN2024bhav.csv.zip")
     assert "/historical/EQUITIES/2024/JAN/" in url
 
 
 def test_bhavcopy_archive_url_udiff_format() -> None:
-    url = bhavcopy_archive_url(date(2024, 8, 1))
+    url = BhavcopyDownloader.archive_url(date(2024, 8, 1))
     assert url.endswith("/BhavCopy_NSE_CM_0_0_0_20240801_F_0000.csv.zip")
     assert "/content/cm/" in url
 
 
 def test_bhavcopy_archive_url_udiff_switch_boundary() -> None:
-    assert "BhavCopy_NSE_CM" in bhavcopy_archive_url(date(2024, 7, 8))
-    assert "cm05JUL2024bhav" in bhavcopy_archive_url(date(2024, 7, 5))
+    assert "BhavCopy_NSE_CM" in BhavcopyDownloader.archive_url(date(2024, 7, 8))
+    assert "cm05JUL2024bhav" in BhavcopyDownloader.archive_url(date(2024, 7, 5))
 
 
 def test_staged_bhavcopy_csv_path_layout() -> None:
@@ -76,7 +76,7 @@ def test_iter_trading_dates_spans_pre_xbom_and_sessions() -> None:
 
 def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
     trade_date = date(2024, 1, 2)
-    url = bhavcopy_archive_url(trade_date)
+    url = BhavcopyDownloader.archive_url(trade_date)
     payload = zip_bytes(("cm02JAN2024bhav.csv", "SYMBOL,SERIES\nRELIANCE,EQ\n"))
 
     def fetch(_url: str) -> bytes:

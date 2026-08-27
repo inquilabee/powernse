@@ -7,16 +7,16 @@ from support import staged_path, zip_bytes
 
 from powernse.datasets import BULK_DEALS, FO_BHAVCOPY, FULL_BHAVCOPY, INDEX_CLOSES
 from powernse.downloaders.deals import BULK_DEALS_URL, BulkDealsDownloader
-from powernse.downloaders.fo_bhavcopy import FoBhavcopyDownloader, fo_bhavcopy_archive_url
-from powernse.downloaders.full_bhavcopy import FullBhavcopyDownloader, full_bhavcopy_archive_url
-from powernse.downloaders.index_closes import IndexClosesDownloader, index_closes_archive_url
+from powernse.downloaders.fo_bhavcopy import FoBhavcopyDownloader
+from powernse.downloaders.full_bhavcopy import FullBhavcopyDownloader
+from powernse.downloaders.index_closes import IndexClosesDownloader
 
 
 def test_fo_bhavcopy_url_and_stage(tmp_path: Path) -> None:
     trade_date = date(2024, 8, 9)
-    url = fo_bhavcopy_archive_url(trade_date)
+    url = FoBhavcopyDownloader.archive_url(trade_date)
     assert url.endswith("BhavCopy_NSE_FO_0_0_0_20240809_F_0000.csv.zip")
-    legacy = fo_bhavcopy_archive_url(date(2024, 1, 2))
+    legacy = FoBhavcopyDownloader.archive_url(date(2024, 1, 2))
     assert "/content/historical/DERIVATIVES/2024/JAN/fo02JAN2024bhav.csv.zip" in legacy
     payload = zip_bytes(("BhavCopy_NSE_FO_0_0_0_20240809_F_0000.csv", "TckrSymb,ClsPric\nRELIANCE,100\n"))
 
@@ -32,8 +32,8 @@ def test_fo_bhavcopy_url_and_stage(tmp_path: Path) -> None:
 
 def test_index_closes_and_full_bhavcopy(tmp_path: Path) -> None:
     trade_date = date(2024, 8, 9)
-    assert "ind_close_all_09082024.csv" in index_closes_archive_url(trade_date)
-    assert "sec_bhavdata_full_09082024.csv" in full_bhavcopy_archive_url(trade_date)
+    assert "ind_close_all_09082024.csv" in IndexClosesDownloader.archive_url(trade_date)
+    assert "sec_bhavdata_full_09082024.csv" in FullBhavcopyDownloader.archive_url(trade_date)
 
     def fetch_index(url: str) -> bytes:
         assert "ind_close_all" in url

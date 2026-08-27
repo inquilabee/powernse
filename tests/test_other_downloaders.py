@@ -8,10 +8,9 @@ from support import staged_path
 
 from powernse.data import NSEData
 from powernse.datasets import CORPORATE_ACTIONS, INDEX_CONSTITUENTS
-from powernse.downloaders.corporate_actions import CorporateActionsDownloader, corporate_actions_request_url
+from powernse.downloaders.corporate_actions import CorporateActionsDownloader
 from powernse.downloaders.index_constituents import (
     IndexConstituentsDownloader,
-    index_constituents_request_url,
     index_slug,
     parse_index_constituent_symbols,
 )
@@ -20,7 +19,7 @@ from powernse.types import DownloadSummary
 
 
 def test_corporate_actions_url_shape() -> None:
-    url = corporate_actions_request_url(date(2024, 8, 1), date(2024, 8, 1))
+    url = CorporateActionsDownloader.request_url(date(2024, 8, 1), date(2024, 8, 1))
     assert "corporates-corporateActions" in url
     assert "from_date=01-08-2024" in url
 
@@ -83,7 +82,7 @@ def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
 
 
 def test_index_constituents_url() -> None:
-    url = index_constituents_request_url("NIFTY 50")
+    url = IndexConstituentsDownloader.request_url("NIFTY 50")
     assert "equity-stock-indices" in url
 
 

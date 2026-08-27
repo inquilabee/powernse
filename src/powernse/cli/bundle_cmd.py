@@ -5,7 +5,7 @@ from typing import Annotated
 
 import typer
 
-from powernse.bundle import BundleFetcher, github_repo_from_package_metadata
+from powernse.bundle import BundleFetcher
 from powernse.settings import Settings
 
 
@@ -29,7 +29,7 @@ def register_bundle_commands(app: typer.Typer) -> None:
     ) -> None:
         """Download the tracked nse-data/ tree from GitHub as a zip and extract it."""
         settings = Settings.resolve(dest)
-        resolved_repo = repo or settings.github_repo or github_repo_from_package_metadata()
+        resolved_repo = repo or settings.github_repo or BundleFetcher.repo_from_package_metadata()
         resolved_branch = branch or settings.github_branch
         written = BundleFetcher().download_to(
             settings.archive_root,
