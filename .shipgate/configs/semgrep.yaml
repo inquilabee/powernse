@@ -22,3 +22,8 @@ rules:
     message: Prefer assert with a message for clearer test failures.
     pattern: assert $X
     pattern-not: assert $X, $MSG
+    # This repo's convention (AGENTS.md) is bare asserts in tests; the security
+    # rules below still scan tests/.
+    paths:
+      exclude:
+        - tests/

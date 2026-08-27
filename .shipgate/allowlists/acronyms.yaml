@@ -4,3 +4,19 @@ UX: user experience
 JSCPD: copy-paste detector tool
 SARIF: Static Analysis Results Interchange Format
 PR: pull request
+
+# PowerNSE domain terms
+NSE: National Stock Exchange of India
+XBOM: exchange_calendars code for the NSE/BSE equity trading calendar
+OHLC: open / high / low / close
+OHLCV: open / high / low / close / volume
+CM: cash market (NSE segment)
+CA: corporate action
+FO: futures and options (F&O)
+UDIFF: NSE's unified daily bhavcopy file format
+ISIN: International Securities Identification Number
+OIDC: OpenID Connect (Trusted Publisher auth)
+MIT: the MIT open-source license
+CHANGELOG: the CHANGELOG.md file
+DISCLAIMER: the DISCLAIMER.md file
+LICENSE: the LICENSE file
