@@ -19,6 +19,7 @@ Internal reshape; the `NSEData` + downloaders + `Settings`/errors surface is oth
 - `powernse.calendar.is_weekend` / `calendar_session_bounds` → `TradingCalendar` (`XBOM` is the module singleton; `iter_trading_dates` unchanged)
 - Downloaders: the per-archive `*_archive_url` / `staged_*_csv_path` / `staged_*_csv_key` / `latest_staged_*_date` / `resolve_*_resume_range` module functions are gone. Remote URLs are `@staticmethod archive_url` / `request_url` on each downloader; staged paths are `ArchiveRoot.staged_path(dataset, day)` via the new `powernse.datasets` registry; resume windows are `resolve_dated_resume_range(root, dataset, ...)`
 - `powernse.archive.extract_zip_payload_to_csv_bytes` → `extract_csv_from_zip` (in the new `powernse.archive.payloads`, with `looks_like_html`); `powernse.http` no longer re-exports `looks_like_html`
+- Every downloader now shares one `ArchiveDownloader.__init__`. A hand-built `Settings(sleep_seconds=…)` / `Settings(skip_existing=…)` passed as the `root` argument to a dated or snapshot downloader is now honoured (previously silently ignored by those subclasses)
 
 ### Changed — breaking
 
