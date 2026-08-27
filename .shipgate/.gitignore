@@ -1,0 +1,17 @@
+# ShipGate managed runtime — do not commit
+tools/
+cache/
+reports/
+server/
+worktrees/
+*.lock
+
+# Project policy — safe to commit
+!configs/
+!configs/**
+!catalog/
+!catalog/**
+!allowlists/
+!allowlists/**
+!gates/
+!gates/**

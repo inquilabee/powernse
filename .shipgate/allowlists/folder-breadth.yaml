@@ -1,0 +1,3 @@
+entries:
+  - path: src/shipgate/catalog/bundled/catalog/tools
+    reason: One YAML file per bundled tool definition is intentional catalog layout.

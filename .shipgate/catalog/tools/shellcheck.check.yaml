@@ -1,0 +1,26 @@
+shellcheck.check:
+  executable: shellcheck
+  subcommand: []
+  modes:
+    - check
+  normalizer: generic_exit
+  install:
+    manager: binary
+    package: shellcheck
+    version: 0.11.0
+    binary: shellcheck
+    allow_path: false
+    download:
+      repo: koalaman/shellcheck
+      asset_template: shellcheck-{version}-{os}.{arch}.tar.xz
+      binary_name: shellcheck
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    extensions:
+      - .sh
+      - .bash
+    delivery: files

@@ -1,0 +1,52 @@
+semgrep.scan:
+  executable: semgrep
+  subcommand:
+    - scan
+    - --json
+    - --config
+    - p/python
+    - --config
+    - p/security-audit
+    - --config
+    - p/secrets
+  modes:
+    - check
+  normalizer: semgrep
+  install:
+    manager: python
+    package: semgrep
+    version: 1.170.1
+    requires_python: ">=3.11,<3.14"
+  tags:
+    - security
+  cache:
+    results: true
+    ttl_seconds: 3600
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config
+      style: repeated
+    exclude:
+      flag: --exclude
+      style: repeated
+  configuration:
+    bundled: configs/semgrep.yaml
+    discover:
+      - .shipgate/configs/semgrep.yaml
+      - .semgrep.yml
+      - .semgrep.yaml
+      - semgrep.yaml
+      - semgrep.yml
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - exclude
+    - paths
+  scope:
+    delivery: root

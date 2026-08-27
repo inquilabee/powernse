@@ -1,0 +1,11 @@
+title = "ShipGate bundled gitleaks policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "ShipGate radon progressive baseline env constant names"
+regexTarget = "match"
+regexes = [
+  '''SHIPGATE_RADON_''',
+]

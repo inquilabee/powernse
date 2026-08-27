@@ -1,0 +1,75 @@
+suite: full
+env: managed
+target: .
+changed-only: true
+# `full` runs sequentially: parallel semgrep + radon + jscpd + every policy gate
+# OOM-kills this machine (exit 137). Slower, but reproducible.
+parallel: false
+error-format: compact
+configs:
+  mode: auto
+checks:
+  semgrep.scan:
+    scope: semgrep
+  ty.check:
+    scope: ty-src
+  # nse-data/ is 15,935 vendored NSE data files with its own README — not project
+  # source. Keep it out of the doc/prose/dependency gates. (semgrep already skips
+  # it via .semgrepignore; radon/jscpd are src-scoped.)
+  codespell.check:
+    scope: no-vendor
+  vulture.check:
+    scope: no-vendor
+  markdownlint.check:
+    scope: no-vendor
+  yamllint.check:
+    scope: no-vendor
+  deptry.check:
+    scope: no-vendor
+  gate.acronym-allowlist:
+    scope: no-vendor
+  radon.cc:
+    # Letter rank is per-block. Median / p95 gate typical and tail complexity.
+    scope: python-src
+    threshold: B
+    median-mode: threshold
+    median-threshold: 3
+    p95-mode: threshold
+    p95-threshold: 7
+  radon.mi:
+    # Letter rank is per-file. Distribution floors are progressive (portable init);
+    # pin absolute median/p5/p10 via calibrate when ready.
+    scope: python-src
+    threshold: B
+    median-mode: progressive
+    p5-mode: progressive
+    p10-mode: progressive
+    minimum-mode: progressive
+  jscpd.check.python:
+    scope: python-src
+    threshold: "2"
+  jscpd.check.other:
+    threshold: "5"
+scopes:
+  semgrep:
+    target: .
+  no-vendor:
+    target: .
+    exclude: [nse-data]
+  python-src:
+    target: src
+  ty-src:
+    target: src
+  python-test-src:
+    target: tests
+  docs:
+    target: docs
+allowlists:
+  gate.acronym-allowlist: .shipgate/allowlists/acronyms.yaml
+  gate.folder-breadth: .shipgate/allowlists/folder-breadth.yaml
+  gate.module-size: .shipgate/allowlists/module-size.yaml
+  gate.module-private-vars: .shipgate/allowlists/module-private-vars.yaml
+  gate.test-only-symbols: .shipgate/allowlists/test-only-symbols.yaml
+  gate.repeated-strings: .shipgate/allowlists/repeated-strings.yaml
+  gate.class-local-functions: .shipgate/allowlists/class-local-functions.yaml
+  gate.staticmethod-soup: .shipgate/allowlists/staticmethod-soup.yaml

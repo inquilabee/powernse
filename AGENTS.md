@@ -18,8 +18,8 @@ docs/maintainer/       # release / publish
 
 Public surface: `powernse` package front (`NSEData`, downloaders) + one console script `powernse`.
 
-GitHub: https://github.com/inquilabee/powernse
-Docs: https://inquilabee.github.io/powernse/
+GitHub: <https://github.com/inquilabee/powernse>
+Docs: <https://inquilabee.github.io/powernse/>
 
 ## Commands
 
@@ -33,7 +33,7 @@ Docs: https://inquilabee.github.io/powernse/
 | Hooks | `make install-hooks` |
 | Release | Tag `vX.Y.Z` after bumping `pyproject.toml` — see [docs/maintainer/publish.md](docs/maintainer/publish.md) |
 
-Policy: `.shipgate/shipgate.yaml` (`suite: standard`) — gitignored (local-only, per-machine), so `suite: standard` is pinned via `--suite standard` on the `make check`/`make typecheck` invocations instead; do not rely on the local file alone for that. Docs: https://inquilabee.github.io/shipgate/
+Policy: `.shipgate/shipgate.yaml` (`suite: full`, `parallel: false`). The policy subset — `shipgate.yaml`, `catalog/`, `configs/`, `allowlists/`, `gates/`, `lock.json` — **is versioned**; only the managed runtime (`tools/`, `cache/`, `reports/`, …) is gitignored (see `.shipgate/.gitignore`). So `make check` / pre-push / CI run the full suite reproducibly with no `--suite` pin. `nse-data/` is excluded via the `no-vendor` scope. Docs: <https://inquilabee.github.io/shipgate/>
 
 `make check` / pre-commit / CI always use `--full-tree`. Bare `shipgate check` honors `changed-only: true` in policy and may scan fewer files. Do not call `uv run ruff` for gates — Ruff runs via ShipGate managed tools; lint settings stay in `[tool.ruff]`.
 

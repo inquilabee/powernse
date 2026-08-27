@@ -1,0 +1,4 @@
+# Users often allowlist utils/ for single-use helpers, e.g.:
+# - path: src/myapp/utils
+#   reason: utils helpers may be single-use until shared callers appear
+entries: []

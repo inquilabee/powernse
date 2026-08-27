@@ -1,0 +1,42 @@
+shfmt.apply:
+  executable: shfmt
+  subcommand: []
+  modes:
+    - apply
+    - check
+  normalizer: generic_exit
+  install:
+    manager: binary
+    package: shfmt
+    version: 3.6.0
+    binary: shfmt
+    allow_path: false
+    download:
+      repo: mvdan/sh
+      asset_template: shfmt_v{version}_{os}_{arch}
+      binary_name: shfmt
+      arch_map:
+        x86_64: amd64
+  cli:
+    paths:
+      style: positional
+    fix:
+      flag: -w
+      style: boolean
+    simplify:
+      flag: -s
+      style: boolean
+      default: true
+    check:
+      flag: -d
+      style: boolean
+  option_order:
+    - fix
+    - simplify
+    - check
+    - paths
+  scope:
+    extensions:
+      - .sh
+      - .bash
+    delivery: files

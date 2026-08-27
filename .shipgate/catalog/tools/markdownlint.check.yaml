@@ -1,0 +1,38 @@
+markdownlint.check:
+  executable: markdownlint
+  subcommand: []
+  modes:
+    - check
+  normalizer: markdownlint
+  install:
+    manager: binary
+    package: markdownlint-cli
+    version: 0.49.1
+    binary: markdownlint
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config
+      style: scalar
+  configuration:
+    bundled: configs/markdownlint.json
+    discover:
+      - .shipgate/configs/markdownlint.json
+      - .markdownlint.json
+      - .markdownlint.yaml
+      - .markdownlint.yml
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - paths
+  scope:
+    extensions:
+      - .md
+    globs:
+      - "**/*.mdc"
+    delivery: files

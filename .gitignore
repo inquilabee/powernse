@@ -179,9 +179,17 @@ pyrightconfig.json
 .vscode/
 .powerhouse/
 .cursor/
+.claude/
 
 # MkDocs
 /site/
 
-# ShipGate: local tool cache and policy, not versioned
-.shipgate/
+# ShipGate: managed runtime is local-only; the policy subset (shipgate.yaml,
+# catalog/, configs/, allowlists/, gates/, lock.json) IS versioned so `--suite full`
+# is reproducible on a fresh clone / CI. See .shipgate/.gitignore for the !-rules.
+.shipgate/tools/
+.shipgate/cache/
+.shipgate/reports/
+.shipgate/server/
+.shipgate/worktrees/
+.shipgate/*.lock

@@ -1,0 +1,13 @@
+max_allowed: 12
+scan_roots:
+  - .
+extensions:
+  - .py
+  - .md
+  - .yaml
+  - .sh
+  - .html
+  - .css
+  - .js
+strict: true
+allowlist_file: .shipgate/allowlists/folder-breadth.yaml

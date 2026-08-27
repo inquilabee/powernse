@@ -1,0 +1,24 @@
+# ShipGate bundled semgrep rules (supplement registry packs from catalog subcommand).
+rules:
+  - id: shipgate.subprocess-shell
+    languages: [python]
+    severity: WARNING
+    message: Avoid subprocess with shell=True; use a list argv instead.
+    patterns:
+      - pattern: subprocess.run(..., shell=True, ...)
+      - pattern: subprocess.call(..., shell=True, ...)
+      - pattern: subprocess.check_call(..., shell=True, ...)
+      - pattern: subprocess.check_output(..., shell=True, ...)
+      - pattern: subprocess.Popen(..., shell=True, ...)
+  - id: shipgate.hardcoded-bind-all
+    languages: [python]
+    severity: WARNING
+    message: Binding to all interfaces (0.0.0.0) may expose services unintentionally.
+    pattern: |
+      $HOST = "0.0.0.0"
+  - id: shipgate.assert-without-message
+    languages: [python]
+    severity: INFO
+    message: Prefer assert with a message for clearer test failures.
+    pattern: assert $X
+    pattern-not: assert $X, $MSG

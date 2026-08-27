@@ -1,0 +1,52 @@
+bandit.scan:
+  executable: bandit
+  display_name: Bandit
+  description: Python security issue scanner
+  documentation_url: https://bandit.readthedocs.io/
+  subcommand:
+    - -r
+    - -ll
+    - -q
+  modes:
+    - check
+  normalizer: bandit
+  install:
+    manager: python
+    package: bandit
+    version: 1.9.4
+  tags:
+    - security
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: -c
+      style: scalar
+    format:
+      flag: -f
+      style: scalar
+    output:
+      flag: -o
+      style: scalar
+  configuration:
+    bundled: configs/bandit.yaml
+    discover:
+      - .shipgate/configs/bandit.yaml
+      - .bandit
+      - bandit.yaml
+      - pyproject.toml
+    pyproject_section: tool.bandit
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - format
+    - output
+    - paths
+  scope:
+    extensions:
+      - .py
+    delivery: root

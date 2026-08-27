@@ -1,0 +1,21 @@
+vulture.check:
+  executable: vulture
+  subcommand:
+    - --min-confidence
+    - "80"
+  modes:
+    - check
+  normalizer: vulture
+  install:
+    manager: python
+    package: vulture
+    version: 2.16
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    extensions:
+      - .py
+    delivery: dirs

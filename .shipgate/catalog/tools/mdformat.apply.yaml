@@ -1,0 +1,42 @@
+mdformat.apply:
+  executable: mdformat
+  subcommand: []
+  modes:
+    - apply
+    - check
+  normalizer: generic_exit
+  install:
+    manager: python
+    package: mdformat
+    version: 1.0.0
+    requires:
+      - mdformat-frontmatter>=2.0
+  cli:
+    paths:
+      style: positional
+    extensions:
+      flag: --extensions
+      style: repeated
+      default: frontmatter
+    check:
+      flag: --check
+      style: boolean
+  configuration:
+    bundled: configs/mdformat.toml
+    discover:
+      - .shipgate/configs/mdformat.toml
+      - .mdformat.toml
+    precedence:
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - extensions
+    - check
+    - paths
+  scope:
+    extensions:
+      - .md
+    globs:
+      - "**/*.mdc"
+    delivery: files

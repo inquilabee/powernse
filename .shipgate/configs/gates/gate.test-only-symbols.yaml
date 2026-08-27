@@ -1,0 +1,3 @@
+scan_roots:
+  - .
+allowlist_file: .shipgate/allowlists/test-only-symbols.yaml

@@ -1,0 +1,14 @@
+extends: default
+rules:
+  line-length:
+    max: 100
+  document-start: disable
+  truthy:
+    check-keys: false
+  trailing-spaces: enable
+  key-duplicates: enable
+  indentation:
+    spaces: 2
+  quoted-strings:
+    quote-type: any
+    required: only-when-needed
