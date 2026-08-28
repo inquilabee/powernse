@@ -1,3 +1,8 @@
 entries:
   - path: src/shipgate/catalog/bundled/catalog/tools
     reason: One YAML file per bundled tool definition is intentional catalog layout.
+  - path: tests
+    reason: >-
+      Flat one-file-per-source-area pytest suite (test_bhavcopy.py ...
+      test_index.py) + support.py. Splitting into subdirs would just add
+      __init__/conftest ceremony; pytest discovers a flat tests/ fine.

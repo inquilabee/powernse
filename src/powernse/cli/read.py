@@ -71,6 +71,17 @@ def register_read_commands(app: typer.Typer) -> None:
         )
         print_frame_or_exit(frame, empty_message=f"No F&O rows for {symbol.upper()} under {data.root}")
 
+    @app.command("indexes")
+    def indexes_cmd(root: RootOpt = None) -> None:
+        """List the index names present in the latest staged index-closes file."""
+        data = NSEData(root, create=False)
+        names = data.indexes()
+        if not names:
+            typer.echo(f"No staged index closes under {data.root}", err=True)
+            raise typer.Exit(code=1)
+        for name in names:
+            typer.echo(name)
+
     @app.command("index-ohlc")
     def index_ohlc_cmd(
         index_name: Annotated[str, typer.Argument(help='Index name, e.g. "Nifty 50"')],
@@ -80,7 +91,7 @@ def register_read_commands(app: typer.Typer) -> None:
     ) -> None:
         """Print index OHLC from staged index-closes files (modest windows)."""
         data = NSEData(root, create=False)
-        frame = data.index_ohlc(index_name, from_date=from_date, to_date=to_date)
+        frame = data.index(index_name).ohlc(from_date=from_date, to_date=to_date)
         print_frame_or_exit(frame, empty_message=f"No index rows for {index_name!r} under {data.root}")
 
     @app.command("doctor")

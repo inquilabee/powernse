@@ -77,7 +77,7 @@ def test_index_constituents_parse_and_download(tmp_path: Path) -> None:
     assert path.is_file()
 
     reader = NSEData(tmp_path)
-    assert reader.index_symbols(trade_date, "NIFTY 50") == ["RELIANCE"]
+    assert reader.index("NIFTY 50").symbols(trade_date) == ["RELIANCE"]
     inv = reader.inventory()
     assert inv["index_constituents"] == 1
 

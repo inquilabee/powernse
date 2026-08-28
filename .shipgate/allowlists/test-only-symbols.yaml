@@ -7,3 +7,8 @@ entries:
     reason: >-
       Public read API (unclassified CA records mentioning a symbol across the
       window); low-level escape hatch beside corporate_actions().
+  - path: src/powernse/calendar.py:TradingCalendar.offset
+    reason: >-
+      Public calendar arithmetic added for data-provider consumers (the
+      "hold N trading sessions" primitive); no in-repo caller yet, covered by
+      tests/test_calendar.py.

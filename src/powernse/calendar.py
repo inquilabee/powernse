@@ -76,19 +76,13 @@ class TradingCalendar:
         if n == 0:
             return day
         span = abs(n)
-        reach = span * 2 + 8
-        for _ in range(6):
-            if n > 0:
-                found = list(self.iter_dates(day + timedelta(days=1), day + timedelta(days=reach)))
-                if len(found) >= span:
-                    return found[span - 1]
-            else:
-                found = list(self.iter_dates(day - timedelta(days=reach), day - timedelta(days=1)))
-                if len(found) >= span:
-                    return found[-span]
-            reach *= 2
-        msg = f"offset({day}, {n}) did not resolve within {reach} calendar days"
-        raise ValueError(msg)
+        pad = timedelta(days=span * 3 + 10)  # >= span sessions even across long weekends + holidays
+        window = (day + timedelta(days=1), day + pad) if n > 0 else (day - pad, day - timedelta(days=1))
+        sessions = self.sessions(*window)
+        if len(sessions) < span:
+            msg = f"offset({day}, {n}) needs a wider window than {pad.days} calendar days"
+            raise ValueError(msg)
+        return sessions[span - 1] if n > 0 else sessions[-span]
 
     def _weekdays(self, from_date: date, to_date: date) -> Iterator[date]:
         for day in self._every_day(from_date, to_date):

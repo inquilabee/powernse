@@ -7,6 +7,6 @@ entries:
   - path: src/powernse/downloaders/index_constituents.py:index_slug
     reason: >-
       Shared: IndexConstituentsDownloader stages the discriminated path and
-      reading.IndexReader.index_symbols reads it back -- both need the same
+      reading.Index.symbols reads it back -- both need the same
       label->slug normalization. The gate misses the cross-module use through
       the downloaders package front.

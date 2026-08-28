@@ -18,6 +18,7 @@ from powernse.downloaders import (
     IndexConstituentsDownloader,
 )
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
+from powernse.reading import Index
 from powernse.schemas import AdjustedOhlcSchema, FoSchema, IndexSchema, OhlcSchema
 from powernse.settings import Settings
 from powernse.types import DownloadSummary
@@ -40,6 +41,7 @@ __all__ = [
     "FullBhavcopyDownloader",
     "IndexClosesDownloader",
     "IndexConstituentsDownloader",
+    "Index",
     "IndexSchema",
     "NSEData",
     "OhlcSchema",

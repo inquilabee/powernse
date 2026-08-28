@@ -27,7 +27,7 @@ class IndexConstituentRecord:
 
 
 def index_slug(index_name: str) -> str:
-    """Normalize an index label for filesystem paths (shared with NSEData.index_symbols)."""
+    """Normalize an index label for filesystem paths (shared with NSEData.index().symbols)."""
     return re.sub(r"[^a-z0-9]+", "_", index_name.strip().lower()).strip("_")
 
 

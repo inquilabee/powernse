@@ -58,7 +58,7 @@ def test_fo_and_index_queries(tmp_path: Path) -> None:
     assert fo.iloc[0]["close"] == 2505.0
     ce = data.fo_bars("RELIANCE", option_type="CE", strike=770.0)
     assert len(ce) == 1
-    indexes = data.index_ohlc("Nifty 50")
+    indexes = data.index("Nifty 50").ohlc()
     assert len(indexes) == 1
     assert indexes.iloc[0]["close"] == 24367.5
 

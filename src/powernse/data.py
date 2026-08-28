@@ -16,7 +16,7 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
-from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, IndexReader, SnapshotReader
+from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, Index, IndexReader, SnapshotReader
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
 
@@ -137,15 +137,13 @@ class NSEData:
             option_type=option_type,
         )
 
-    def index_ohlc(
-        self, index_name: str, *, from_date: date | None = None, to_date: date | None = None
-    ) -> pd.DataFrame:
-        """OHLC for one index name across staged index-closes files (IndexSchema-shaped)."""
-        return self._index.index_ohlc(index_name, from_date=from_date, to_date=to_date)
+    def indexes(self, on: date | None = None) -> list[str]:
+        """Index names present in the staged index-closes file for ``on`` (default: latest day)."""
+        return self._index.names(on=on)
 
-    def index_symbols(self, trade_date: date, index_name: str) -> list[str]:
-        """EQ-series constituent symbols for an index on a staged snapshot date."""
-        return self._index.index_symbols(trade_date, index_name)
+    def index(self, name: str) -> Index:
+        """A handle to one index: ``.ohlc()`` / ``.latest()`` / ``.symbols(on)`` / ``.constituent_dates()``."""
+        return Index(name, self._index)
 
     # -- corporate actions -------------------------------------------------
 
