@@ -8,11 +8,12 @@ rows::
     2,LICI
 """
 
+import contextlib
 import re
 from datetime import date, datetime
 
-_TRADE_DATE = re.compile(r"Trade Date\s+(\d{2}-[A-Za-z]{3}-\d{4})", re.IGNORECASE)
-_BAN_ROW = re.compile(r"^\d+\s*,\s*(\S.*)$")
+TRADE_DATE_RE = re.compile(r"Trade Date\s+(\d{2}-[A-Za-z]{3}-\d{4})", re.IGNORECASE)
+BAN_ROW_RE = re.compile(r"^\d+\s*,\s*(\S.*)$")
 
 
 def parse_secban(text: str) -> tuple[date | None, list[str]]:
@@ -26,16 +27,10 @@ def parse_secban(text: str) -> tuple[date | None, list[str]]:
     seen: set[str] = set()
     for raw in text.splitlines():
         line = raw.strip()
-        if effective is None and (match := _TRADE_DATE.search(line)):
-            effective = _as_date(match.group(1))
-        elif (row := _BAN_ROW.match(line)) and (symbol := row.group(1).strip().upper()) not in seen:
+        if effective is None and (match := TRADE_DATE_RE.search(line)):
+            with contextlib.suppress(ValueError):
+                effective = datetime.strptime(match.group(1), "%d-%b-%Y").date()  # noqa: DTZ007 -- naive date
+        elif (row := BAN_ROW_RE.match(line)) and (symbol := row.group(1).strip().upper()) not in seen:
             seen.add(symbol)
             symbols.append(symbol)
     return effective, symbols
-
-
-def _as_date(token: str) -> date | None:
-    try:
-        return datetime.strptime(token, "%d-%b-%Y").date()  # noqa: DTZ007 -- naive date is intended
-    except ValueError:
-        return None
