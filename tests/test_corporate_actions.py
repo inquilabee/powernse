@@ -85,7 +85,6 @@ def test_percent_dividend_and_consolidation_adjust_bars() -> None:
     assert adjusted[date(2024, 1, 1)] == pytest.approx(196.0)
 
 
-
 @pytest.mark.parametrize(
     ("subject", "expected"),
     [
