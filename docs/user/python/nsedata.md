@@ -154,6 +154,14 @@ from corporate-action subjects; unrecognized subjects are skipped. Dividend adju
 uses the close on the prior trading day, so it needs OHLC bars loaded before the CA
 records.
 
+**Adjustment scope.** Only bonus, split, and dividend events feed the divisor in
+`ohlc_adjusted` / `wide_frame(adjusted=True)` / `CorporateActions.factors`. Rights
+issues and buyback tenders are still classified by `corporate_actions()` (and
+flagged `price_affecting`), but they are **not** price-adjusted — their factor
+depends on terms (subscription / tender price, ratio) that NSE's free-text
+subject line does not carry reliably. Adjust for those out of band if a long
+history needs them.
+
 Each DataFrame-returning method validates its result against a `powernse.schemas` schema
 (`OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema`) before returning it — the
 same column/type/nullability contract the old `OhlcBar`/`AdjustedOhlcBar`/`FoBar`/

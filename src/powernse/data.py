@@ -263,7 +263,11 @@ class NSEData:
     def ohlc_adjusted(
         self, symbol: str, *, from_date: date | None = None, to_date: date | None = None, series: str = "EQ"
     ) -> pd.DataFrame:
-        """Equity OHLC with opt-in bonus/split/dividend adjustments (AdjustedOhlcSchema-shaped)."""
+        """Equity OHLC with opt-in bonus/split/dividend adjustments (AdjustedOhlcSchema-shaped).
+
+        Rights issues and buyback tenders are not adjusted -- see
+        :class:`powernse.corporate_actions.CorporateActions`.
+        """
         bars = self._bhavcopy.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
         if bars.empty:
             return empty_frame(ADJUSTED_OHLC_SCHEMA)
