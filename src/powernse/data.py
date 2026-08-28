@@ -70,15 +70,38 @@ class NSEData:
         from_date: date | None = None,
         to_date: date | None = None,
         series: str = "EQ",
+        adjusted: bool = False,
     ) -> pd.DataFrame:
         """Date x Symbol matrix for one OHLCV column in a single pass over staged bhavcopy days.
 
-        Values are raw (unadjusted) bhavcopy; run ``ohlc_adjusted`` per symbol
-        first if you need split/bonus/dividend-adjusted prices.
+        ``adjusted=True`` divides each symbol's column by its cumulative
+        bonus/split/dividend factor (newest date == 1.0), the same math as
+        ``ohlc_adjusted`` -- only ``column="close"`` is supported for it.
         """
-        return self._bhavcopy.wide_frame(
+        raw = self._bhavcopy.wide_frame(
             column=column, symbols=symbols, from_date=from_date, to_date=to_date, series=series
         )
+        if not adjusted or raw.empty:
+            return raw
+        if column != "close":
+            msg = f"adjusted=True only supports column='close', got {column!r}"
+            raise ValueError(msg)
+        return self._adjust_matrix(raw)
+
+    def _adjust_matrix(self, raw: pd.DataFrame) -> pd.DataFrame:
+        start, end = raw.index[0], raw.index[-1]
+        out = raw.copy()
+        for symbol in raw.columns:
+            col = raw[symbol].dropna()
+            if col.empty:
+                continue
+            records = self._actions.records_in_adjustment_window(str(symbol), window_start=start, end=end)
+            if not records:
+                continue
+            bars = pd.DataFrame({"trade_date": list(col.index), "close": col.to_numpy()})
+            factors = CorporateActions(records).factors(bars).reindex(raw.index)
+            out[symbol] = raw[symbol] / factors
+        return out
 
     def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
         """XBOM sessions in the window that have no staged bhavcopy file."""

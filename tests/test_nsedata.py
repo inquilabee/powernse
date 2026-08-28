@@ -129,6 +129,36 @@ def test_wide_frame_rejects_unknown_column(tmp_path: Path) -> None:
         NSEData(tmp_path).wide_frame(column="not-a-real-column")
 
 
+def test_wide_frame_adjusted_matches_ohlc_adjusted(tmp_path: Path) -> None:
+    day_before, ex_day = date(2024, 8, 1), date(2024, 8, 2)
+    for trade_date, close in ((day_before, 200.0), (ex_day, 100.0)):
+        _write_legacy(
+            tmp_path,
+            trade_date,
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{close},{close},{close},{close},100\nTCS,EQ,50,50,50,50,9\n",
+        )
+    ca = staged_path(tmp_path, CORPORATE_ACTIONS, ex_day)
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    ca.write_text('[{"symbol":"RELIANCE","subject":"Bonus 1:1","exDate":"2024-08-02"}]', encoding="utf-8")
+
+    data = NSEData(tmp_path)
+    adj = data.wide_frame(column="close", from_date=day_before, to_date=ex_day, adjusted=True)
+    # RELIANCE: pre-ex-date halved (factor 2.0), ex-date bar itself untouched
+    assert adj.loc[day_before, "RELIANCE"] == 100.0
+    assert adj.loc[ex_day, "RELIANCE"] == 100.0
+    # TCS has no CA -> identical to raw
+    assert adj.loc[day_before, "TCS"] == 50.0
+    # ...and it agrees with the per-symbol ohlc_adjusted close series
+    per_symbol = data.ohlc_adjusted("RELIANCE", from_date=day_before, to_date=ex_day)
+    assert per_symbol["close"].tolist() == [adj.loc[day_before, "RELIANCE"], adj.loc[ex_day, "RELIANCE"]]
+
+
+def test_wide_frame_adjusted_only_close(tmp_path: Path) -> None:
+    _write_legacy(tmp_path, date(2024, 1, 2), "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,1,1,1,1,1\n")
+    with pytest.raises(ValueError, match="only supports column='close'"):
+        NSEData(tmp_path).wide_frame(column="volume", adjusted=True)
+
+
 def test_ohlc_cli(tmp_path: Path) -> None:
     from powernse.cli import main
 

@@ -103,13 +103,13 @@ def test_apply_ignores_events_not_yet_effective() -> None:
     ex-date is beyond the newest loaded bar (the file is selected by label date,
     not ex-date). Regression for a bug where such an event's factor was applied to
     every bar because the newest bar's upper bound was unbounded (``date.max``).
-    Re-verified explicitly after the vectorized rewrite of ``_apply_adjustments``.
+    Re-verified explicitly after the vectorized `factors()` extraction.
     """
     bars = bars_frame((date(2024, 8, 1), 200.0), (date(2024, 8, 2), 202.0))
     actions = CorporateActions([{"subject": "Bonus 1:1", "exDate": "2024-09-15"}])  # ex-date after both bars
 
     # price_events() derives the raw (ex_date, factor) pair regardless of the bar window;
-    # adjust()/_apply_adjustments() is what must drop events beyond the newest bar.
+    # adjust()/factors() is what must drop events beyond the newest bar.
     assert actions.price_events(bars).to_dict() == {date(2024, 9, 15): 2.0}
     adjusted = actions.adjust(bars)
     assert adjusted["factor"].tolist() == [1.0, 1.0]

@@ -215,7 +215,7 @@ class CorporateActions:
         """Combined bonus/split/dividend divisor events, ex-date indexed, ready for :meth:`adjust`.
 
         Duplicate ex-dates stay as separate entries -- the cumulative product in
-        ``_apply_adjustments`` multiplies them in correctly either way.
+        ``factors`` multiplies them in correctly either way.
         """
         combined = sorted(self._bonus_split_events() + self._dividend_price_events(bars, self._dividend_events()))
         if not combined:
@@ -223,9 +223,46 @@ class CorporateActions:
         dates, factors = zip(*combined, strict=True)
         return pd.Series(factors, index=pd.Index(dates, name="ex_date"), dtype=float)
 
+    def factors(self, bars: pd.DataFrame) -> pd.Series:
+        """Per-bar cumulative CA divisor, indexed by ``trade_date`` (sorted).
+
+        ``adjusted_price = raw_price / factor``; the newest bar keeps factor 1.0.
+        For bar date ``d`` the divisor is the product of every event multiplier
+        with ``d < ex_date <= newest_bar_date``. Events with an ex-date *after*
+        the newest bar (announced but not yet effective in the window) are
+        dropped before anything is multiplied -- the exact bug class fixed in
+        commit 7439f050; keep that filter explicit.
+        """
+        ordered_dates = bars["trade_date"].sort_values().to_numpy()
+        if len(ordered_dates) == 0:
+            return pd.Series(dtype=float, name="factor")
+        events = self.price_events(bars)
+        events = events[events.index <= ordered_dates[-1]].sort_index()
+        if events.empty:
+            values = np.ones(len(ordered_dates))
+        else:
+            ex_dates = events.index.to_numpy()
+            # suffix_cumprod[k] = product of events[k:]; trailing 1.0 = "no events after".
+            suffix_cumprod = np.append(events.to_numpy()[::-1].cumprod()[::-1], 1.0)
+            values = suffix_cumprod[np.searchsorted(ex_dates, ordered_dates, side="right")]
+        return pd.Series(values, index=pd.Index(ordered_dates, name="trade_date"), name="factor")
+
     def adjust(self, bars: pd.DataFrame) -> pd.DataFrame:
         """Bonus/split/dividend-adjusted bars, cumulative so the newest bar keeps factor 1.0."""
-        return self._apply_adjustments(bars, self.price_events(bars))
+        if bars.empty:
+            return empty_frame(ADJUSTED_OHLC_SCHEMA)
+        ordered = bars.sort_values("trade_date").reset_index(drop=True)
+        factors = self.factors(ordered).to_numpy()
+        adjusted = ordered.assign(
+            open=ordered["open"] / factors,
+            high=ordered["high"] / factors,
+            low=ordered["low"] / factors,
+            close=ordered["close"] / factors,
+            volume=(ordered["volume"] * factors).round().astype(int),
+            factor=factors,
+        )[list(ADJUSTED_OHLC_SCHEMA.columns)]
+        ADJUSTED_OHLC_SCHEMA.validate(adjusted)
+        return adjusted
 
     def _bonus_split_events(self) -> list[tuple[date, float]]:
         events: list[tuple[date, float]] = []
@@ -278,45 +315,3 @@ class CorporateActions:
                 continue
             results.append((ex_date, prior_close / (prior_close - amount)))
         return results
-
-    @staticmethod
-    def _apply_adjustments(bars: pd.DataFrame, events: pd.Series) -> pd.DataFrame:
-        """Apply cumulative CA factors so the newest bar keeps factor 1.0.
-
-        For bar date ``d``, the cumulative factor is the product of every event's
-        multiplier where ``d < event.ex_date <= newest_bar_date`` (every CA
-        strictly after this bar, up to the last loaded bar). Vectorized as a
-        suffix cumulative-product over the sorted events, looked up per bar via
-        ``numpy.searchsorted``.
-
-        Events with an ex-date after the newest bar (announced but not yet
-        effective within the loaded window) are dropped before computing anything
-        -- ``events.index <= newest_date`` -- rather than an open-ended upper bound
-        that would apply them to every bar. This is the exact bug class fixed in
-        commit 7439f050; keep this filter explicit and easy to eyeball.
-        """
-        if bars.empty:
-            return empty_frame(ADJUSTED_OHLC_SCHEMA)
-        ordered = bars.sort_values("trade_date").reset_index(drop=True)
-        newest_date = ordered["trade_date"].max()
-        events = events[events.index <= newest_date].sort_index()
-
-        if events.empty:
-            factors = np.ones(len(ordered))
-        else:
-            ex_dates = events.index.to_numpy()
-            # suffix_cumprod[k] = product of events[k:]; trailing 1.0 = "no events after".
-            suffix_cumprod = np.append(events.to_numpy()[::-1].cumprod()[::-1], 1.0)
-            positions = np.searchsorted(ex_dates, ordered["trade_date"].to_numpy(), side="right")
-            factors = suffix_cumprod[positions]
-
-        adjusted = ordered.assign(
-            open=ordered["open"] / factors,
-            high=ordered["high"] / factors,
-            low=ordered["low"] / factors,
-            close=ordered["close"] / factors,
-            volume=(ordered["volume"] * factors).round().astype(int),
-            factor=factors,
-        )[list(ADJUSTED_OHLC_SCHEMA.columns)]
-        ADJUSTED_OHLC_SCHEMA.validate(adjusted)
-        return adjusted
