@@ -169,6 +169,14 @@ def face_value_of(record: Record) -> float | None:
     return value if value > 0 else None
 
 
+def dividend_hint_of(record: Record) -> float | None:
+    """A BSE-sourced per-share dividend amount the reader may have attached (``dividend_amount_hint``)."""
+    value = record.get("dividend_amount_hint")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return float(value) if value > 0 else None
+
+
 class SubjectClassifier:
     """Reads a CA record's free-text ``subject`` into a type and the numbers it implies."""
 
@@ -272,7 +280,8 @@ class SubjectClassifier:
             "price_factor": None,
         }
         if action_type == CorporateActionType.DIVIDEND:
-            row["dividend_amount"] = self.dividend_amount(subject, face_value=face_value_of(record))
+            parsed = self.dividend_amount(subject, face_value=face_value_of(record))
+            row["dividend_amount"] = parsed if parsed is not None else dividend_hint_of(record)
         elif action_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT):
             row["price_factor"] = self.price_factor(subject)
         elif action_type == CorporateActionType.CONSOLIDATION:
@@ -400,7 +409,10 @@ class CorporateActions:
 
     def _terms_parse(self, record: Record, ca_type: CorporateActionType, subject: str) -> bool:
         if ca_type is CorporateActionType.DIVIDEND:
-            return self._classifier.dividend_amount(subject, face_value=face_value_of(record)) is not None
+            return (
+                self._classifier.dividend_amount(subject, face_value=face_value_of(record)) is not None
+                or dividend_hint_of(record) is not None
+            )
         if ca_type is CorporateActionType.RIGHTS:
             return self._classifier.rights_terms(subject, face_value=face_value_of(record)) is not None
         if ca_type is CorporateActionType.CONSOLIDATION:
@@ -425,9 +437,9 @@ class CorporateActions:
             return []
         events: list[tuple[date, float]] = []
         for record in self._records:
-            amount = self._classifier.dividend_amount(
-                self._classifier.subject_of(record), face_value=face_value_of(record)
-            )
+            subject = self._classifier.subject_of(record)
+            parsed = self._classifier.dividend_amount(subject, face_value=face_value_of(record))
+            amount = parsed if parsed is not None else dividend_hint_of(record)
             ex_date = ex_date_of(record)
             if amount is not None and ex_date is not None:
                 events.append((ex_date, amount))

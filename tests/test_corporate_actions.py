@@ -3,11 +3,11 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from support import bars_frame, staged_path
+from support import bars_frame, staged_path, write_staged
 
-from powernse.corporate_actions import SUBJECTS, CorporateActions, CorporateActionType
+from powernse.corporate_actions import SUBJECTS, CorporateActions, CorporateActionType, dividend_hint_of
 from powernse.data import NSEData
-from powernse.datasets import CORPORATE_ACTIONS
+from powernse.datasets import BHAVCOPY, BSE_CORPORATE_ACTIONS, CORPORATE_ACTIONS
 
 
 @pytest.mark.parametrize(
@@ -214,3 +214,52 @@ def test_apply_ignores_events_not_yet_effective() -> None:
     adjusted = actions.adjust(bars)
     assert adjusted["factor"].tolist() == [1.0, 1.0]
     assert adjusted["close"].tolist() == [200.0, 202.0]
+
+
+def _stage_bse(root: Path, day: date, rows: list[dict[str, object]]) -> None:
+    path = staged_path(root, BSE_CORPORATE_ACTIONS, day)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rows), encoding="utf-8")
+
+
+def test_bse_backfills_dividend_amount_missing_from_nse_subject(tmp_path: Path) -> None:
+    day_before, ex_day = date(2024, 8, 1), date(2024, 8, 2)
+    for trade_date, close in ((day_before, 100.0), (ex_day, 98.0)):
+        write_staged(
+            tmp_path,
+            BHAVCOPY,
+            trade_date,
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{close},{close},{close},{close},100\n",
+        )
+    ca = staged_path(tmp_path, CORPORATE_ACTIONS, ex_day)
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    # NSE subject: dividend, but no per-share figure in the text
+    ca.write_text('[{"symbol":"RELIANCE","subject":"Dividend","exDate":"2024-08-02","faceVal":"10"}]', encoding="utf-8")
+    # BSE has the amount, one calendar day early (ex-date tolerance +/- 1)
+    _stage_bse(tmp_path, date(2024, 8, 1), [{"short_name": "RELIANCE", "Purpose": "Final Dividend - Rs. - 2.0000"}])
+
+    data = NSEData(tmp_path)
+    assert data.corporate_actions("RELIANCE", from_date=day_before, to_date=ex_day).loc[0, "dividend_amount"] == 2.0
+
+    adjusted = data.ohlc_adjusted("RELIANCE", from_date=day_before, to_date=ex_day).set_index("trade_date")["close"]
+    # prior close 100, dividend 2 -> divisor 100/98 on the pre-ex-date bar
+    assert adjusted[day_before] == pytest.approx(98.0)
+    assert adjusted[ex_day] == 98.0
+
+
+def test_nse_subject_amount_wins_over_bse() -> None:
+    record = {
+        "symbol": "X",
+        "subject": "Dividend - Rs 5 Per Share",
+        "exDate": "2024-08-02",
+        "dividend_amount_hint": 9.0,
+    }
+    events = CorporateActions([record]).price_events(bars_frame((date(2024, 8, 1), 100.0), (date(2024, 8, 2), 95.0)))
+    assert events.to_dict() == {date(2024, 8, 2): 100.0 / (100.0 - 5.0)}  # 5 from the subject, not 9 from BSE
+
+
+def test_dividend_hint_of_guards() -> None:
+    assert dividend_hint_of({"dividend_amount_hint": 3.5}) == 3.5
+    assert dividend_hint_of({"dividend_amount_hint": 0}) is None
+    assert dividend_hint_of({"dividend_amount_hint": True}) is None
+    assert dividend_hint_of({}) is None

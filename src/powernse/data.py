@@ -28,6 +28,7 @@ from powernse.datasets import (
 from powernse.index import Index
 from powernse.reading import (
     BhavcopyReader,
+    BseCorporateActionReader,
     CorporateActionReader,
     CoverageReader,
     DealsReader,
@@ -60,6 +61,7 @@ class NSEData:
         self._fo = FoReader(self._archive)
         self._index = IndexReader(self._archive)
         self._actions = CorporateActionReader(self._archive)
+        self._bse_actions = BseCorporateActionReader(self._archive)
         self._coverage = CoverageReader(self._archive)
         self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
         self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
@@ -158,7 +160,9 @@ class NSEData:
             col = raw[symbol].dropna()
             if col.empty:
                 continue
-            records = self._actions.records_in_adjustment_window(str(symbol), window_start=start, end=end)
+            records = self._actions.records_in_adjustment_window(
+                str(symbol), window_start=start, end=end, bse=self._bse_actions
+            )
             if not records:
                 continue
             bars = pd.DataFrame({"trade_date": list(col.index), "close": col.to_numpy()})
@@ -258,8 +262,12 @@ class NSEData:
     def corporate_actions(
         self, symbol: str, *, from_date: date | None = None, to_date: date | None = None
     ) -> pd.DataFrame:
-        """Classified CA history for a symbol: type / subject / price_factor / dividend_amount per ex-date."""
-        records = self._actions.records(symbol, from_date=from_date, to_date=to_date)
+        """Classified CA history for a symbol: type / subject / price_factor / dividend_amount per ex-date.
+
+        ``dividend_amount`` is backfilled from staged BSE corporate actions when
+        the NSE subject carries no figure (see ``powernse bse-corporate-actions``).
+        """
+        records = self._actions.records(symbol, from_date=from_date, to_date=to_date, bse=self._bse_actions)
         return CorporateActions(records).classified()
 
     def actions_for(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> list[Record]:
@@ -288,7 +296,9 @@ class NSEData:
             return empty_frame(ADJUSTED_OHLC_SCHEMA)
         window_start = from_date or bars["trade_date"].min()
         end = to_date or bars["trade_date"].max()
-        records = self._actions.records_in_adjustment_window(symbol, window_start=window_start, end=end)
+        records = self._actions.records_in_adjustment_window(
+            symbol, window_start=window_start, end=end, bse=self._bse_actions
+        )
         apply = None if include is None else frozenset(include)
         return CorporateActions(records, apply=apply).adjust(bars)
 

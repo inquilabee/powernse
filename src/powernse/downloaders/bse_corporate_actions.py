@@ -19,22 +19,22 @@ logger = logging.getLogger(__name__)
 Row = dict[str, object]
 
 
-def bse_exdate(row: Row) -> date | None:
-    """Ex-date from a BSE feed row's ``exdate`` (``YYYYMMDD``), or ``None``."""
-    token = str(row.get("exdate") or "").strip()
-    if len(token) != 8 or not token.isdigit():
-        return None
-    try:
-        return date(int(token[:4]), int(token[4:6]), int(token[6:8]))
-    except ValueError:
-        return None
-
-
 class BseCorporateActionsDownloader(ArchiveDownloader):
     """Fetch BSE equity corporate actions by calendar year, stage one JSON file per ex-date."""
 
     accept: ClassVar[str] = "application/json"
     request_headers: ClassVar[dict[str, str]] = {"Referer": BSE_HOME_URL}
+
+    @staticmethod
+    def exdate(row: Row) -> date | None:
+        """Ex-date from a BSE feed row's ``exdate`` (``YYYYMMDD``), or ``None``."""
+        token = str(row.get("exdate") or "").strip()
+        if len(token) != 8 or not token.isdigit():
+            return None
+        try:
+            return date(int(token[:4]), int(token[4:6]), int(token[6:8]))
+        except ValueError:
+            return None
 
     @staticmethod
     def request_url(from_date: date, to_date: date) -> str:
@@ -76,7 +76,7 @@ class BseCorporateActionsDownloader(ArchiveDownloader):
         rows = self._decode_rows(self.fetch_bytes_throttled(url), url)
         by_day: dict[date, list[Row]] = defaultdict(list)
         for row in rows:
-            day = bse_exdate(row)
+            day = self.exdate(row)
             if day is not None and span_start <= day <= span_end:
                 by_day[day].append(row)
 

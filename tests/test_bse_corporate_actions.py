@@ -8,7 +8,7 @@ import pytest
 from support import staged_path
 
 from powernse.datasets import BSE_CORPORATE_ACTIONS
-from powernse.downloaders.bse_corporate_actions import BseCorporateActionsDownloader, bse_exdate
+from powernse.downloaders.bse_corporate_actions import BseCorporateActionsDownloader
 from powernse.parsers.bse import parse_bse_dividend
 
 
@@ -29,10 +29,11 @@ def test_parse_bse_dividend(purpose: str, expected: float | None) -> None:
 
 
 def test_bse_exdate() -> None:
-    assert bse_exdate({"exdate": "20240115"}) == date(2024, 1, 15)
-    assert bse_exdate({"exdate": ""}) is None
-    assert bse_exdate({"exdate": "2024011"}) is None
-    assert bse_exdate({"exdate": "20241332"}) is None
+    exdate = BseCorporateActionsDownloader.exdate
+    assert exdate({"exdate": "20240115"}) == date(2024, 1, 15)
+    assert exdate({"exdate": ""}) is None
+    assert exdate({"exdate": "2024011"}) is None
+    assert exdate({"exdate": "20241332"}) is None
 
 
 def _row(symbol: str, exdate: str, purpose: str) -> dict[str, str]:
