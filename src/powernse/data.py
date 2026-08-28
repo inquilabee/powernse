@@ -16,11 +16,12 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
-from powernse.datasets import BLOCK_DEALS, BULK_DEALS
+from powernse.datasets import BHAVCOPY, BLOCK_DEALS, BULK_DEALS, Dataset
 from powernse.index import Index
 from powernse.reading import (
     BhavcopyReader,
     CorporateActionReader,
+    CoverageReader,
     DealsReader,
     DeliveryReader,
     FoReader,
@@ -48,6 +49,7 @@ class NSEData:
         self._fo = FoReader(self._archive)
         self._index = IndexReader(self._archive)
         self._actions = CorporateActionReader(self._archive)
+        self._coverage = CoverageReader(self._archive)
         self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
         self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
         self._secban = SecbanReader(self._archive)
@@ -118,9 +120,13 @@ class NSEData:
             out[symbol] = raw[symbol] / factors
         return out
 
+    def coverage(self, dataset: Dataset, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
+        """XBOM sessions with no staged ``dataset`` file. Window defaults to that dataset's staged span."""
+        return self._coverage.missing(dataset, from_date=from_date, to_date=to_date)
+
     def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
-        """XBOM sessions in the window that have no staged bhavcopy file."""
-        return self._bhavcopy.coverage_gaps(from_date=from_date, to_date=to_date)
+        """XBOM sessions that have no staged bhavcopy file (``coverage(BHAVCOPY, ...)``)."""
+        return self._coverage.missing(BHAVCOPY, from_date=from_date, to_date=to_date)
 
     # -- delivery / traded value -----------------------------------------------
 

@@ -7,7 +7,7 @@ import pytest
 from support import staged_path, write_staged
 
 from powernse import NSEData
-from powernse.datasets import BHAVCOPY, CORPORATE_ACTIONS
+from powernse.datasets import BHAVCOPY, CORPORATE_ACTIONS, FO_BHAVCOPY
 
 
 def _write_legacy(tmp_path: Path, trade_date: date, body: str) -> None:
@@ -67,6 +67,17 @@ def test_coverage_gaps(tmp_path: Path) -> None:
     gaps = data.coverage_gaps(from_date=date(2024, 1, 2), to_date=date(2024, 1, 3))
     assert date(2024, 1, 3) in gaps
     assert date(2024, 1, 2) not in gaps
+
+
+def test_coverage_generalizes_over_datasets(tmp_path: Path) -> None:
+    body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,1,1,1,1,1\n"
+    write_staged(tmp_path, FO_BHAVCOPY, date(2024, 1, 2), body)
+    write_staged(tmp_path, FO_BHAVCOPY, date(2024, 1, 4), body)
+
+    data = NSEData(tmp_path)
+    # default window == the dataset's full staged span (2024-01-02 .. 2024-01-04)
+    assert data.coverage(FO_BHAVCOPY) == [date(2024, 1, 3)]
+    assert data.coverage(FO_BHAVCOPY, from_date=date(2024, 1, 4), to_date=date(2024, 1, 4)) == []
 
 
 def test_actions_for(tmp_path: Path) -> None:

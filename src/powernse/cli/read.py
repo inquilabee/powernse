@@ -6,11 +6,32 @@ from typing import Annotated
 import typer
 from requests import RequestException
 
+from powernse import datasets
 from powernse.cli.common import FromDateOpt, RootOpt, SeriesOpt, ToDateOpt, parse_iso_date, print_frame_or_exit
 from powernse.data import NSEData
-from powernse.errors import DownloadError
+from powernse.datasets import Dataset
+from powernse.errors import ArchiveError, DownloadError
 from powernse.http import NseHttpClient
 from powernse.index import Index
+
+VERIFY_DEFAULT: tuple[Dataset, ...] = (
+    datasets.BHAVCOPY,
+    datasets.FO_BHAVCOPY,
+    datasets.INDEX_CLOSES,
+    datasets.FULL_BHAVCOPY,
+)
+
+
+def verify_targets(key: str | None) -> tuple[Dataset, ...]:
+    """The datasets ``powernse verify`` should check: one named key, or the core dated archives."""
+    if key is None:
+        return VERIFY_DEFAULT
+    for dataset in datasets.ALL:
+        if dataset.key == key:
+            return (dataset,)
+    choices = ", ".join(dataset.key for dataset in datasets.ALL)
+    typer.echo(f"unknown dataset {key!r}; choose from {choices}", err=True)
+    raise typer.Exit(code=2)
 
 
 def register_read_commands(app: typer.Typer) -> None:
@@ -101,6 +122,33 @@ def register_read_commands(app: typer.Typer) -> None:
         data = NSEData(root, create=False)
         frame = data.index(index_name).ohlc(from_date=from_date, to_date=to_date)
         print_frame_or_exit(frame, empty_message=f"No index rows for {index_name!r} under {data.root}")
+
+    _dataset_opt = typer.Option("--dataset", "-d", help="One dataset key (default: the core dated archives)")
+
+    @app.command("verify")
+    def verify_cmd(
+        dataset: Annotated[str | None, _dataset_opt] = None,
+        from_date: FromDateOpt = None,
+        to_date: ToDateOpt = None,
+        root: RootOpt = None,
+    ) -> None:
+        """Report XBOM sessions missing from the staged archive; exit 1 if any dataset has gaps."""
+        data = NSEData(root, create=False)
+        missing_total = 0
+        for target in verify_targets(dataset):
+            try:
+                gaps = data.coverage(target, from_date=from_date, to_date=to_date)
+            except ArchiveError as exc:
+                typer.echo(f"{target.key}: {exc}", err=True)
+                continue
+            missing_total += len(gaps)
+            if gaps:
+                shown = ", ".join(day.isoformat() for day in gaps)
+                typer.echo(f"{target.key}: {len(gaps)} missing — {shown}")
+            else:
+                typer.echo(f"{target.key}: complete")
+        if missing_total:
+            raise typer.Exit(code=1)
 
     @app.command("doctor")
     def doctor_cmd() -> None:

@@ -81,7 +81,21 @@ from powernse.calendar import XBOM
 XBOM.sessions(date(2024, 8, 1), date(2024, 8, 31))     # list[date] of trading days
 XBOM.count(date(2024, 8, 1), date(2024, 8, 31))        # how many
 XBOM.offset(date(2024, 8, 1), 30)                      # the 30th session after
+XBOM.is_session(date(2024, 8, 15))                     # False — Independence Day
+XBOM.holidays(date(2024, 8, 1), date(2024, 8, 31))     # weekday non-sessions in the range
 ```
+
+Coverage — `coverage_gaps()` is `coverage(BHAVCOPY, ...)`; `coverage(dataset, ...)`
+generalizes it to any dated archive, defaulting the window to that dataset's full
+staged span:
+
+```python
+from powernse.datasets import FO_BHAVCOPY
+
+data.coverage(FO_BHAVCOPY)                             # sessions missing an F&O bhavcopy file
+```
+
+`powernse verify` reports the same gaps for the core dated archives from the shell (exit 1 if any).
 
 Corporate actions — `data.corporate_actions(symbol, ...)` classifies each staged
 record (type, subject, derived `price_factor` / `dividend_amount`) into a frame;
