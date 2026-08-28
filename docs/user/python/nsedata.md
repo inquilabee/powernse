@@ -51,6 +51,13 @@ day = data.delivery_on(date(2024, 8, 9))                       # every EQ row th
 pct = data.delivery_frame(column="delivery_pct", symbols=["RELIANCE", "TCS"])  # Date x Symbol matrix
 ```
 
+```python
+# Equity security master (latest staged EQUITY_L): symbol / ISIN / name / listing date / face value
+master = data.securities()                          # whole table, SecuritySchema-shaped
+data.security("RELIANCE")                           # one row (Series), or None
+data.security_by_isin("INE002A01018")              # reverse lookup, or None
+```
+
 Indexes — `Index("nifty50")` carries identity from a bundled catalog of every
 NSE equity index (no archive needed); `data.index(name)` binds it to the staged
 archive for data reads:

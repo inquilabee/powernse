@@ -27,6 +27,7 @@ from powernse.reading import (
     FoReader,
     IndexReader,
     SecbanReader,
+    SecurityMasterReader,
     SnapshotReader,
 )
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
@@ -53,6 +54,7 @@ class NSEData:
         self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
         self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
         self._secban = SecbanReader(self._archive)
+        self._securities = SecurityMasterReader(self._archive)
         self._snapshots = SnapshotReader(self._archive)
 
     @classmethod
@@ -248,6 +250,20 @@ class NSEData:
     def is_banned(self, symbol: str, on: date | None = None) -> bool:
         """Whether ``symbol`` is in the F&O trade ban for ``on`` (default: latest staged ban date)."""
         return symbol.strip().upper() in self._secban.banned(on)
+
+    # -- security master -----------------------------------------------------
+
+    def securities(self) -> pd.DataFrame:
+        """The whole equity security master from the latest staged ``EQUITY_L`` (SecuritySchema-shaped)."""
+        return self._securities.table()
+
+    def security(self, symbol: str) -> pd.Series | None:
+        """One security-master row by symbol, or ``None`` when absent."""
+        return self._securities.one(symbol)
+
+    def security_by_isin(self, isin: str) -> pd.Series | None:
+        """One security-master row by ISIN, or ``None`` when absent."""
+        return self._securities.by_isin(isin)
 
     # -- snapshots + inventory ----------------------------------------------
 

@@ -21,6 +21,7 @@ from powernse.downloaders import (
     BlockDealsDownloader,
     BulkDealsDownloader,
     CorporateActionsDownloader,
+    EquityListDownloader,
     FoSecbanDownloader,
     IndexConstituentsDownloader,
 )
@@ -86,6 +87,25 @@ def register_snapshot_commands(app: typer.Typer) -> None:
         """Download current F&O security-ban snapshot (label-date is filename only)."""
         _run_snapshot(
             "fo-secban", FoSecbanDownloader, label_date, root, skip_existing=skip_existing, sleep=sleep, strict=strict
+        )
+
+    @app.command("equity-list")
+    def equity_list_cmd(
+        label_date: LabelDateOpt = None,
+        root: RootOpt = None,
+        skip_existing: SkipExistingOpt = True,
+        sleep: SleepOpt = DEFAULT_SLEEP_SECONDS,
+        strict: StrictOpt = False,
+    ) -> None:
+        """Download the current NSE equity security master (EQUITY_L.csv; label-date is filename only)."""
+        _run_snapshot(
+            "equity-list",
+            EquityListDownloader,
+            label_date,
+            root,
+            skip_existing=skip_existing,
+            sleep=sleep,
+            strict=strict,
         )
 
     @app.command("corporate-actions")

@@ -3,6 +3,7 @@
 from datetime import date
 from typing import Annotated
 
+import pandas as pd
 import typer
 from requests import RequestException
 
@@ -42,6 +43,27 @@ def register_read_commands(app: typer.Typer) -> None:
         typer.echo(f"archive root: {data.root}")
         for key, value in data.inventory().items():
             typer.echo(f"  {key}: {value}")
+
+    _symbol_opt = typer.Option("--symbol", "-s", help="Filter to one symbol")
+    _isin_opt = typer.Option("--isin", "-i", help="Filter to one ISIN")
+
+    @app.command("securities")
+    def securities_cmd(
+        symbol: Annotated[str | None, _symbol_opt] = None,
+        isin: Annotated[str | None, _isin_opt] = None,
+        root: RootOpt = None,
+    ) -> None:
+        """Print the NSE equity security master (symbol / ISIN / name / listing date) from the latest EQUITY_L."""
+        data = NSEData(root, create=False)
+        if symbol is not None:
+            row = data.security(symbol)
+        elif isin is not None:
+            row = data.security_by_isin(isin)
+        else:
+            print_frame_or_exit(data.securities(), empty_message=f"No security master rows under {data.root}")
+            return
+        frame = pd.DataFrame([row]) if row is not None else pd.DataFrame()
+        print_frame_or_exit(frame, empty_message=f"No security master row for {symbol or isin!r} under {data.root}")
 
     @app.command("ohlc")
     def ohlc_cmd(

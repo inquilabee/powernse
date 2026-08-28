@@ -54,6 +54,7 @@ INDEX_CLOSES = Dataset("index_closes", "csv")
 BULK_DEALS = Dataset("bulk_deals", "csv")
 BLOCK_DEALS = Dataset("block_deals", "csv")
 FO_SECBAN = Dataset("fo_secban", "csv")
+EQUITY_LIST = Dataset("equity_list", "csv")
 CORPORATE_ACTIONS = Dataset("corporate_actions", "json")
 INDEX_CONSTITUENTS = Dataset("index_constituents", "json")
 
@@ -65,6 +66,7 @@ ALL: tuple[Dataset, ...] = (
     BULK_DEALS,
     BLOCK_DEALS,
     FO_SECBAN,
+    EQUITY_LIST,
     CORPORATE_ACTIONS,
     INDEX_CONSTITUENTS,
 )

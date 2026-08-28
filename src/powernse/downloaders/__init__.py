@@ -3,6 +3,7 @@
 from powernse.downloaders.bhavcopy import BhavcopyDownloader
 from powernse.downloaders.corporate_actions import CorporateActionsDownloader
 from powernse.downloaders.deals import BlockDealsDownloader, BulkDealsDownloader, FoSecbanDownloader
+from powernse.downloaders.equity_list import EquityListDownloader
 from powernse.downloaders.fo_bhavcopy import FoBhavcopyDownloader
 from powernse.downloaders.full_bhavcopy import FullBhavcopyDownloader
 from powernse.downloaders.index_closes import IndexClosesDownloader
@@ -18,6 +19,7 @@ __all__ = [
     "BlockDealsDownloader",
     "BulkDealsDownloader",
     "CorporateActionsDownloader",
+    "EquityListDownloader",
     "FoBhavcopyDownloader",
     "FoSecbanDownloader",
     "FullBhavcopyDownloader",

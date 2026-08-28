@@ -4,6 +4,8 @@
 
 ### Added
 
+- Equity security master: `powernse equity-list` downloads NSE's `EQUITY_L.csv`; `NSEData.securities() -> DataFrame` (whole master, `SecuritySchema`: symbol / name / series / listing_date / paid_up_value / market_lot / isin / face_value), `NSEData.security(symbol)` / `NSEData.security_by_isin(isin) -> Series | None`, and a `powernse securities [--symbol | --isin]` read command. New `EquityListDownloader`, `powernse.schemas.SecuritySchema` / `SecurityRow`, `equity_list` dataset
+
 - Typed delivery / traded-value reads from the staged `sec_bhavdata_full` archive: `NSEData.delivery(symbol, from_date=, to_date=, series=)` (per-symbol history — delivery qty/%, turnover, trade count, `DeliverySchema`-shaped), `NSEData.delivery_on(trade_date, symbol=, series=)` (one staged day; `series=None` for every series), `NSEData.delivery_frame(column=, symbols=, from_date=, to_date=, series=)` (Date × Symbol matrix of `delivery_pct` / `delivery_qty` / `turnover_lacs` / `volume`). `powernse.schemas` gains `DeliverySchema` / `DeliveryRow`
 - Typed bulk / block deal reads: `NSEData.bulk_deals(from_date=, to_date=, symbol=, side=)` and `NSEData.block_deals(...)` return a `DealSchema`-shaped DataFrame across the staged window, filterable by symbol and buy/sell side. `powernse.schemas` gains `DealSchema` / `DealRow`
 - F&O securities-in-ban reads: `NSEData.secban(on=None) -> set[str]` and `NSEData.is_banned(symbol, on=None) -> bool`, keyed by the effective trade date parsed from each `fo_secban` file's header (`on=None` → the latest staged ban date). `powernse.parsers.parse_secban(text)` exposes the parse
