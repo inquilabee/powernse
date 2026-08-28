@@ -108,3 +108,16 @@ def test_equity_list_download(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("powernse.cli.snapshots.EquityListDownloader", FakeDownloader)
     code = main(["equity-list", "--root", str(tmp_path)])
     assert code == 0
+
+
+def test_bse_corporate_actions_download(tmp_path: Path, monkeypatch) -> None:
+    class FakeDownloader:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.root = tmp_path
+
+        def download_range(self, *_args, **_kwargs) -> DownloadSummary:
+            return DownloadSummary(downloaded_count=3, skipped_existing_count=0, failed_count=0)
+
+    monkeypatch.setattr("powernse.cli.snapshots.BseCorporateActionsDownloader", FakeDownloader)
+    code = main(["bse-corporate-actions", "--from", "2024-01-01", "--to", "2024-03-31", "--root", str(tmp_path)])
+    assert code == 0

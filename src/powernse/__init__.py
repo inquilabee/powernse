@@ -15,6 +15,7 @@ from powernse.data import NSEData
 from powernse.downloaders import (
     BhavcopyDownloader,
     BlockDealsDownloader,
+    BseCorporateActionsDownloader,
     BulkDealsDownloader,
     CorporateActionsDownloader,
     EquityListDownloader,
@@ -44,6 +45,7 @@ __all__ = [
     "ArchiveRoot",
     "BhavcopyDownloader",
     "BlockDealsDownloader",
+    "BseCorporateActionsDownloader",
     "BulkDealsDownloader",
     "CorporateActions",
     "CorporateActionsDownloader",

@@ -19,6 +19,7 @@ from powernse.cli.common import (
 from powernse.constants import DEFAULT_INDEX_NAMES, DEFAULT_SLEEP_SECONDS
 from powernse.downloaders import (
     BlockDealsDownloader,
+    BseCorporateActionsDownloader,
     BulkDealsDownloader,
     CorporateActionsDownloader,
     EquityListDownloader,
@@ -128,6 +129,24 @@ def register_snapshot_commands(app: typer.Typer) -> None:
             all_calendar_days=all_calendar_days,
         )
         echo_summary("corporate-actions", downloader.download_range(from_date, to_date), downloader.root, strict=strict)
+
+    @app.command("bse-corporate-actions")
+    def bse_corporate_actions_cmd(
+        from_date: Annotated[date, typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD")],
+        to_date: Annotated[date, typer.Option("--to", parser=parse_iso_date, help="End date YYYY-MM-DD")],
+        root: RootOpt = None,
+        skip_existing: SkipExistingOpt = True,
+        sleep: SleepOpt = DEFAULT_SLEEP_SECONDS,
+        strict: StrictOpt = False,
+    ) -> None:
+        """Download BSE corporate actions (dividend-amount cross-check for NSE); one JSON file per ex-date."""
+        archive_root = Settings.resolve(root).archive_root
+        downloader = BseCorporateActionsDownloader(
+            archive_root, sleep_seconds=sleep, skip_existing=skip_existing, strict=strict
+        )
+        echo_summary(
+            "bse-corporate-actions", downloader.download_range(from_date, to_date), downloader.root, strict=strict
+        )
 
     @app.command("index-constituents")
     def index_constituents_cmd(

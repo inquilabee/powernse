@@ -97,7 +97,7 @@ class NseHttpClient:
             raise DownloadError(self._format_http_failure(NSE_HOME_URL, exc)) from exc
         return response.content
 
-    def fetch_bytes(self, url: str, *, accept: str = "*/*") -> bytes:
+    def fetch_bytes(self, url: str, *, accept: str = "*/*", extra_headers: dict[str, str] | None = None) -> bytes:
         if self._fetch_override is not None:
             self._throttler.wait()
             try:
@@ -105,7 +105,7 @@ class NseHttpClient:
             except RequestException as exc:
                 raise DownloadError(f"NSE fetch failed for {url}: {exc}") from exc
         self.prime()
-        return self._read_with_retry(url, accept=accept)
+        return self._read_with_retry(url, accept=accept, extra_headers=extra_headers or {})
 
     @staticmethod
     def _is_retryable(exc: BaseException) -> bool:
@@ -114,7 +114,7 @@ class NseHttpClient:
             return response is not None and response.status_code in RETRYABLE_STATUS_CODES
         return isinstance(exc, RequestException)
 
-    def _read_with_retry(self, url: str, *, accept: str) -> bytes:
+    def _read_with_retry(self, url: str, *, accept: str, extra_headers: dict[str, str]) -> bytes:
         @retry(
             retry=retry_if_exception(self._is_retryable),
             stop=stop_after_attempt(MAX_HTTP_ATTEMPTS),
@@ -123,7 +123,8 @@ class NseHttpClient:
         )
         def _once() -> bytes:
             self._throttler.wait()
-            response = self._session.get(url, headers={**DEFAULT_HEADERS, "Accept": accept}, timeout=60)
+            headers = {**DEFAULT_HEADERS, "Accept": accept, **extra_headers}
+            response = self._session.get(url, headers=headers, timeout=60)
             response.raise_for_status()
             content_type = response.headers.get("Content-Type")
             payload = response.content

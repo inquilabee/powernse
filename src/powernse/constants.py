@@ -4,6 +4,9 @@ DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; rv:109.0) Gecko/20100101 Fir
 NSE_HOME_URL = "https://www.nseindia.com/"
 ARCHIVE_BASE_URL = "https://nsearchives.nseindia.com"
 EQUITY_LIST_URL = f"{ARCHIVE_BASE_URL}/content/equities/EQUITY_L.csv"
+
+BSE_HOME_URL = "https://www.bseindia.com/"
+BSE_CORPORATE_ACTIONS_API_URL = "https://api.bseindia.com/BseIndiaAPI/api/DefaultData/w"
 CORPORATE_ACTIONS_API_URL = "https://www.nseindia.com/api/corporates-corporateActions"
 INDEX_CONSTITUENTS_API_URL = "https://www.nseindia.com/api/equity-stock-indices"
 ALL_INDICES_API_URL = "https://www.nseindia.com/api/allIndices"
