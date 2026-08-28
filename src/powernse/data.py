@@ -16,7 +16,8 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
-from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, Index, IndexReader, SnapshotReader
+from powernse.index import Index
+from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, IndexReader, SnapshotReader
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
 

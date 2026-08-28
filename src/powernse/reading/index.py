@@ -1,4 +1,4 @@
-"""Read index OHLC, constituent lists, and the set of staged index names."""
+"""Index OHLC / constituent-list / staged-name reads over a local archive."""
 
 from datetime import date
 
@@ -59,35 +59,3 @@ class IndexReader(DatedFrameReader[IndexRow]):
             if path.name.endswith(suffix)
         }
         return sorted(dates)
-
-
-class Index:
-    """A handle to one index over the staged archive: OHLC, constituents, and snapshot dates."""
-
-    def __init__(self, name: str, reader: IndexReader) -> None:
-        self.name = name
-        self._reader = reader
-
-    def __repr__(self) -> str:
-        return f"Index({self.name!r})"
-
-    def ohlc(self, *, from_date: date | None = None, to_date: date | None = None) -> pd.DataFrame:
-        """OHLC across staged index-closes files (IndexSchema-shaped)."""
-        return self._reader.ohlc(self.name, from_date=from_date, to_date=to_date)
-
-    def latest(self) -> pd.Series | None:
-        """Most recent staged close row, or ``None`` if this index has no staged data."""
-        return self._reader.latest_row(self.name)
-
-    def symbols(self, on: date) -> list[str]:
-        """EQ-series constituent symbols from the staged snapshot labelled ``on``."""
-        return self._reader.symbols(on, self.name)
-
-    def constituent_dates(self) -> list[date]:
-        """Dates for which a constituent snapshot of this index is staged."""
-        return self._reader.constituent_dates(self.name)
-
-    def exists(self) -> bool:
-        """True when this index appears in the latest staged index-closes file."""
-        needle = self.name.strip().casefold()
-        return any(needle == name.casefold() for name in self._reader.names())

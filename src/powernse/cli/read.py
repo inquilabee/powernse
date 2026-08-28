@@ -10,6 +10,7 @@ from powernse.cli.common import FromDateOpt, RootOpt, SeriesOpt, ToDateOpt, pars
 from powernse.data import NSEData
 from powernse.errors import DownloadError
 from powernse.http import NseHttpClient
+from powernse.index import Index
 
 
 def register_read_commands(app: typer.Typer) -> None:
@@ -71,9 +72,16 @@ def register_read_commands(app: typer.Typer) -> None:
         )
         print_frame_or_exit(frame, empty_message=f"No F&O rows for {symbol.upper()} under {data.root}")
 
+    _known_opt = typer.Option("--known", "-k", help="List the bundled catalog instead of staged names")
+
     @app.command("indexes")
-    def indexes_cmd(root: RootOpt = None) -> None:
-        """List the index names present in the latest staged index-closes file."""
+    def indexes_cmd(root: RootOpt = None, known: Annotated[bool, _known_opt] = False) -> None:
+        """List index names: staged in the latest index-closes file, or (--known) the bundled catalog."""
+        if known:
+            for idx in Index.catalog():
+                flag = "\tfno" if idx.fno else ""
+                typer.echo(f"{idx.name}\t{idx.category}{flag}")
+            return
         data = NSEData(root, create=False)
         names = data.indexes()
         if not names:

@@ -1,0 +1,836 @@
+[
+  {
+    "name": "INDIA VIX",
+    "code": "INDIA VIX",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 10 YR BENCHMARK G-SEC",
+    "code": "NIFTY GS 10YR",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 10 YR BENCHMARK G-SEC (CLEAN PRICE)",
+    "code": "NIFTY GS 10YR CLN",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 100",
+    "code": "NIFTY 100",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 11-15 YR G-SEC INDEX",
+    "code": "NIFTY GS 11 15YR",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 15 YR AND ABOVE G-SEC INDEX",
+    "code": "NIFTY GS 15YRPLUS",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 200",
+    "code": "NIFTY 200",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 4-8 YR G-SEC INDEX",
+    "code": "NIFTY GS 4 8YR",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 50",
+    "code": "NIFTY 50",
+    "category": "broad",
+    "fno": true
+  },
+  {
+    "name": "NIFTY 500",
+    "code": "NIFTY 500",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY 8-13 YR G-SEC",
+    "code": "NIFTY GS 8 13YR",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY ALPHA 50",
+    "code": "NIFTY ALPHA 50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY ALPHA LOW-VOLATILITY 30",
+    "code": "NIFTY ALPHALOWVOL",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY ALPHA QUALITY LOW-VOLATILITY 30",
+    "code": "NIFTY AQL 30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY ALPHA QUALITY VALUE LOW-VOLATILITY 30",
+    "code": "NIFTY AQLV 30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY AUTO",
+    "code": "NIFTY AUTO",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY BANK",
+    "code": "NIFTY BANK",
+    "category": "broad",
+    "fno": true
+  },
+  {
+    "name": "NIFTY BHARAT BOND INDEX - APRIL 2030",
+    "code": "BHARATBOND-APR30",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY BHARAT BOND INDEX - APRIL 2031",
+    "code": "BHARATBOND-APR31",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY BHARAT BOND INDEX - APRIL 2032",
+    "code": "BHARATBOND-APR32",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY BHARAT BOND INDEX - APRIL 2033",
+    "code": "BHARATBOND-APR33",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CAPITAL MARKETS",
+    "code": "NIFTY CAPITAL MKT",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CEMENT",
+    "code": "NIFTY CEMENT",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CHEMICALS",
+    "code": "NIFTY CHEMICALS",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY COMMODITIES",
+    "code": "NIFTY COMMODITIES",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY COMPOSITE G-SEC INDEX",
+    "code": "NIFTY GS COMPSITE",
+    "category": "fixed_income",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CONGLOMERATE 50",
+    "code": "NIFTYCONGLOMERATE",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CONSUMER DURABLES",
+    "code": "NIFTY CONSR DURBL",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CORE HOUSING",
+    "code": "NIFTY COREHOUSING",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY CPSE",
+    "code": "NIFTY CPSE",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY DIVIDEND OPPORTUNITIES 50",
+    "code": "NIFTY DIV OPPS 50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY ENERGY",
+    "code": "NIFTY ENERGY",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY EV & NEW AGE AUTOMOTIVE",
+    "code": "NIFTY EV",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY FINANCIAL SERVICES",
+    "code": "NIFTY FIN SERVICE",
+    "category": "broad",
+    "fno": true
+  },
+  {
+    "name": "NIFTY FINANCIAL SERVICES 25/50",
+    "code": "NIFTY FINSRV25 50",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY FINANCIAL SERVICES EX-BANK",
+    "code": "NIFTY FINSEREXBNK",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY FMCG",
+    "code": "NIFTY FMCG",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY GROWTH SECTORS 15",
+    "code": "NIFTY GROWSECT 15",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY HEALTHCARE INDEX",
+    "code": "NIFTY HEALTHCARE",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY HIGH BETA 50",
+    "code": "NIFTY HIGHBETA 50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY HOUSING",
+    "code": "NIFTY HOUSING",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA CONSUMPTION",
+    "code": "NIFTY CONSUMPTION",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA CORPORATE GROUP INDEX - TATA GROUP 25% CAP",
+    "code": "NIFTY TATA 25 CAP",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA DEFENCE",
+    "code": "NIFTY IND DEFENCE",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA DIGITAL",
+    "code": "NIFTY IND DIGITAL",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA FPI 150",
+    "code": "NIFTY FPI 150",
+    "category": "broad",
+    "fno": true
+  },
+  {
+    "name": "NIFTY INDIA INFRASTRUCTURE & LOGISTICS",
+    "code": "NIFTY INFRALOG",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA INTERNET",
+    "code": "NIFTY INTERNET",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA MANUFACTURING",
+    "code": "NIFTY INDIA MFG",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA NEW AGE CONSUMPTION",
+    "code": "NIFTY NEW CONSUMP",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA RAILWAYS PSU",
+    "code": "NIFTY RAILWAYSPSU",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA SELECT 5 CORPORATE GROUPS (MAATR)",
+    "code": "NIFTY CORP MAATR",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INDIA TOURISM",
+    "code": "NIFTY IND TOURISM",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY INFRASTRUCTURE",
+    "code": "NIFTY INFRA",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY IPO",
+    "code": "NIFTY IPO",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY IT",
+    "code": "NIFTY IT",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY LARGEMIDCAP 250",
+    "code": "NIFTY LARGEMID250",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY LOW VOLATILITY 50",
+    "code": "NIFTY LOW VOL 50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MEDIA",
+    "code": "NIFTY MEDIA",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY METAL",
+    "code": "NIFTY METAL",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MICROCAP 250",
+    "code": "NIFTY MICROCAP250",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDCAP 100",
+    "code": "NIFTY MIDCAP 100",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDCAP 150",
+    "code": "NIFTY MIDCAP 150",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDCAP 50",
+    "code": "NIFTY MIDCAP 50",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDCAP LIQUID 15",
+    "code": "NIFTY MID LIQ 15",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDCAP SELECT",
+    "code": "NIFTY MID SELECT",
+    "category": "broad",
+    "fno": true
+  },
+  {
+    "name": "NIFTY MIDCAP150 MOMENTUM 50",
+    "code": "NIFTYM150MOMNTM50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDCAP150 QUALITY 50",
+    "code": "NIFTY M150 QLTY50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALL FINANCIAL SERVICES",
+    "code": "NIFTY MS FIN SERV",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALL HEALTHCARE",
+    "code": "NIFTY MIDSML HLTH",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALL INDIA CONSUMPTION",
+    "code": "NIFTY MS IND CONS",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALL IT & TELECOM",
+    "code": "NIFTY MS IT TELCM",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALLCAP 400",
+    "code": "NIFTY MIDSML 400",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALLCAP400 50:50",
+    "code": "NIFTY MIDSMALL 50 50",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MIDSMALLCAP400 MOMENTUM QUALITY 100",
+    "code": "NIFTYMS400 MQ 100",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MNC",
+    "code": "NIFTY MNC",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY MOBILITY",
+    "code": "NIFTY MOBILITY",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY NEXT 50",
+    "code": "NIFTY NEXT 50",
+    "category": "broad",
+    "fno": true
+  },
+  {
+    "name": "NIFTY NON-CYCLICAL CONSUMER",
+    "code": "NIFTY NONCYC CONS",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY OIL & GAS",
+    "code": "NIFTY OIL AND GAS",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY PHARMA",
+    "code": "NIFTY PHARMA",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY PRIVATE BANK",
+    "code": "NIFTY PVT BANK",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY PSE",
+    "code": "NIFTY PSE",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY PSU BANK",
+    "code": "NIFTY PSU BANK",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY QUALITY LOW-VOLATILITY 30",
+    "code": "NIFTY QLTY LV 30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY REALTY",
+    "code": "NIFTY REALTY",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY REITS & REALTY",
+    "code": "NIFTY REITS REALTY",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY RURAL",
+    "code": "NIFTY RURAL",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SERVICES SECTOR",
+    "code": "NIFTY SERV SECTOR",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SHARIAH 25",
+    "code": "NIFTY SHARIAH 25",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SMALLCAP 100",
+    "code": "NIFTY SMLCAP 100",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SMALLCAP 250",
+    "code": "NIFTY SMLCAP 250",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SMALLCAP 50",
+    "code": "NIFTY SMLCAP 50",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SMALLCAP 500",
+    "code": "NIFTY SMALLCAP 500",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SMALLCAP250 MOMENTUM QUALITY 100",
+    "code": "NIFTYSML250MQ 100",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SMALLCAP250 QUALITY 50",
+    "code": "NIFTY SML250 Q50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY SME EMERGE",
+    "code": "NIFTY SME EMERGE",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY TOP 10 EQUAL WEIGHT",
+    "code": "NIFTY TOP 10 EW",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY TOP 15 EQUAL WEIGHT",
+    "code": "NIFTY TOP 15 EW",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY TOP 20 EQUAL WEIGHT",
+    "code": "NIFTY TOP 20 EW",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY TOTAL MARKET",
+    "code": "NIFTY TOTAL MKT",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY TOTAL MARKET MOMENTUM QUALITY 50",
+    "code": "NIFTY TMMQ 50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY TRANSPORTATION & LOGISTICS",
+    "code": "NIFTY TRANS LOGIS",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY WAVES",
+    "code": "NIFTY WAVES",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 ALPHA 30",
+    "code": "NIFTY100 ALPHA 30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 ENHANCED ESG",
+    "code": "NIFTY100 ENH ESG",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 EQUAL WEIGHT",
+    "code": "NIFTY100 EQL WGT",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 ESG",
+    "code": "NIFTY100 ESG",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 ESG SECTOR LEADERS",
+    "code": "NIFTY100ESGSECLDR",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 LIQUID 15",
+    "code": "NIFTY100 LIQ 15",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 LOW VOLATILITY 30",
+    "code": "NIFTY100 LOWVOL30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY100 QUALITY 30",
+    "code": "NIFTY100 QUALTY30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY200 ALPHA 30",
+    "code": "NIFTY200 ALPHA 30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY200 MOMENTUM 30",
+    "code": "NIFTY200MOMENTM30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY200 QUALITY 30",
+    "code": "NIFTY200 QUALTY30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY200 VALUE 30",
+    "code": "NIFTY200 VALUE 30",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 DIVIDEND POINTS",
+    "code": "NIFTY50 DIV POINT",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 EQUAL WEIGHT",
+    "code": "NIFTY50 EQL WGT",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 PR 1X INVERSE",
+    "code": "NIFTY50 PR 1X INV",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 PR 2X LEVERAGE",
+    "code": "NIFTY50 PR 2X LEV",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 SHARIAH",
+    "code": "NIFTY50 SHARIAH",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 TR 1X INVERSE",
+    "code": "NIFTY50 TR 1X INV",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 TR 2X LEVERAGE",
+    "code": "NIFTY50 TR 2X LEV",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 USD",
+    "code": "NIFTY50 USD",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY50 VALUE 20",
+    "code": "NIFTY50 VALUE 20",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 EQUAL WEIGHT",
+    "code": "NIFTY500 EW",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 FLEXICAP QUALITY 30",
+    "code": "NIFTY500 FLEXICAP",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 HEALTHCARE",
+    "code": "NIFTY500 HEALTH",
+    "category": "sectoral",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 LARGEMIDSMALL EQUAL-CAP WEIGHTED",
+    "code": "NIFTY500 LMS EQL",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 LOW VOLATILITY 50",
+    "code": "NIFTY500 LOWVOL50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 MOMENTUM 50",
+    "code": "NIFTY500MOMENTM50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 MULTICAP 50:25:25",
+    "code": "NIFTY500 MULTICAP",
+    "category": "broad",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 MULTICAP INDIA MANUFACTURING 50:30:20",
+    "code": "NIFTY MULTI MFG",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 MULTICAP INFRASTRUCTURE 50:30:20",
+    "code": "NIFTY MULTI INFRA",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 MULTICAP MOMENTUM QUALITY 50",
+    "code": "NIFTY MULTI MQ 50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 MULTIFACTOR MQVLV 50",
+    "code": "NIFTY500 MQVLV50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 QUALITY 50",
+    "code": "NIFTY500 QLTY50",
+    "category": "strategy",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 SHARIAH",
+    "code": "NIFTY500 SHARIAH",
+    "category": "thematic",
+    "fno": false
+  },
+  {
+    "name": "NIFTY500 VALUE 50",
+    "code": "NIFTY500 VALUE 50",
+    "category": "strategy",
+    "fno": false
+  }
+]

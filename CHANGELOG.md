@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-08-28
+
+### Added
+
+- `powernse.index` package + a bundled catalog of every NSE equity index (identity only — canonical `name`, short `code`, `category` ∈ broad/sectoral/thematic/strategy/fixed_income, `fno`). `Index("nifty50")` now constructs standalone and normalizes via the catalog (`Index.catalog()`; `IndexEntry` / `IndexCatalog` / `load_entries()` / `lookup()` in `powernse.index`). Data reads still need an archive — `NSEData(root).index(name)` binds one, and unbound data calls raise a clear `ArchiveError`. `powernse indexes --known` lists the catalog. `scripts/build_index_catalog.py` regenerates `indexes.json` from NSE's `/api/allIndices`
+- `Index.exists()` is offline-aware: `True` for any catalogued index; still checks the latest staged index-closes file for a non-catalogued name when bound
+
 ## 0.2.0 — 2026-08-28
 
 Large release: pandas became the data interface, then the whole read layer was
