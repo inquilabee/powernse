@@ -21,30 +21,19 @@ from collections import Counter
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from powernse.corporate_actions import SUBJECTS, CorporateActionType, ex_date_of, symbol_of
+from powernse.corporate_actions import SUBJECTS, CorporateActionType, ex_date_of, face_value_of, symbol_of
 
-# Projection helpers for terms the classifier cannot parse *yet* -- replaced by
-# real SubjectClassifier methods as those land (percentage dividends, rights).
-_PCT_DIV = re.compile(r"div[a-z]*\b[^0-9%]{0,15}?(\d+(?:\.\d+)?)\s*%", re.IGNORECASE)
+# Projection helper for rights terms -- replaced by SubjectClassifier.rights_terms
+# once that lands. Percentage dividends + consolidation are already in the classifier.
 _RIGHTS_RATIO = re.compile(r"rights\b[^0-9]*?(\d+)\s*:\s*(\d+)", re.IGNORECASE)
 _RIGHTS_PREM = re.compile(r"(?:prem(?:ium)?|@)\D*?(?:rs|re)?\.?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
 _RIGHTS_PAR = re.compile(r"at\s*par", re.IGNORECASE)
 _RIGHTS_NON_EQUITY = re.compile(r"warrant|ccps|pccps|\bncd\b|\bpcd\b|debenture|\bfcd\b|partly\s*paid", re.IGNORECASE)
 
 
-def _face_value(record: dict) -> float | None:
-    try:
-        value = float(str(record.get("faceVal", "")).strip())
-    except ValueError:
-        return None
-    return value if value > 0 else None
-
-
-def _dividend_parses(subject: str, face_value: float | None) -> bool:
-    if SUBJECTS.dividend_amount(subject) is not None:
-        return True
-    match = _PCT_DIV.search(subject)
-    return bool(match and face_value is not None)
+def _dividend_parses(record: dict) -> bool:
+    subject = SUBJECTS.subject_of(record)
+    return SUBJECTS.dividend_amount(subject, face_value=face_value_of(record)) is not None
 
 
 def _rights_parses(subject: str) -> bool:
@@ -68,16 +57,14 @@ def _coverage_table(records: list[dict]) -> None:
         subject = SUBJECTS.subject_of(record)
         ca_type = SUBJECTS.classify(subject)
         by_type[ca_type.value] += 1
-        face_value = _face_value(record)
-        if ca_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT, CorporateActionType.CONSOLIDATION):
-            bucket = "bonus/split/consolidation"
-            hit = SUBJECTS.price_factor(subject) is not None
+        if ca_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT):
+            bucket, hit = "bonus/split/consolidation", SUBJECTS.price_factor(subject) is not None
+        elif ca_type is CorporateActionType.CONSOLIDATION:
+            bucket, hit = "bonus/split/consolidation", SUBJECTS.consolidation_factor(subject) is not None
         elif ca_type is CorporateActionType.DIVIDEND:
-            bucket = "dividend"
-            hit = _dividend_parses(subject, face_value)
+            bucket, hit = "dividend", _dividend_parses(record)
         elif ca_type is CorporateActionType.RIGHTS:
-            bucket = "rights"
-            hit = _rights_parses(subject)
+            bucket, hit = "rights", _rights_parses(subject)
         else:
             continue
         total[bucket] += 1
@@ -102,7 +89,7 @@ def _unparsed_events(records: list[dict], lo: date, hi: date) -> list[tuple[str,
             continue
         subject = SUBJECTS.subject_of(record)
         ca_type = SUBJECTS.classify(subject)
-        if ca_type is CorporateActionType.DIVIDEND and not _dividend_parses(subject, _face_value(record)):
+        if ca_type is CorporateActionType.DIVIDEND and not _dividend_parses(record):
             out.append((symbol_of(record).upper(), ex, subject))
         elif ca_type is CorporateActionType.RIGHTS and not _rights_parses(subject):
             out.append((symbol_of(record).upper(), ex, subject))

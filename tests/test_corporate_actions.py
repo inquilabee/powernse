@@ -45,6 +45,48 @@ def test_dividend_amount(subject: str, expected: float | None) -> None:
 
 
 @pytest.mark.parametrize(
+    ("subject", "face_value", "expected"),
+    [
+        ("Div 30%", 10.0, 3.0),
+        ("Div - 18%", 10.0, 1.8),
+        ("Agm/Div-50%/Rights-1:6", 2.0, 1.0),
+        ("Dividend 15 %", 100.0, 15.0),
+        ("Div 30%", None, None),  # needs face value
+        ("Dividend - Rs 5 Per Share", 10.0, 5.0),  # explicit rupees still win
+    ],
+)
+def test_percent_dividend(subject: str, face_value: float | None, expected: float | None) -> None:
+    assert SUBJECTS.dividend_amount(subject, face_value=face_value) == expected
+
+
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [
+        ("Consolidation Of Equity Shares From Re 1 Per Share To Rs 10 Per Share", 0.1),
+        ("Consolidation Rs 2 To Rs 10", 0.2),
+        ("Consolidation Of Equity Shares", None),
+        ("Face Value Split from Rs 10 to Rs 5", None),  # not a consolidation subject
+    ],
+)
+def test_consolidation_factor(subject: str, expected: float | None) -> None:
+    assert SUBJECTS.consolidation_factor(subject) == expected
+
+
+def test_percent_dividend_and_consolidation_adjust_bars() -> None:
+    bars = bars_frame((date(2024, 1, 1), 100.0), (date(2024, 1, 2), 100.0), (date(2024, 1, 3), 100.0))
+    records = [
+        {"symbol": "TEST", "subject": "Div 20%", "faceVal": "10", "exDate": "2024-01-02"},  # Rs 2/sh
+        {"symbol": "TEST", "subject": "Consolidation From Re 1 To Rs 2", "faceVal": "2", "exDate": "2024-01-03"},
+    ]
+    adjusted = CorporateActions(records).adjust(bars).set_index("trade_date")["close"]
+    assert adjusted[date(2024, 1, 3)] == 100.0  # newest bar untouched
+    assert adjusted[date(2024, 1, 2)] == 200.0  # consolidation divisor 0.5 only: 100 / 0.5
+    # 2024-01-01: dividend (100/98) x consolidation (0.5) -> 100 / (98/100 * 0.5 ... ) = 196.0
+    assert adjusted[date(2024, 1, 1)] == pytest.approx(196.0)
+
+
+
+@pytest.mark.parametrize(
     ("subject", "expected"),
     [
         ("Dividend - Rs 2.50 Per Share", CorporateActionType.DIVIDEND),

@@ -91,6 +91,13 @@ DIVIDEND_AMOUNT = re.compile(
     r"^(?:special\s+)?(?:interim\s+)?div[i]?dend\s*-\s*(?:rs\.?|re\.?)\s*(\d+(?:\.\d+)?)\s*per\s*sh",
     re.IGNORECASE,
 )
+# "Div 30%" / "Div-50%" / "Dividend 15 %" -- a percent of face value per share.
+PERCENT_DIVIDEND = re.compile(r"div(?:idend)?\s*[-:]?\s*(\d+(?:\.\d+)?)\s*%", re.IGNORECASE)
+# "Consolidation ... From Re 1 ... To Rs 10" -> old/new face value (divisor < 1).
+CONSOLIDATION_TERMS = re.compile(
+    r"consolidat\w*.*?(?:rs\.?|re\.?)\s*(\d+(?:\.\d+)?).*?to\s+(?:rs\.?|re\.?)\s*(\d+(?:\.\d+)?)",
+    re.IGNORECASE,
+)
 
 # Order matters: more specific patterns (scheme/meeting/buyback) must be checked
 # before generic ones (bonus/dividend) that would otherwise false-positive on
@@ -119,6 +126,15 @@ CLASSIFICATION_PATTERNS: list[tuple[CorporateActionType, re.Pattern[str]]] = [
 def symbol_of(record: Record) -> str:
     """Symbol from a raw CA record (shared with reading.CorporateActionReader)."""
     return str(record.get("symbol") or record.get("SYMBOL") or "")
+
+
+def face_value_of(record: Record) -> float | None:
+    """Face value from a raw CA record (``faceVal``), or ``None`` when absent/unparseable."""
+    try:
+        value = float(str(record.get("faceVal") or record.get("FACE VALUE") or "").strip())
+    except ValueError:
+        return None
+    return value if value > 0 else None
 
 
 class SubjectClassifier:
@@ -159,18 +175,32 @@ class SubjectClassifier:
             return max(left, right) / min(left, right) if left > 0 and right > 0 else None
         return None
 
-    def dividend_amount(self, subject: str) -> float | None:
-        """Per-share rupee amount for a plain/special dividend subject, or ``None``.
+    def dividend_amount(self, subject: str, *, face_value: float | None = None) -> float | None:
+        """Per-share rupee amount for a dividend subject, or ``None``.
 
-        Anchored to the start and requires the "Per Share"/"Per Sh" suffix, so
-        composite records (REIT/InvIT distributions that mention "dividend" as one
-        component) aren't misread as a plain per-share dividend.
+        First the explicit ``Dividend - Rs X Per Share`` form (anchored to the
+        start and requiring the "Per Share" suffix, so composite REIT/InvIT
+        distributions aren't misread). Failing that, a ``Div N%`` form resolved
+        against ``face_value`` -- ``N%`` of face value per share.
         """
-        match = DIVIDEND_AMOUNT.match(subject.strip())
+        text = subject.strip()
+        if (match := DIVIDEND_AMOUNT.match(text)) is not None:
+            amount = float(match.group(1))
+            return amount if amount > 0 else None
+        if face_value is not None and (pct := PERCENT_DIVIDEND.search(text)) is not None:
+            amount = face_value * float(pct.group(1)) / 100
+            return amount if amount > 0 else None
+        return None
+
+    def consolidation_factor(self, subject: str) -> float | None:
+        """Price divisor for a share-consolidation subject (``From Rs X ... To Rs Y`` -> ``X/Y``, < 1)."""
+        match = CONSOLIDATION_TERMS.search(subject.strip())
         if match is None:
             return None
-        amount = float(match.group(1))
-        return amount if amount > 0 else None
+        old_fv, new_fv = float(match.group(1)), float(match.group(2))
+        if old_fv <= 0 or new_fv <= 0 or old_fv == new_fv:
+            return None
+        return old_fv / new_fv
 
     def describe(self, record: Record) -> Record:
         """One classified row: symbol, ex_date, type, subject, and any derived numbers."""
@@ -186,9 +216,11 @@ class SubjectClassifier:
             "price_factor": None,
         }
         if action_type == CorporateActionType.DIVIDEND:
-            row["dividend_amount"] = self.dividend_amount(subject)
+            row["dividend_amount"] = self.dividend_amount(subject, face_value=face_value_of(record))
         elif action_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT):
             row["price_factor"] = self.price_factor(subject)
+        elif action_type == CorporateActionType.CONSOLIDATION:
+            row["price_factor"] = self.consolidation_factor(subject)
         return row
 
 
@@ -224,12 +256,12 @@ class CorporateActions:
         return frame.sort_values("ex_date", kind="stable").reset_index(drop=True)
 
     def price_events(self, bars: pd.DataFrame) -> pd.Series:
-        """Combined bonus/split/dividend divisor events, ex-date indexed, ready for :meth:`adjust`.
+        """Combined bonus/split/consolidation/dividend divisor events, ex-date indexed, ready for :meth:`adjust`.
 
         Duplicate ex-dates stay as separate entries -- the cumulative product in
         ``factors`` multiplies them in correctly either way.
         """
-        combined = sorted(self._bonus_split_events() + self._dividend_price_events(bars, self._dividend_events()))
+        combined = sorted(self._ratio_events() + self._dividend_price_events(bars, self._dividend_events()))
         if not combined:
             return pd.Series(dtype=float)
         dates, factors = zip(*combined, strict=True)
@@ -279,10 +311,14 @@ class CorporateActions:
         ADJUSTED_OHLC_SCHEMA.validate(adjusted)
         return adjusted
 
-    def _bonus_split_events(self) -> list[tuple[date, float]]:
+    def _ratio_events(self) -> list[tuple[date, float]]:
+        """Ex-date divisors readable straight from the subject: bonus, split, consolidation."""
         events: list[tuple[date, float]] = []
         for record in self._records:
-            factor = self._classifier.price_factor(self._classifier.subject_of(record))
+            subject = self._classifier.subject_of(record)
+            factor = self._classifier.price_factor(subject)
+            if factor is None and self._classifier.classify(subject) is CorporateActionType.CONSOLIDATION:
+                factor = self._classifier.consolidation_factor(subject)
             ex_date = ex_date_of(record)
             if factor is not None and factor != 1.0 and ex_date is not None:
                 events.append((ex_date, factor))
@@ -291,7 +327,9 @@ class CorporateActions:
     def _dividend_events(self) -> list[tuple[date, float]]:
         events: list[tuple[date, float]] = []
         for record in self._records:
-            amount = self._classifier.dividend_amount(self._classifier.subject_of(record))
+            amount = self._classifier.dividend_amount(
+                self._classifier.subject_of(record), face_value=face_value_of(record)
+            )
             ex_date = ex_date_of(record)
             if amount is not None and ex_date is not None:
                 events.append((ex_date, amount))

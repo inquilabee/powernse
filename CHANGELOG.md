@@ -4,6 +4,8 @@
 
 ### Added
 
+- Corporate-action adjustment now also covers **percentage dividends** (`Div 30%` → `face_value × 30 %` per share, via `faceVal` in the record) and **share consolidations** (`Consolidation From Re 1 To Rs 10` → reverse-split divisor). `SubjectClassifier.dividend_amount(subject, face_value=)` and `SubjectClassifier.consolidation_factor(subject)`; `corporate_actions.face_value_of()`. Lifts the staged-archive dividend parse rate from ~55 % to ~75 %
+
 - Typed delivery / traded-value reads from the staged `sec_bhavdata_full` archive: `NSEData.delivery(symbol, from_date=, to_date=, series=)` (per-symbol history — delivery qty/%, turnover, trade count, `DeliverySchema`-shaped), `NSEData.delivery_on(trade_date, symbol=, series=)` (one staged day; `series=None` for every series), `NSEData.delivery_frame(column=, symbols=, from_date=, to_date=, series=)` (Date × Symbol matrix of `delivery_pct` / `delivery_qty` / `turnover_lacs` / `volume`). `powernse.schemas` gains `DeliverySchema` / `DeliveryRow`
 - Typed bulk / block deal reads: `NSEData.bulk_deals(from_date=, to_date=, symbol=, side=)` and `NSEData.block_deals(...)` return a `DealSchema`-shaped DataFrame across the staged window, filterable by symbol and buy/sell side. `powernse.schemas` gains `DealSchema` / `DealRow`
 - F&O securities-in-ban reads: `NSEData.secban(on=None) -> set[str]` and `NSEData.is_banned(symbol, on=None) -> bool`, keyed by the effective trade date parsed from each `fo_secban` file's header (`on=None` → the latest staged ban date). `powernse.parsers.parse_secban(text)` exposes the parse
