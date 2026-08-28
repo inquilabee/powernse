@@ -56,6 +56,40 @@ class TradingCalendar:
         if to_date > last_session:
             yield from self._weekdays(max(from_date, last_session + timedelta(days=1)), to_date)
 
+    # -- arithmetic ----------------------------------------------------------
+
+    def sessions(self, from_date: date, to_date: date) -> list[date]:
+        """Trading days in the inclusive range, as a list."""
+        return list(self.iter_dates(from_date, to_date))
+
+    def count(self, from_date: date, to_date: date) -> int:
+        """Number of trading days in ``[from_date, to_date]``."""
+        return len(self.sessions(from_date, to_date))
+
+    def offset(self, day: date, n: int) -> date:
+        """The session ``n`` steps from ``day``.
+
+        ``n > 0`` -> the ``n``-th session strictly after ``day``; ``n < 0`` -> the
+        ``|n|``-th strictly before; ``n == 0`` -> ``day`` unchanged. Outside the
+        calendar's coverage this counts Monday-Friday, matching ``iter_dates``.
+        """
+        if n == 0:
+            return day
+        span = abs(n)
+        reach = span * 2 + 8
+        for _ in range(6):
+            if n > 0:
+                found = list(self.iter_dates(day + timedelta(days=1), day + timedelta(days=reach)))
+                if len(found) >= span:
+                    return found[span - 1]
+            else:
+                found = list(self.iter_dates(day - timedelta(days=reach), day - timedelta(days=1)))
+                if len(found) >= span:
+                    return found[-span]
+            reach *= 2
+        msg = f"offset({day}, {n}) did not resolve within {reach} calendar days"
+        raise ValueError(msg)
+
     def _weekdays(self, from_date: date, to_date: date) -> Iterator[date]:
         for day in self._every_day(from_date, to_date):
             if not self.is_weekend(day):
