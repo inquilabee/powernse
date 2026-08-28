@@ -7,6 +7,7 @@ from powernse.reading.deals import DealsReader, SecbanReader
 from powernse.reading.delivery import DeliveryReader
 from powernse.reading.futures import FoReader
 from powernse.reading.index import IndexReader
+from powernse.reading.manifest_audit import ManifestAudit, ManifestIssue
 from powernse.reading.security import SecurityMasterReader
 from powernse.reading.snapshots import SnapshotReader
 
@@ -18,6 +19,8 @@ __all__ = [
     "DeliveryReader",
     "FoReader",
     "IndexReader",
+    "ManifestAudit",
+    "ManifestIssue",
     "SecbanReader",
     "SecurityMasterReader",
     "SnapshotReader",

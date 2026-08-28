@@ -34,6 +34,8 @@ from powernse.reading import (
     DeliveryReader,
     FoReader,
     IndexReader,
+    ManifestAudit,
+    ManifestIssue,
     SecbanReader,
     SecurityMasterReader,
     SnapshotReader,
@@ -63,6 +65,7 @@ class NSEData:
         self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
         self._secban = SecbanReader(self._archive)
         self._securities = SecurityMasterReader(self._archive)
+        self._manifest = ManifestAudit(self._archive)
         self._snapshots = SnapshotReader(self._archive)
         self._frame_readers = {
             BHAVCOPY.key: self._bhavcopy,
@@ -323,3 +326,7 @@ class NSEData:
     def inventory(self) -> dict[str, int]:
         """Staged file counts by dataset, plus the manifest byte size."""
         return self._snapshots.inventory()
+
+    def audit_manifest(self) -> list[ManifestIssue]:
+        """Manifest-listed downloads that are now missing or whose sha256 no longer matches."""
+        return self._manifest.issues()

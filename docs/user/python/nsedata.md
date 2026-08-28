@@ -116,9 +116,12 @@ staged span:
 from powernse.datasets import FO_BHAVCOPY
 
 data.coverage(FO_BHAVCOPY)                             # sessions missing an F&O bhavcopy file
+data.audit_manifest()                                 # [ManifestIssue(local_path, kind)] — sha256 drift / missing files
 ```
 
-`powernse verify` reports the same gaps for the core dated archives from the shell (exit 1 if any).
+`powernse verify` reports the session gaps for the core dated archives from the
+shell (exit 1 if any); `powernse verify --hashes` also re-hashes every staged
+file against the download manifest.
 
 Corporate actions — `data.corporate_actions(symbol, ...)` classifies each staged
 record (type, subject, derived `price_factor` / `dividend_amount`) into a frame;
