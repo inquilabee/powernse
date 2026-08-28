@@ -100,35 +100,42 @@ class BhavcopyReader(DatedFrameReader[OhlcRow]):
         series: str = "EQ",
     ) -> dict[str, pd.DataFrame]:
         """One Date x Symbol matrix per requested OHLCV column, all in a single pass over staged days."""
+        getters = self._resolve_getters(columns)
+        series_needle = series.strip().upper()
+        wanted = {s.strip().upper() for s in symbols} if symbols is not None else None
+        matrices: dict[str, dict[date, dict[str, float]]] = {key: {} for key in getters}
+        for day in self.window(from_date, to_date):
+            for key, row in self._day_columns(day, getters, series_needle, wanted).items():
+                matrices[key][day] = row
+        return {key: self._as_matrix(cells) for key, cells in matrices.items()}
+
+    def _day_columns(
+        self,
+        day: date,
+        getters: dict[str, Callable[[OhlcRow], float]],
+        series_needle: str,
+        wanted: set[str] | None,
+    ) -> dict[str, dict[str, float]]:
+        todays = [
+            bar
+            for bar in self.rows_on(day)
+            if bar["series"] == series_needle and (wanted is None or bar["symbol"] in wanted)
+        ]
+        return {key: row for key, getter in getters.items() if (row := {bar["symbol"]: getter(bar) for bar in todays})}
+
+    def _resolve_getters(self, columns: Iterable[str]) -> dict[str, Callable[[OhlcRow], float]]:
         keys = tuple(dict.fromkeys(name.strip().lower() for name in columns))
         if not keys:
             msg = "columns must be non-empty"
             raise ValueError(msg)
-        getters = {}
-        for key in keys:
-            getter = self._COLUMN_GETTERS.get(key)
-            if getter is None:
-                msg = f"column must be one of {tuple(self._COLUMN_GETTERS)}, got {key!r}"
-                raise ValueError(msg)
-            getters[key] = getter
+        try:
+            return {key: self._COLUMN_GETTERS[key] for key in keys}
+        except KeyError as exc:
+            msg = f"column must be one of {tuple(self._COLUMN_GETTERS)}, got {exc.args[0]!r}"
+            raise ValueError(msg) from exc
 
-        series_needle = series.strip().upper()
-        wanted = {s.strip().upper() for s in symbols} if symbols is not None else None
-        matrices: dict[str, dict[date, dict[str, float]]] = {key: {} for key in keys}
-        for day in self.window(from_date, to_date):
-            todays = [
-                bar
-                for bar in self.rows_on(day)
-                if bar["series"] == series_needle and (wanted is None or bar["symbol"] in wanted)
-            ]
-            for key, getter in getters.items():
-                row = {bar["symbol"]: getter(bar) for bar in todays}
-                if row:
-                    matrices[key][day] = row
-
-        out: dict[str, pd.DataFrame] = {}
-        for key in keys:
-            frame = pd.DataFrame.from_dict(matrices[key], orient="index").sort_index()
-            frame.index.name = "Date"
-            out[key] = frame
-        return out
+    @staticmethod
+    def _as_matrix(cells: dict[date, dict[str, float]]) -> pd.DataFrame:
+        frame = pd.DataFrame.from_dict(cells, orient="index").sort_index()
+        frame.index.name = "Date"
+        return frame

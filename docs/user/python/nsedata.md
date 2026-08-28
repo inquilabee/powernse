@@ -52,6 +52,15 @@ panel = data.wide_frames(columns=["close", "volume"], symbols=["RELIANCE", "TCS"
 ```
 
 ```python
+# Stream one validated frame per staged day (memory-bounded multi-year passes).
+# Supports bhavcopy / fo_bhavcopy / full_bhavcopy / index_closes / bulk_deals / block_deals.
+from powernse.datasets import BHAVCOPY
+
+for day, frame in data.iter_days(BHAVCOPY, from_date=date(2020, 1, 1), to_date=date(2024, 12, 31)):
+    ...  # frame is that day's OhlcSchema-shaped bhavcopy
+```
+
+```python
 # Typed delivery / traded-value reads from the staged sec_bhavdata_full archive
 deliv = data.delivery("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 day = data.delivery_on(date(2024, 8, 9))                       # every EQ row that day; series=None for all series

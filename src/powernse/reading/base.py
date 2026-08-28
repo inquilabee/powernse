@@ -54,6 +54,14 @@ class DatedFrameReader[RowT: SchemaRow](ArchiveReader, ABC):
                 if row is not None:
                     yield row
 
+    def iter_frames(
+        self, from_date: date | None = None, to_date: date | None = None
+    ) -> Iterator[tuple[date, pd.DataFrame]]:
+        """One validated, schema-shaped frame per *staged* day in the window, yielded lazily."""
+        for day in self.window(from_date, to_date):
+            if self._archive.has_staged(self.dataset, day):
+                yield day, self.to_frame(list(self.rows_on(day)))
+
     def to_frame(self, rows: list[RowT]) -> pd.DataFrame:
         if not rows:
             return empty_frame(self.schema)

@@ -7,7 +7,7 @@ additionally compose a reader with
 :class:`powernse.corporate_actions.CorporateActions`.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Self
@@ -16,7 +16,15 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
-from powernse.datasets import BHAVCOPY, BLOCK_DEALS, BULK_DEALS, Dataset
+from powernse.datasets import (
+    BHAVCOPY,
+    BLOCK_DEALS,
+    BULK_DEALS,
+    FO_BHAVCOPY,
+    FULL_BHAVCOPY,
+    INDEX_CLOSES,
+    Dataset,
+)
 from powernse.index import Index
 from powernse.reading import (
     BhavcopyReader,
@@ -56,6 +64,14 @@ class NSEData:
         self._secban = SecbanReader(self._archive)
         self._securities = SecurityMasterReader(self._archive)
         self._snapshots = SnapshotReader(self._archive)
+        self._frame_readers = {
+            BHAVCOPY.key: self._bhavcopy,
+            FO_BHAVCOPY.key: self._fo,
+            FULL_BHAVCOPY.key: self._delivery,
+            INDEX_CLOSES.key: self._index,
+            BULK_DEALS.key: self._bulk_deals,
+            BLOCK_DEALS.key: self._block_deals,
+        }
 
     @classmethod
     def open(cls, root: Path | str | None = None, *, create: bool = False) -> Self:
@@ -148,6 +164,21 @@ class NSEData:
     def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
         """XBOM sessions that have no staged bhavcopy file (``coverage(BHAVCOPY, ...)``)."""
         return self._coverage.missing(BHAVCOPY, from_date=from_date, to_date=to_date)
+
+    def iter_days(
+        self, dataset: Dataset, *, from_date: date | None = None, to_date: date | None = None
+    ) -> Iterator[tuple[date, pd.DataFrame]]:
+        """Stream ``(day, frame)`` for each staged day of a per-session dataset -- memory-bounded multi-year passes.
+
+        Supports bhavcopy, F&O bhavcopy, full bhavcopy (delivery), index closes,
+        and bulk / block deals; other datasets raise ``ValueError``.
+        """
+        reader = self._frame_readers.get(dataset.key)
+        if reader is None:
+            supported = ", ".join(sorted(self._frame_readers))
+            msg = f"iter_days does not support {dataset.key!r}; choose from {supported}"
+            raise ValueError(msg)
+        return reader.iter_frames(from_date, to_date)
 
     # -- delivery / traded value -----------------------------------------------
 

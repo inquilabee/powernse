@@ -284,7 +284,6 @@ class SecurityRowParser(RowParser[SecurityRow]):
     }
     NUMERIC = ("paid_up_value", "market_lot", "face_value")
     NUMERIC_STRIP = ","
-    LISTING_FORMATS = ("%d-%b-%Y", "%d-%b-%y")
 
     def _build(self, row: RawRow, picked: dict[str, str], numbers: dict[str, float], trade_date: date) -> SecurityRow:
         del row, trade_date
@@ -292,7 +291,7 @@ class SecurityRowParser(RowParser[SecurityRow]):
             "symbol": picked["symbol"].upper(),
             "name": picked["name"].strip(),
             "series": picked["series"].upper(),
-            "listing_date": self.parse_date(picked["listing_date"], formats=self.LISTING_FORMATS) or date.min,
+            "listing_date": self.parse_date(picked["listing_date"]) or date.min,
             "paid_up_value": numbers["paid_up_value"],
             "market_lot": int(numbers["market_lot"]),
             "isin": picked["isin"].upper(),

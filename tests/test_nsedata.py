@@ -188,6 +188,22 @@ def test_wide_frame_adjusted_all_ohlcv(tmp_path: Path) -> None:
     assert vol.loc[ex_day, "RELIANCE"] == 100.0
 
 
+def test_iter_days_yields_staged_days_only(tmp_path: Path) -> None:
+    body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,1,2,0,1,10\n"
+    _write_legacy(tmp_path, date(2024, 1, 2), body)
+    _write_legacy(tmp_path, date(2024, 1, 4), body)  # 2024-01-03 left as a gap
+
+    days = list(NSEData(tmp_path).iter_days(BHAVCOPY, from_date=date(2024, 1, 2), to_date=date(2024, 1, 4)))
+    assert [day for day, _ in days] == [date(2024, 1, 2), date(2024, 1, 4)]
+    for _, frame in days:
+        assert list(frame["symbol"]) == ["RELIANCE"]
+
+
+def test_iter_days_rejects_unsupported_dataset(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="iter_days does not support"):
+        list(NSEData(tmp_path).iter_days(CORPORATE_ACTIONS))
+
+
 def test_wide_frames_multi_column_matches_singles(tmp_path: Path) -> None:
     _write_legacy(
         tmp_path,

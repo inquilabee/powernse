@@ -5,6 +5,7 @@
 ### Added
 
 - `NSEData.wide_frames(columns=[...], symbols=, from_date=, to_date=, series=, adjusted=) -> dict[str, DataFrame]`: one Date × Symbol matrix per column, sharing a single pass over the staged days
+- `NSEData.iter_days(dataset, from_date=, to_date=) -> Iterator[(date, DataFrame)]`: stream one validated frame per staged day for memory-bounded multi-year passes (bhavcopy / F&O bhavcopy / full bhavcopy / index closes / bulk / block deals)
 - `NSEData.wide_frame(adjusted=True)` now works for every OHLCV column, not just close — open/high/low/close divide by the per-symbol bonus/split/dividend factor, `volume` multiplies (the `adjusted=True` + non-close `ValueError` is gone)
 - Equity security master: `powernse equity-list` downloads NSE's `EQUITY_L.csv`; `NSEData.securities() -> DataFrame` (whole master, `SecuritySchema`: symbol / name / series / listing_date / paid_up_value / market_lot / isin / face_value), `NSEData.security(symbol)` / `NSEData.security_by_isin(isin) -> Series | None`, and a `powernse securities [--symbol | --isin]` read command. New `EquityListDownloader`, `powernse.schemas.SecuritySchema` / `SecurityRow`, `equity_list` dataset
 
