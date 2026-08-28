@@ -165,6 +165,13 @@ consolidation, and dividend** — including percentage dividends (`Div 30%`,
 resolved against the record's face value). Against the bundled archive that
 parses ~98 % of bonus/split records and ~75 % of dividend records.
 
+**BSE dividend backfill.** Some NSE dividend records carry no per-share figure in
+their subject. Run `powernse bse-corporate-actions --from … --to …` to stage
+BSE's free corporate-actions feed; once it's present, `ohlc_adjusted` /
+`corporate_actions()` fill the missing amount from BSE for the same symbol and
+ex-date (± 1 day). It is automatic, dividends only, and the NSE subject wins
+whenever it has a number.
+
 **Rights issues** are opt-in: pass
 `include=("bonus", "split", "consolidation", "dividend", "rights")` to
 `ohlc_adjusted` / `wide_frame` / `wide_frames`, or `apply={…, "rights"}` to

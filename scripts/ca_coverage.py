@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """Measure corporate-action adjustment coverage against the staged CA archive.
 
-Maintainer tool -- reads ``nse-data/`` only, never writes, not run in CI.
+Maintainer tool -- reads the archive only, never writes, not run in CI.
 
     uv run python scripts/ca_coverage.py [--root nse-data]
-    uv run python scripts/ca_coverage.py --with-bse --from 2022-01-01 --to 2024-12-31
+    uv run python scripts/ca_coverage.py --root nse-data --with-bse
 
 The table shows, per corporate-action type, how many staged records carry terms
-this library can turn into a price divisor today. Re-run after each change to see
-the number move. ``--with-bse`` additionally probes how many NSE records that
-*don't* parse have a name+ex-date match in BSE's free corporate-actions feed.
+this library can turn into a price divisor. ``--with-bse`` additionally reports
+how much a **staged** BSE corporate-actions archive lifts the dividend rate
+(download it first: ``powernse bse-corporate-actions --from ... --to ...``).
 """
 
 from __future__ import annotations
@@ -17,10 +17,12 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
+from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import SUBJECTS, CorporateActionType, ex_date_of, face_value_of, symbol_of
+from powernse.reading import BseCorporateActionReader
 
 RATIO_BUCKET = "bonus/split/consolidation"
 
@@ -73,75 +75,42 @@ def _coverage_table(records: list[dict]) -> None:
         print(f"{bucket:<26}{got:>10}{tot:>8}{rate:>8}")
 
 
-def _unparsed_events(records: list[dict], lo: date, hi: date) -> list[tuple[str, date, str]]:
-    out: list[tuple[str, date, str]] = []
+def _bse_delta(records: list[dict], root: Path) -> None:
+    ex_dates = [day for record in records if (day := ex_date_of(record)) is not None]
+    if not ex_dates:
+        return
+    reader = BseCorporateActionReader(ArchiveRoot.connect(root))
+    amounts = reader.dividend_amounts(min(ex_dates), max(ex_dates))
+    print(f"\nstaged BSE dividend rows in span: {len(amounts)}")
+
+    total = nse = bse = 0
     for record in records:
-        ex = ex_date_of(record)
-        if ex is None or not (lo <= ex <= hi):
+        if SUBJECTS.classify(SUBJECTS.subject_of(record)) is not CorporateActionType.DIVIDEND:
             continue
-        subject = SUBJECTS.subject_of(record)
-        ca_type = SUBJECTS.classify(subject)
-        if ca_type is CorporateActionType.DIVIDEND and not _dividend_parses(record):
-            out.append((symbol_of(record).upper(), ex, subject))
-        elif ca_type is CorporateActionType.RIGHTS and not _rights_parses(record):
-            out.append((symbol_of(record).upper(), ex, subject))
-    return out
-
-
-def _bse_index(lo: date, hi: date) -> dict[tuple[str, date], str]:
-    import requests  # noqa: PLC0415 -- maintainer script, optional dependency path
-
-    url = "https://api.bseindia.com/BseIndiaAPI/api/DefaultData/w"
-    headers = {"User-Agent": "Mozilla/5.0", "Referer": "https://www.bseindia.com/", "Accept": "application/json"}
-    index: dict[tuple[str, date], str] = {}
-    span = hi.year - lo.year
-    for offset in range(span + 1):
-        year = lo.year + offset
-        start = max(lo, date(year, 1, 1))
-        end = min(hi, date(year, 12, 31))
-        params = {
-            "Fdate": start.strftime("%Y%m%d"),
-            "TDate": end.strftime("%Y%m%d"),
-            "ddlcategorys": "E",
-            "ddlindex": "",
-            "scripcode": "",
-            "segment": "Equity",
-            "strSearch": "",
-        }
-        rows = requests.get(url, params=params, headers=headers, timeout=45).json()
-        for row in rows:
-            name = str(row.get("short_name", "")).upper()
-            try:
-                ex = datetime.strptime(str(row.get("Ex_date", "")), "%d %b %Y").date()  # noqa: DTZ007
-            except ValueError:
-                continue
-            index[name, ex] = str(row.get("Purpose", ""))
-    return index
-
-
-def _probe_bse(records: list[dict], lo: date, hi: date) -> None:
-    unparsed = _unparsed_events(records, lo, hi)
-    print(f"\nNSE unparsed dividend/rights events in {lo}..{hi}: {len(unparsed)}")
-    bse = _bse_index(lo, hi)
-    print(f"BSE corporate-action rows fetched: {len(bse)}")
-    hits = sum(any((name, ex + timedelta(days=delta)) in bse for delta in (-1, 0, 1)) for name, ex, _ in unparsed)
-    rate = f"{100 * hits / len(unparsed):.1f}%" if unparsed else "n/a"
-    print(f"of those, BSE has a name+ex-date(+/-1d) match for: {hits} ({rate})")
+        total += 1
+        if _dividend_parses(record):
+            nse += 1
+            continue
+        ex, needle = ex_date_of(record), symbol_of(record).upper()
+        if ex is not None and any((needle, ex + timedelta(days=d)) in amounts for d in (-1, 0, 1)):
+            bse += 1
+    if total:
+        print(
+            f"dividend parse rate: NSE {100 * nse / total:.1f}%  ->  "
+            f"NSE+BSE {100 * (nse + bse) / total:.1f}%  (+{bse} records)"
+        )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path("nse-data"))
-    parser.add_argument("--with-bse", action="store_true", help="probe BSE backfill for unparsed events")
-    three_years_ago = date.today() - timedelta(days=1095)  # noqa: DTZ011 -- naive date is intended
-    parser.add_argument("--from", dest="from_date", type=date.fromisoformat, default=three_years_ago)
-    parser.add_argument("--to", dest="to_date", type=date.fromisoformat, default=date.today())  # noqa: DTZ011
+    parser.add_argument("--with-bse", action="store_true", help="also report the staged-BSE dividend backfill delta")
     args = parser.parse_args()
 
     records = _load_records(args.root)
     _coverage_table(records)
     if args.with_bse:
-        _probe_bse(records, args.from_date, args.to_date)
+        _bse_delta(records, args.root)
 
 
 if __name__ == "__main__":
