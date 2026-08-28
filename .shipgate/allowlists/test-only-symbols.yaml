@@ -12,3 +12,39 @@ entries:
       Public calendar arithmetic added for data-provider consumers (the
       "hold N trading sessions" primitive); no in-repo caller yet, covered by
       tests/test_calendar.py.
+  - path: src/powernse/calendar.py:TradingCalendar.is_session
+    reason: >-
+      Public calendar predicate for data-provider consumers ("is this date a
+      trading day"); covered by tests/test_calendar.py.
+  - path: src/powernse/calendar.py:TradingCalendar.holidays
+    reason: >-
+      Public calendar query (weekday non-sessions in a range) for data-provider
+      consumers; covered by tests/test_calendar.py.
+  - path: src/powernse/data.py:NSEData.coverage_gaps
+    reason: >-
+      Public read API on the NSEData facade (bhavcopy session gaps); thin alias
+      over coverage(BHAVCOPY, ...), kept for library consumers and the docs.
+  - path: src/powernse/data.py:NSEData.delivery_on
+    reason: >-
+      Public read API (one staged full-bhavcopy day of delivery rows); part of
+      the delivery / traded-value surface, exercised by tests/test_delivery.py.
+  - path: src/powernse/data.py:NSEData.delivery_frame
+    reason: >-
+      Public read API (Date x Symbol matrix of one delivery column); part of the
+      delivery / traded-value surface, exercised by tests/test_delivery.py.
+  - path: src/powernse/data.py:NSEData.bulk_deals
+    reason: >-
+      Public read API on the NSEData facade (bulk deals across the staged
+      window); exercised by tests/test_deals.py, kept for library consumers.
+  - path: src/powernse/data.py:NSEData.block_deals
+    reason: >-
+      Public read API on the NSEData facade (block deals across the staged
+      window); exercised by tests/test_deals.py, kept for library consumers.
+  - path: src/powernse/data.py:NSEData.secban
+    reason: >-
+      Public read API (F&O trade-ban symbol set for a date); exercised by
+      tests/test_deals.py, kept for library consumers.
+  - path: src/powernse/data.py:NSEData.is_banned
+    reason: >-
+      Public read API (is one symbol in the F&O trade ban on a date); exercised
+      by tests/test_deals.py, kept for library consumers.

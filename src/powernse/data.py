@@ -16,8 +16,19 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
+from powernse.datasets import BHAVCOPY, BLOCK_DEALS, BULK_DEALS, Dataset
 from powernse.index import Index
-from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, IndexReader, SnapshotReader
+from powernse.reading import (
+    BhavcopyReader,
+    CorporateActionReader,
+    CoverageReader,
+    DealsReader,
+    DeliveryReader,
+    FoReader,
+    IndexReader,
+    SecbanReader,
+    SnapshotReader,
+)
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
 
@@ -34,9 +45,14 @@ class NSEData:
             archive_root = Settings.resolve(root).archive_root
             self._archive = ArchiveRoot.open(archive_root) if create else ArchiveRoot.connect(archive_root)
         self._bhavcopy = BhavcopyReader(self._archive)
+        self._delivery = DeliveryReader(self._archive)
         self._fo = FoReader(self._archive)
         self._index = IndexReader(self._archive)
         self._actions = CorporateActionReader(self._archive)
+        self._coverage = CoverageReader(self._archive)
+        self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
+        self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
+        self._secban = SecbanReader(self._archive)
         self._snapshots = SnapshotReader(self._archive)
 
     @classmethod
@@ -104,9 +120,39 @@ class NSEData:
             out[symbol] = raw[symbol] / factors
         return out
 
+    def coverage(self, dataset: Dataset, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
+        """XBOM sessions with no staged ``dataset`` file. Window defaults to that dataset's staged span."""
+        return self._coverage.missing(dataset, from_date=from_date, to_date=to_date)
+
     def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
-        """XBOM sessions in the window that have no staged bhavcopy file."""
-        return self._bhavcopy.coverage_gaps(from_date=from_date, to_date=to_date)
+        """XBOM sessions that have no staged bhavcopy file (``coverage(BHAVCOPY, ...)``)."""
+        return self._coverage.missing(BHAVCOPY, from_date=from_date, to_date=to_date)
+
+    # -- delivery / traded value -----------------------------------------------
+
+    def delivery(
+        self, symbol: str, *, from_date: date | None = None, to_date: date | None = None, series: str = "EQ"
+    ) -> pd.DataFrame:
+        """Delivery qty/%, turnover, and trade count for one symbol (DeliverySchema-shaped)."""
+        return self._delivery.delivery(symbol, from_date=from_date, to_date=to_date, series=series)
+
+    def delivery_on(self, trade_date: date, *, symbol: str | None = None, series: str | None = "EQ") -> pd.DataFrame:
+        """All (or one symbol / one series) delivery rows from a single staged full-bhavcopy day."""
+        return self._delivery.on(trade_date, symbol=symbol, series=series)
+
+    def delivery_frame(
+        self,
+        *,
+        column: str = "delivery_pct",
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+    ) -> pd.DataFrame:
+        """Date x Symbol matrix of one delivery column (delivery_pct / delivery_qty / turnover_lacs / volume)."""
+        return self._delivery.wide_frame(
+            column=column, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+        )
 
     def bhavcopy_path(self, trade_date: date) -> Path:
         return self._bhavcopy.staged_path(trade_date)
@@ -171,19 +217,42 @@ class NSEData:
         records = self._actions.records_in_adjustment_window(symbol, window_start=window_start, end=end)
         return CorporateActions(records).adjust(bars)
 
+    # -- deals + F&O ban --------------------------------------------------------
+
+    def bulk_deals(
+        self,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        symbol: str | None = None,
+        side: str | None = None,
+    ) -> pd.DataFrame:
+        """Bulk deals across the staged window (DealSchema-shaped); filter by ``symbol`` / ``side``."""
+        return self._bulk_deals.deals(from_date=from_date, to_date=to_date, symbol=symbol, side=side)
+
+    def block_deals(
+        self,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        symbol: str | None = None,
+        side: str | None = None,
+    ) -> pd.DataFrame:
+        """Block deals across the staged window (DealSchema-shaped); filter by ``symbol`` / ``side``."""
+        return self._block_deals.deals(from_date=from_date, to_date=to_date, symbol=symbol, side=side)
+
+    def secban(self, on: date | None = None) -> set[str]:
+        """Symbols in the F&O trade ban for ``on`` (default: the latest staged ban date)."""
+        return self._secban.banned(on)
+
+    def is_banned(self, symbol: str, on: date | None = None) -> bool:
+        """Whether ``symbol`` is in the F&O trade ban for ``on`` (default: latest staged ban date)."""
+        return symbol.strip().upper() in self._secban.banned(on)
+
     # -- snapshots + inventory ----------------------------------------------
 
     def full_bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
         return self._snapshots.full_bhavcopy_rows(trade_date)
-
-    def bulk_deals(self, label_date: date) -> list[dict[str, str]]:
-        return self._snapshots.bulk_deals(label_date)
-
-    def block_deals(self, label_date: date) -> list[dict[str, str]]:
-        return self._snapshots.block_deals(label_date)
-
-    def fo_secban(self, label_date: date) -> list[dict[str, str]]:
-        return self._snapshots.fo_secban(label_date)
 
     def inventory(self) -> dict[str, int]:
         """Staged file counts by dataset, plus the manifest byte size."""

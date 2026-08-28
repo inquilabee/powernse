@@ -24,15 +24,31 @@ adjusted = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=da
 fo = data.fo_bars("RELIANCE", instrument_type="FUTSTK")
 indexes = data.index("Nifty 50").ohlc(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 full_rows = data.full_bhavcopy_rows(date(2024, 8, 9))
-bulk = data.bulk_deals(date(2024, 8, 9))
 
 print(data.inventory())
+```
+
+```python
+# Bulk / block deals across the staged window (DealSchema-shaped); filter by symbol / side
+bulk = data.bulk_deals(from_date=date(2024, 8, 1), to_date=date(2024, 8, 9), symbol="RELIANCE")
+block = data.block_deals(side="BUY")
+
+# F&O trade ban, keyed by the effective trade date parsed from each file's header
+banned = data.secban()                       # set[str] for the latest staged ban date
+data.is_banned("SAIL", date(2024, 8, 9))     # bool
 ```
 
 ```python
 # Date x Symbol matrix for one OHLCV column, read across staged days in a single pass
 close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
+```
+
+```python
+# Typed delivery / traded-value reads from the staged sec_bhavdata_full archive
+deliv = data.delivery("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+day = data.delivery_on(date(2024, 8, 9))                       # every EQ row that day; series=None for all series
+pct = data.delivery_frame(column="delivery_pct", symbols=["RELIANCE", "TCS"])  # Date x Symbol matrix
 ```
 
 Indexes — `Index("nifty50")` carries identity from a bundled catalog of every
@@ -65,7 +81,21 @@ from powernse.calendar import XBOM
 XBOM.sessions(date(2024, 8, 1), date(2024, 8, 31))     # list[date] of trading days
 XBOM.count(date(2024, 8, 1), date(2024, 8, 31))        # how many
 XBOM.offset(date(2024, 8, 1), 30)                      # the 30th session after
+XBOM.is_session(date(2024, 8, 15))                     # False — Independence Day
+XBOM.holidays(date(2024, 8, 1), date(2024, 8, 31))     # weekday non-sessions in the range
 ```
+
+Coverage — `coverage_gaps()` is `coverage(BHAVCOPY, ...)`; `coverage(dataset, ...)`
+generalizes it to any dated archive, defaulting the window to that dataset's full
+staged span:
+
+```python
+from powernse.datasets import FO_BHAVCOPY
+
+data.coverage(FO_BHAVCOPY)                             # sessions missing an F&O bhavcopy file
+```
+
+`powernse verify` reports the same gaps for the core dated archives from the shell (exit 1 if any).
 
 Corporate actions — `data.corporate_actions(symbol, ...)` classifies each staged
 record (type, subject, derived `price_factor` / `dividend_amount`) into a frame;

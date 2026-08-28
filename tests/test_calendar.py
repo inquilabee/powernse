@@ -44,3 +44,16 @@ def test_offset_pre_xbom_coverage_uses_weekdays() -> None:
 def test_offset_rejects_from_before_to() -> None:
     with pytest.raises(ValueError, match="on or before"):
         XBOM.sessions(date(2024, 8, 10), date(2024, 8, 1))
+
+
+def test_is_session() -> None:
+    assert XBOM.is_session(date(2024, 8, 9)) is True  # Friday, trading day
+    assert XBOM.is_session(date(2024, 8, 10)) is False  # Saturday
+    assert XBOM.is_session(date(2024, 8, 15)) is False  # Independence Day, NSE closed
+
+
+def test_holidays_over_a_month() -> None:
+    got = XBOM.holidays(date(2024, 8, 1), date(2024, 8, 31))
+    assert date(2024, 8, 15) in got  # Independence Day
+    assert all(day.weekday() < 5 for day in got)  # weekdays only, weekends excluded
+    assert date(2024, 8, 9) not in got  # a normal trading day

@@ -66,6 +66,15 @@ class TradingCalendar:
         """Number of trading days in ``[from_date, to_date]``."""
         return len(self.sessions(from_date, to_date))
 
+    def is_session(self, day: date) -> bool:
+        """Whether ``day`` is an XBOM trading session (weekday fallback outside coverage)."""
+        return next(self.iter_dates(day, day), None) == day
+
+    def holidays(self, from_date: date, to_date: date) -> list[date]:
+        """Weekdays in the inclusive range that are not trading sessions (exchange holidays)."""
+        sessions = set(self.sessions(from_date, to_date))
+        return [day for day in self._every_day(from_date, to_date) if not self.is_weekend(day) and day not in sessions]
+
     def offset(self, day: date, n: int) -> date:
         """The session ``n`` steps from ``day``.
 

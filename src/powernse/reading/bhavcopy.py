@@ -105,9 +105,3 @@ class BhavcopyReader(DatedFrameReader[OhlcRow]):
         frame = pd.DataFrame.from_dict(matrix, orient="index").sort_index()
         frame.index.name = "Date"
         return frame
-
-    def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
-        """XBOM sessions in the window with no staged bhavcopy file."""
-        return [
-            day for day in self.window(from_date, to_date) if not self._archive.staged_path(self.dataset, day).is_file()
-        ]

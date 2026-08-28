@@ -31,6 +31,7 @@ powernse bulk-deals --date 2024-08-09
 powernse corporate-actions --from 2024-08-01 --to 2024-08-05
 powernse doctor
 powernse status
+powernse verify                       # session gaps in the core dated archives (exit 1 if any)
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 ```
 
