@@ -1,0 +1,14 @@
+jscpd.check.python:
+  extends: jscpd.check.other
+  cli:
+    threshold:
+      default: "2"
+  configuration:
+    bundled: configs/jscpd.python.json
+    discover:
+      - .shipgate/configs/jscpd.python.json
+      - .jscpd.python.json
+      - jscpd.python.json
+  scope:
+    extensions:
+      - .py

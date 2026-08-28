@@ -1,0 +1,47 @@
+# Enforces layer and forbidden-import contracts (architecture / policy).
+# `shipgate init` scaffolds configs/importlinter.ini with optional starter layers
+# when layout detection finds an importable package (src-layout or flat).
+# Customize contracts for your architecture. The package under test must be
+# importable. Managed env prepends src/ onto PYTHONPATH when src/<pkg>/__init__.py
+# exists. Skipped when no importable package is present (require_if.importable_package).
+import-linter.check:
+  executable: lint-imports
+  display_name: import-linter
+  description: Enforce Python import contracts between modules and layers
+  documentation_url: https://import-linter.readthedocs.io/
+  subcommand: []
+  modes:
+    - check
+  normalizer: generic_exit
+  install:
+    manager: python
+    package: import-linter
+    version: 2.13
+  tags:
+    - policy
+    - architecture
+  cli:
+    config:
+      flag: --config
+      style: scalar
+  configuration:
+    bundled: configs/importlinter.ini
+    discover:
+      - .shipgate/configs/importlinter.ini
+      - .importlinter
+      - setup.cfg
+      - pyproject.toml
+    pyproject_section: tool.importlinter
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+  scope:
+    extensions:
+      - .py
+    delivery: root
+  require_if:
+    importable_package: true

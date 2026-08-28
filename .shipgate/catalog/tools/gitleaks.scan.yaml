@@ -1,0 +1,53 @@
+gitleaks.scan:
+  executable: gitleaks
+  subcommand:
+    - detect
+    - --no-banner
+    - --report-format
+    - json
+    - --report-path
+    - "-"
+  modes:
+    - check
+  normalizer: gitleaks
+  install:
+    manager: binary
+    package: gitleaks
+    version: 8.30.1
+    binary: gitleaks
+    allow_path: false
+    download:
+      repo: gitleaks/gitleaks
+      asset_template: gitleaks_{version}_{os}_{arch}.tar.gz
+      binary_name: gitleaks
+      arch_map:
+        x86_64: x64
+  tags:
+    - security
+  cache:
+    results: true
+    ttl_seconds: 3600
+  cli:
+    paths:
+      flag: --source
+      style: scalar
+      aggregate: root
+    config:
+      flag: --config
+      style: scalar
+  configuration:
+    bundled: configs/gitleaks.toml
+    discover:
+      - .shipgate/configs/gitleaks.toml
+      - .gitleaks.toml
+      - gitleaks.toml
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - paths
+  scope:
+    delivery: root

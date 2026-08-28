@@ -3,38 +3,18 @@
 import os
 import tempfile
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Self
 
-RAW_BHAVCOPY_DIR = Path("raw") / "bhavcopy"
-RAW_FO_BHAVCOPY_DIR = Path("raw") / "fo_bhavcopy"
-RAW_FULL_BHAVCOPY_DIR = Path("raw") / "full_bhavcopy"
-RAW_INDEX_CLOSES_DIR = Path("raw") / "index_closes"
-RAW_BULK_DEALS_DIR = Path("raw") / "bulk_deals"
-RAW_BLOCK_DEALS_DIR = Path("raw") / "block_deals"
-RAW_FO_SECBAN_DIR = Path("raw") / "fo_secban"
-RAW_CORPORATE_ACTIONS_DIR = Path("raw") / "corporate_actions"
-RAW_INDEX_CONSTITUENTS_DIR = Path("raw") / "index_constituents"
+from powernse.datasets import ALL as ALL_DATASETS
+from powernse.datasets import Dataset
+
 MANIFEST_DIR = Path("manifest")
 
-ARCHIVE_PREFIX_DIRS = (
-    RAW_BHAVCOPY_DIR,
-    RAW_FO_BHAVCOPY_DIR,
-    RAW_FULL_BHAVCOPY_DIR,
-    RAW_INDEX_CLOSES_DIR,
-    RAW_BULK_DEALS_DIR,
-    RAW_BLOCK_DEALS_DIR,
-    RAW_FO_SECBAN_DIR,
-    RAW_CORPORATE_ACTIONS_DIR,
-    RAW_INDEX_CONSTITUENTS_DIR,
-    MANIFEST_DIR,
-)
+BOOTSTRAP_DIRS = (*(dataset.raw_dir for dataset in ALL_DATASETS), MANIFEST_DIR)
 
 IGNORED_PLACEHOLDER_NAMES = frozenset({".keep", ".gitkeep"})
-
-
-def archive_key(*parts: str) -> str:
-    return "/".join(part.strip("/") for part in parts if part)
 
 
 @dataclass(slots=True)
@@ -56,7 +36,7 @@ class ArchiveRoot:
         return cls(root=resolved)
 
     def _bootstrap(self) -> Self:
-        for relative in ARCHIVE_PREFIX_DIRS:
+        for relative in BOOTSTRAP_DIRS:
             (self.root / relative).mkdir(parents=True, exist_ok=True)
         return self
 
@@ -73,6 +53,30 @@ class ArchiveRoot:
 
     def exists(self, relative: str | Path) -> bool:
         return self.path_for(relative).is_file()
+
+    # -- Dataset-addressed staging -------------------------------------------------
+
+    def staged_path(self, dataset: Dataset, day: date, *, discriminator: str = "") -> Path:
+        """Absolute path where ``dataset``'s file for ``day`` is (or would be) staged."""
+        return self.path_for(dataset.relpath(day, discriminator=discriminator))
+
+    def staged_key(self, dataset: Dataset, day: date, *, discriminator: str = "") -> str:
+        """Archive-relative POSIX key for ``dataset``'s file for ``day``."""
+        return dataset.relpath(day, discriminator=discriminator).as_posix()
+
+    def has_staged(self, dataset: Dataset, day: date, *, discriminator: str = "") -> bool:
+        return self.staged_path(dataset, day, discriminator=discriminator).is_file()
+
+    def staged_dates(self, dataset: Dataset) -> list[date]:
+        """Every staged day for ``dataset``, ascending and de-duplicated."""
+        seen = {day for path in self.list_files(dataset.raw_dir) if (day := dataset.date_of(path)) is not None}
+        return sorted(seen)
+
+    def latest_staged_date(self, dataset: Dataset) -> date | None:
+        dates = self.staged_dates(dataset)
+        return dates[-1] if dates else None
+
+    # -- Bytes ------------------------------------------------------------------
 
     def write_bytes(self, relative: str | Path, payload: bytes) -> Path:
         path = self.path_for(relative)

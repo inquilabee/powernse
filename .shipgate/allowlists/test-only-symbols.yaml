@@ -1,0 +1,14 @@
+entries:
+  - path: src/powernse/data.py:NSEData.corporate_actions
+    reason: >-
+      Public read API on the NSEData facade (classified CA history for a symbol);
+      exercised by tests, kept for library consumers.
+  - path: src/powernse/data.py:NSEData.actions_for
+    reason: >-
+      Public read API (unclassified CA records mentioning a symbol across the
+      window); low-level escape hatch beside corporate_actions().
+  - path: src/powernse/calendar.py:TradingCalendar.offset
+    reason: >-
+      Public calendar arithmetic added for data-provider consumers (the
+      "hold N trading sessions" primitive); no in-repo caller yet, covered by
+      tests/test_calendar.py.

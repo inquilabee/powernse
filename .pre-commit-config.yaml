@@ -1,5 +1,6 @@
-# ShipGate: format then check the project suite (.shipgate/shipgate.yaml).
-# Pytest stays on pre-push so commit stays fast.
+# ShipGate: format + fast `standard` check on commit; the full suite and pytest
+# run on pre-push so `git commit` stays fast. The full suite is sequential
+# (parallel OOMs) and takes minutes -- not something to pay on every commit.
 repos:
   - repo: local
     hooks:
@@ -22,11 +23,18 @@ repos:
         pass_filenames: false
         always_run: true
       - id: shipgate-check
-        name: shipgate check
+        name: shipgate check (standard)
         entry: uv run shipgate check --target . --full-tree --suite standard
         language: system
         pass_filenames: false
         always_run: true
+      - id: shipgate-check-full
+        name: shipgate check (full)
+        entry: uv run shipgate check --target . --full-tree
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
       - id: pytest
         name: pytest
         entry: uv run pytest

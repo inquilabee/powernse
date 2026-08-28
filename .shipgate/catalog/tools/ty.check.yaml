@@ -1,0 +1,50 @@
+ty.check:
+  executable: ty
+  subcommand:
+    - check
+  modes:
+    - check
+  normalizer: ty
+  install:
+    manager: python
+    package: ty
+    version: 0.0.62
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config-file
+      style: scalar
+    python:
+      flag: --python
+      style: scalar
+    exclude:
+      flag: --exclude
+      style: repeated
+    format:
+      flag: --output-format
+      style: scalar
+      default: gitlab
+  configuration:
+    bundled: configs/ty.toml
+    discover:
+      - .shipgate/configs/ty.toml
+      - ty.toml
+    pyproject_section: tool.ty
+    pass_pyproject_as_file: false
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - python
+    - exclude
+    - format
+    - paths
+  scope:
+    extensions:
+      - .py
+      - .pyi
+    delivery: root

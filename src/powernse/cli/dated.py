@@ -8,6 +8,8 @@ import typer
 
 from powernse.cli.common import RESUME_HELP, echo_summary, parse_iso_date, resolve_range_or_resume
 from powernse.constants import DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
+from powernse.datasets import Dataset
+from powernse.downloaders import resolve_dated_resume_range
 from powernse.settings import Settings
 
 
@@ -17,7 +19,7 @@ def register_dated_download_command(
     name: str,
     help_text: str,
     downloader_attr: str,
-    resume_resolver_attr: str,
+    dataset: Dataset,
 ) -> None:
     @app.command(name, help=help_text)
     def dated_cmd(
@@ -44,10 +46,10 @@ def register_dated_download_command(
         ] = False,
     ) -> None:
         import importlib
+        from functools import partial
 
         app_module = importlib.import_module("powernse.cli.app")
         downloader_cls = getattr(app_module, downloader_attr)
-        resume_resolver = getattr(app_module, resume_resolver_attr)
         archive_root = Settings.resolve(root).archive_root
         resolved_from, resolved_to = resolve_range_or_resume(
             resume=resume,
@@ -55,7 +57,7 @@ def register_dated_download_command(
             to_date=to_date,
             days=days,
             archive_root=archive_root,
-            resume_resolver=resume_resolver,
+            resume_resolver=partial(resolve_dated_resume_range, dataset=dataset),
             label=name,
         )
         downloader = downloader_cls(

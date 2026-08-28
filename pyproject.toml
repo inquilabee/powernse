@@ -23,8 +23,10 @@ requires-python = ">=3.13"
 dependencies = [
     "exchange-calendars>=4.5",
     "filelock>=3.32",
+    "numpy>=2.1",
     "pandas>=2.2",
     "pdschema>=0.2.1",
+    "pydantic>=2.10",
     "pydantic-settings>=2.15",
     "requests>=2.32",
     "tenacity>=9.0",
@@ -69,3 +71,12 @@ filterwarnings = ["error"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/powernse/__init__.py" = ["F401"]
+
+[tool.deptry]
+known_first_party = ["powernse"]
+# tests/ import the package under test; that is not a dependency edge.
+extend_exclude = ["tests"]
+
+[tool.codespell]
+# "fo" == F&O (futures & options) in NSE prose, not a misspelling of "of".
+ignore-words-list = "fo"

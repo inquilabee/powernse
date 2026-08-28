@@ -1,0 +1,24 @@
+deadcode.check:
+  executable: deadcode
+  subcommand: []
+  modes:
+    - check
+  normalizer: generic_exit
+  install:
+    manager: python
+    package: deadcode
+    version: 2.4.1
+    requires_python: ">=3.11,<3.14"
+  cli:
+    paths:
+      style: positional
+    exclude:
+      flag: --exclude
+      style: repeated
+  option_order:
+    - paths
+    - exclude
+  scope:
+    extensions:
+      - .py
+    delivery: dirs

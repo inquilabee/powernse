@@ -4,7 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 
 from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
-from powernse.corporate_actions import CorporateActions, CorporateActionType
+from powernse.corporate_actions import CorporateActions, CorporateActionType, SubjectClassifier
 from powernse.data import NSEData
 from powernse.downloaders import (
     BhavcopyDownloader,
@@ -18,6 +18,7 @@ from powernse.downloaders import (
     IndexConstituentsDownloader,
 )
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
+from powernse.reading import Index
 from powernse.schemas import AdjustedOhlcSchema, FoSchema, IndexSchema, OhlcSchema
 from powernse.settings import Settings
 from powernse.types import DownloadSummary
@@ -40,12 +41,14 @@ __all__ = [
     "FullBhavcopyDownloader",
     "IndexClosesDownloader",
     "IndexConstituentsDownloader",
+    "Index",
     "IndexSchema",
     "NSEData",
     "OhlcSchema",
     "PayloadError",
     "PowerNseError",
     "Settings",
+    "SubjectClassifier",
     "iter_trading_dates",
 ]
 

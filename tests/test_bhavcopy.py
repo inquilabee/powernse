@@ -1,53 +1,48 @@
 """Critical tests for bhavcopy download staging and URL formats."""
 
-import io
 import json
-import zipfile
 from datetime import date
 from pathlib import Path
 
 import pytest
 import requests
+from support import staged_key, staged_path, zip_bytes
 
-from powernse.archive import extract_zip_payload_to_csv_bytes, manifest_path, sha256_file
-from powernse.calendar import is_weekend, iter_trading_dates
+from powernse.archive import extract_csv_from_zip, manifest_path, sha256_file
+from powernse.calendar import TradingCalendar, iter_trading_dates
 from powernse.data import NSEData
-from powernse.downloaders.bhavcopy import (
-    BhavcopyDownloader,
-    bhavcopy_archive_url,
-    staged_bhavcopy_csv_key,
-    staged_bhavcopy_csv_path,
-)
+from powernse.datasets import BHAVCOPY
+from powernse.downloaders.bhavcopy import BhavcopyDownloader
 from powernse.errors import DownloadError, PayloadError
 from powernse.http import NseHttpClient, RequestThrottler
 
 
 def test_bhavcopy_archive_url_legacy_format() -> None:
-    url = bhavcopy_archive_url(date(2024, 1, 2))
+    url = BhavcopyDownloader.archive_url(date(2024, 1, 2))
     assert url.endswith("/cm02JAN2024bhav.csv.zip")
     assert "/historical/EQUITIES/2024/JAN/" in url
 
 
 def test_bhavcopy_archive_url_udiff_format() -> None:
-    url = bhavcopy_archive_url(date(2024, 8, 1))
+    url = BhavcopyDownloader.archive_url(date(2024, 8, 1))
     assert url.endswith("/BhavCopy_NSE_CM_0_0_0_20240801_F_0000.csv.zip")
     assert "/content/cm/" in url
 
 
 def test_bhavcopy_archive_url_udiff_switch_boundary() -> None:
-    assert "BhavCopy_NSE_CM" in bhavcopy_archive_url(date(2024, 7, 8))
-    assert "cm05JUL2024bhav" in bhavcopy_archive_url(date(2024, 7, 5))
+    assert "BhavCopy_NSE_CM" in BhavcopyDownloader.archive_url(date(2024, 7, 8))
+    assert "cm05JUL2024bhav" in BhavcopyDownloader.archive_url(date(2024, 7, 5))
 
 
 def test_staged_bhavcopy_csv_path_layout() -> None:
     root = Path("/data/nse")
-    path = staged_bhavcopy_csv_path(root, date(2024, 1, 2))
+    path = staged_path(root, BHAVCOPY, date(2024, 1, 2))
     assert path == root / "raw" / "bhavcopy" / "2024" / "2024-01-02.csv"
 
 
 def test_is_weekend() -> None:
-    assert is_weekend(date(2024, 1, 6)) is True
-    assert is_weekend(date(2024, 1, 5)) is False
+    assert TradingCalendar.is_weekend(date(2024, 1, 6)) is True
+    assert TradingCalendar.is_weekend(date(2024, 1, 5)) is False
 
 
 def test_all_calendar_days_includes_weekend() -> None:
@@ -79,18 +74,11 @@ def test_iter_trading_dates_spans_pre_xbom_and_sessions() -> None:
     assert date(2006, 8, 17) in days
 
 
-def _zip_bytes(*members: tuple[str, str]) -> bytes:
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, body in members:
-            archive.writestr(name, body)
-    return buffer.getvalue()
-
-
 def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
     trade_date = date(2024, 1, 2)
-    url = bhavcopy_archive_url(trade_date)
-    payload = _zip_bytes(("cm02JAN2024bhav.csv", "SYMBOL,SERIES\nRELIANCE,EQ\n"))
+    url = BhavcopyDownloader.archive_url(trade_date)
+    csv_body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,2500,2520,2490,2510,100\n"
+    payload = zip_bytes(("cm02JAN2024bhav.csv", csv_body))
 
     def fetch(_url: str) -> bytes:
         assert _url == url
@@ -99,24 +87,23 @@ def test_downloader_stages_csv_and_manifest(tmp_path: Path) -> None:
     downloader = BhavcopyDownloader(tmp_path, sleep_seconds=0, fetch_bytes=fetch)
     summary = downloader.download_range(trade_date, trade_date)
 
-    staged = staged_bhavcopy_csv_path(tmp_path, trade_date)
+    staged = staged_path(tmp_path, BHAVCOPY, trade_date)
     assert summary.downloaded_count == 1
-    assert staged.read_text(encoding="utf-8").startswith("SYMBOL,SERIES")
+    assert staged.read_text(encoding="utf-8").startswith("SYMBOL,SERIES,OPEN")
 
     manifest = manifest_path(downloader.archive).read_text(encoding="utf-8").strip().splitlines()
     assert len(manifest) == 1
     record = json.loads(manifest[0])
     assert record["url"] == url
     assert record["sha256"] == sha256_file(staged)
-    assert record["local_path"] == staged_bhavcopy_csv_key(trade_date)
+    assert record["local_path"] == staged_key(tmp_path, BHAVCOPY, trade_date)
 
-    rows = NSEData(tmp_path).bhavcopy_rows(trade_date)
-    assert rows[0]["SYMBOL"] == "RELIANCE"
+    assert NSEData(tmp_path).on(trade_date).iloc[0]["symbol"] == "RELIANCE"
 
 
 def test_downloader_skip_existing(tmp_path: Path) -> None:
     trade_date = date(2024, 1, 2)
-    staged = staged_bhavcopy_csv_path(tmp_path, trade_date)
+    staged = staged_path(tmp_path, BHAVCOPY, trade_date)
     staged.parent.mkdir(parents=True, exist_ok=True)
     staged.write_text("SYMBOL,SERIES\nTCS,EQ\n", encoding="utf-8")
 
@@ -218,6 +205,6 @@ def test_throttler_enforces_minimum_interval() -> None:
 
 
 def test_extract_zip_rejects_ambiguous_members() -> None:
-    payload = _zip_bytes(("a.csv", "a"), ("b.csv", "b"))
+    payload = zip_bytes(("a.csv", "a"), ("b.csv", "b"))
     with pytest.raises(PayloadError, match="Ambiguous"):
-        extract_zip_payload_to_csv_bytes(payload)
+        extract_csv_from_zip(payload)

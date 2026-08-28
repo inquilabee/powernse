@@ -1,0 +1,6 @@
+scan_roots:
+  - .
+min_occurrences: 3
+min_length: 8
+include_tests: false
+allowlist_file: .shipgate/allowlists/repeated-strings.yaml

@@ -1,0 +1,21 @@
+radon.mi:
+  executable: radon
+  subcommand:
+    - mi
+    - -j
+  modes:
+    - check
+  normalizer: radon
+  install:
+    manager: python
+    package: radon
+    version: 6.0.1
+  cli:
+    paths:
+      style: positional
+  option_order:
+    - paths
+  scope:
+    extensions:
+      - .py
+    delivery: dirs

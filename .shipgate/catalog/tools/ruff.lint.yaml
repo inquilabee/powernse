@@ -1,0 +1,60 @@
+ruff.lint:
+  executable: ruff
+  display_name: Ruff Lint
+  description: Fast Python linter (Astral)
+  documentation_url: https://docs.astral.sh/ruff/
+  subcommand:
+    - check
+  modes:
+    - check
+    - apply
+  normalizer: ruff
+  install:
+    manager: python
+    package: ruff
+    version: 0.15.22
+  cli:
+    paths:
+      style: positional
+    config:
+      flag: --config
+      style: repeated
+    exclude:
+      flag: --exclude
+      style: repeated
+    fix:
+      flag: --fix
+      false_flag: --no-fix
+      style: boolean
+    output:
+      flag: --output-file
+      style: scalar
+    format:
+      flag: --output-format
+      style: scalar
+  configuration:
+    bundled: configs/ruff.toml
+    discover:
+      - .shipgate/configs/ruff.toml
+      - .ruff.toml
+      - ruff.toml
+      - pyproject.toml
+    pyproject_section: tool.ruff
+    precedence:
+      - cli
+      - repo
+      - bundled
+    merge: false
+  option_order:
+    - config
+    - fix
+    - exclude
+    - format
+    - output
+    - paths
+  scope:
+    extensions:
+      - .py
+      - .pyi
+      - .ipynb
+    delivery: root

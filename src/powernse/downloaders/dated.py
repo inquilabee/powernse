@@ -2,49 +2,33 @@
 
 import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from datetime import date
-from pathlib import Path
 
-from powernse.archive import ArchiveRoot
+from powernse.archive import looks_like_html
 from powernse.calendar import iter_trading_dates
-from powernse.constants import DEFAULT_SLEEP_SECONDS
-from powernse.downloaders.base import ArchiveDownloader
+from powernse.datasets import Dataset
+from powernse.downloaders.base import ArchiveDownloader, RootLike
 from powernse.errors import DownloadError, PayloadError
-from powernse.settings import Settings
 from powernse.types import DownloadSummary
 
-logger = logging.getLogger(__name__)
+__all__ = ["DatedCsvArchiveDownloader", "RootLike"]
 
-RootLike = Path | str | ArchiveRoot | Settings
+logger = logging.getLogger(__name__)
 
 
 class DatedCsvArchiveDownloader(ArchiveDownloader, ABC):
     """Shared skip / strict / summary loop for one-file-per-trading-day archives."""
 
+    dataset: Dataset
     series_label: str = "archive"
 
-    def __init__(
-        self,
-        root: RootLike,
-        *,
-        sleep_seconds: float = DEFAULT_SLEEP_SECONDS,
-        skip_existing: bool = True,
-        strict: bool = False,
-        all_calendar_days: bool = False,
-        fetch_bytes: Callable[[str], bytes] | None = None,
-    ) -> None:
-        super().__init__(root, sleep_seconds=sleep_seconds, skip_existing=skip_existing, fetch_bytes=fetch_bytes)
-        self._strict = strict
-        self._all_calendar_days = all_calendar_days
-
-    @abstractmethod
     def staged_key(self, trade_date: date) -> str:
-        """Return the archive-relative key for ``trade_date``."""
+        return self.archive.staged_key(self.dataset, trade_date)
 
+    @staticmethod
     @abstractmethod
-    def archive_url(self, trade_date: date) -> str:
-        """Return the download URL for ``trade_date``."""
+    def archive_url(trade_date: date) -> str:
+        """The remote download URL for ``trade_date``."""
 
     def materialize_payload(self, trade_date: date, url: str, payload: bytes) -> bytes:
         """Transform raw HTTP bytes into staged CSV bytes (default: passthrough)."""
@@ -84,8 +68,6 @@ class DatedCsvArchiveDownloader(ArchiveDownloader, ABC):
         staged_key = self.staged_key(trade_date)
         url = self.archive_url(trade_date)
         payload = self.fetch_bytes_throttled(url)
-        from powernse.http import looks_like_html
-
         if looks_like_html(payload):
             msg = f"{self.series_label} unavailable for {trade_date.isoformat()}: {url}"
             raise DownloadError(msg)

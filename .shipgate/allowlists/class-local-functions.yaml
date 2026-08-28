@@ -1,0 +1,12 @@
+entries:
+  - path: src/powernse/corporate_actions.py:symbol_of
+    reason: >-
+      Raw-CA-record field extractor, peer of subject_of / ex_date_of. Shared by
+      SubjectClassifier.describe and reading.CorporateActionReader; the gate only
+      counts same-module use, where it lands on one class.
+  - path: src/powernse/downloaders/index_constituents.py:index_slug
+    reason: >-
+      Shared: IndexConstituentsDownloader stages the discriminated path and
+      reading.Index.symbols reads it back -- both need the same
+      label->slug normalization. The gate misses the cross-module use through
+      the downloaders package front.

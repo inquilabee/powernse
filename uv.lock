@@ -474,8 +474,10 @@ source = { editable = "." }
 dependencies = [
     { name = "exchange-calendars" },
     { name = "filelock" },
+    { name = "numpy" },
     { name = "pandas" },
     { name = "pdschema" },
+    { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "requests" },
     { name = "tenacity" },
@@ -493,8 +495,10 @@ dev = [
 requires-dist = [
     { name = "exchange-calendars", specifier = ">=4.5" },
     { name = "filelock", specifier = ">=3.32" },
+    { name = "numpy", specifier = ">=2.1" },
     { name = "pandas", specifier = ">=2.2" },
     { name = "pdschema", specifier = ">=0.2.1" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.15" },
     { name = "requests", specifier = ">=2.32" },
     { name = "tenacity", specifier = ">=9.0" },

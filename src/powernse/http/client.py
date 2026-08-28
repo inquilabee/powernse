@@ -8,6 +8,7 @@ import requests
 from requests import RequestException, Response, Session
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
+from powernse.archive.payloads import looks_like_html
 from powernse.constants import (
     DEFAULT_USER_AGENT,
     MAX_HTTP_ATTEMPTS,
@@ -43,21 +44,6 @@ class RequestThrottler:
             if remaining > 0:
                 time.sleep(remaining)
         self._last_request_monotonic = time.monotonic()
-
-
-def looks_like_html(payload: bytes, *, content_type: str | None = None) -> bool:
-    """Return True when a payload appears to be an HTML error page."""
-    if content_type is not None and "text/html" in content_type.lower():
-        return True
-    stripped = payload[:512].lstrip()
-    return stripped.startswith(b"<")
-
-
-def is_retryable_nse_error(exc: BaseException) -> bool:
-    if isinstance(exc, requests.HTTPError):
-        response = exc.response
-        return response is not None and response.status_code in RETRYABLE_STATUS_CODES
-    return isinstance(exc, RequestException)
 
 
 class NseHttpClient:
@@ -121,9 +107,16 @@ class NseHttpClient:
         self.prime()
         return self._read_with_retry(url, accept=accept)
 
+    @staticmethod
+    def _is_retryable(exc: BaseException) -> bool:
+        if isinstance(exc, requests.HTTPError):
+            response = exc.response
+            return response is not None and response.status_code in RETRYABLE_STATUS_CODES
+        return isinstance(exc, RequestException)
+
     def _read_with_retry(self, url: str, *, accept: str) -> bytes:
         @retry(
-            retry=retry_if_exception(is_retryable_nse_error),
+            retry=retry_if_exception(self._is_retryable),
             stop=stop_after_attempt(MAX_HTTP_ATTEMPTS),
             wait=wait_exponential(multiplier=1, min=1, max=8),
             reraise=True,

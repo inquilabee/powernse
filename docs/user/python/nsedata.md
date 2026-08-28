@@ -29,21 +29,50 @@ bulk = data.bulk_deals(date(2024, 8, 9))
 print(data.inventory())
 ```
 
-Other DataFrame helpers (pandas is a core dependency):
-
 ```python
-day = data.bhavcopy_frame(date(2024, 8, 5))  # full raw CSV columns, unnormalized
-
 # Date x Symbol matrix for one OHLCV column, read across staged days in a single pass
 close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
 ```
 
-Corporate actions (see `powernse.CorporateActions` for the classifier and per-record frame):
+Indexes — `data.indexes()` lists every staged index name; `data.index(name)` is
+a handle:
 
 ```python
-from powernse import CorporateActions
+names = data.indexes()                                  # ["Nifty 50", "Nifty 500", ...]
+nifty = data.index("Nifty 50")
+nifty.ohlc(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+nifty.latest()                                          # newest close row, or None
+nifty.symbols(date(2024, 8, 1))                         # EQ constituents on that snapshot
+nifty.constituent_dates()                              # staged snapshot dates
+```
 
-actions = CorporateActions(data).frame("RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 5))
+Trading calendar arithmetic:
+
+```python
+from powernse.calendar import XBOM
+
+XBOM.sessions(date(2024, 8, 1), date(2024, 8, 31))     # list[date] of trading days
+XBOM.count(date(2024, 8, 1), date(2024, 8, 31))        # how many
+XBOM.offset(date(2024, 8, 1), 30)                      # the 30th session after
+```
+
+Corporate actions — `data.corporate_actions(symbol, ...)` classifies each staged
+record (type, subject, derived `price_factor` / `dividend_amount`) into a frame;
+`actions_for(symbol, ...)` returns the untouched records:
+
+```python
+history = data.corporate_actions("RELIANCE", from_date=date(2024, 1, 1), to_date=date(2024, 8, 5))
+```
+
+For bars and records you already hold (no archive), use the classes directly:
+
+```python
+from powernse import CorporateActions, SubjectClassifier
+
+SubjectClassifier().classify("Bonus 1:1")               # CorporateActionType.BONUS
+CorporateActions(records).adjust(bars)                   # AdjustedOhlcSchema frame
+CorporateActions(records).classified()                  # classified history frame
 ```
 
 ## What you should see

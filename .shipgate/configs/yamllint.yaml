@@ -1,0 +1,19 @@
+extends: default
+rules:
+  line-length:
+    max: 120
+    # workflow run: blocks carry long shell one-liners; warn, don't fail
+    level: warning
+  document-start: disable
+  truthy:
+    check-keys: false
+  trailing-spaces: enable
+  key-duplicates: enable
+  indentation:
+    spaces: 2
+  # "3.13" etc. must stay quoted (bare 3.13 is a YAML float); redundant quotes
+  # elsewhere in workflow files are GitHub's house style -- warn, don't fail.
+  quoted-strings:
+    quote-type: any
+    required: only-when-needed
+    level: warning

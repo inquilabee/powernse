@@ -3,14 +3,13 @@
 sync:
 	uv sync
 
-# ShipGate: install managed tools, then report-only standard suite (full tree).
-# --suite is pinned explicitly: .shipgate/shipgate.yaml is gitignored (local-only),
-# so nothing in version control fixes the suite level otherwise -- a fresh clone or
-# CI run would fall back to whatever shipgate's own default is, silently diverging
-# from this repo's calibrated "standard" allowlists/thresholds.
+# ShipGate: install managed tools, then the full suite (full tree).
+# The suite level and calibrated allowlists/thresholds now live in the versioned
+# .shipgate/ policy subset (shipgate.yaml says `suite: full`), so no --suite pin
+# is needed here -- a fresh clone / CI run gets the same gate.
 check:
 	uv run shipgate install
-	uv run shipgate check --target . --full-tree --suite standard
+	uv run shipgate check --target . --full-tree
 
 format:
 	uv run shipgate install
@@ -24,7 +23,7 @@ build:
 
 typecheck:
 	uv run shipgate install
-	uv run shipgate check --check ty.check --target . --full-tree --suite standard
+	uv run shipgate check --check ty.check --target . --full-tree
 
 pipeline: check test build
 

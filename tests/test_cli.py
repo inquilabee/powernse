@@ -18,7 +18,7 @@ def test_status_empty_archive(tmp_path: Path) -> None:
 
 def test_bhavcopy_cli_failed_days_soft_exit(tmp_path: Path, monkeypatch) -> None:
     class FakeDownloader:
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.root = tmp_path
 
         def download_range(self, *_args, **_kwargs) -> DownloadSummary:
@@ -31,22 +31,20 @@ def test_bhavcopy_cli_failed_days_soft_exit(tmp_path: Path, monkeypatch) -> None
 
 def test_bhavcopy_cli_strict_exit_on_failures(tmp_path: Path, monkeypatch) -> None:
     class FakeDownloader:
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.root = tmp_path
 
         def download_range(self, *_args, **_kwargs) -> DownloadSummary:
             return DownloadSummary(downloaded_count=0, skipped_existing_count=0, failed_count=2)
 
     monkeypatch.setattr("powernse.cli.app.BhavcopyDownloader", FakeDownloader)
-    code = main(
-        ["bhavcopy", "--from", "2024-01-02", "--to", "2024-01-02", "--root", str(tmp_path), "--strict"]
-    )
+    code = main(["bhavcopy", "--from", "2024-01-02", "--to", "2024-01-02", "--root", str(tmp_path), "--strict"])
     assert code == 1
 
 
 def test_bhavcopy_cli_success_exit(tmp_path: Path, monkeypatch) -> None:
     class FakeDownloader:
-        def __init__(self, *args, **kwargs) -> None:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.root = tmp_path
 
         def download_range(self, *_args, **_kwargs) -> DownloadSummary:

@@ -1,0 +1,48 @@
+# Finds missing, unused, transitive, and misplaced declared dependencies.
+# Reads project metadata from pyproject.toml and scans imports under ROOT.
+# deptry --config must be the project's pyproject.toml (dependency metadata
+# lives there). Do not point --config at a fragment file. `shipgate init`
+# creates a minimal pyproject.toml when missing and merges a starter
+# [tool.deptry] section. Skipped when pyproject.toml is absent (require_if).
+# For src-layout packages, prefer scoping paths to the source root (e.g. src).
+deptry.check:
+  executable: deptry
+  display_name: deptry
+  description: Find missing, unused, and misplaced Python dependencies
+  documentation_url: https://deptry.com/
+  subcommand: []
+  modes:
+    - check
+  normalizer: deptry
+  install:
+    manager: python
+    package: deptry
+    version: 0.25.1
+  tags:
+    - packaging
+  cli:
+    paths:
+      # deptry ROOT must be a directory (iterdir for local modules). Never pass
+      # changed-only file paths; widen multi-path lists to project root.
+      style: positional
+      aggregate: root
+    output:
+      flag: -o
+      style: scalar
+  configuration:
+    discover:
+      - pyproject.toml
+    pyproject_section: tool.deptry
+    precedence:
+      - repo
+    merge: false
+  option_order:
+    - output
+    - paths
+  scope:
+    extensions:
+      - .py
+    delivery: root
+  require_if:
+    files_present:
+      - pyproject.toml

@@ -1,0 +1,2 @@
+# ShipGate mdformat settings (bundled; copied to .mdformat.toml on init).
+extensions = ["frontmatter"]

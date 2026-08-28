@@ -1,0 +1,5 @@
+scan_roots:
+  - .
+portfolio_max_lines: 1000
+module_max_lines: 500
+allowlist_file: .shipgate/allowlists/module-size.yaml
