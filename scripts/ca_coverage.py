@@ -16,19 +16,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from collections import Counter
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from powernse.corporate_actions import SUBJECTS, CorporateActionType, ex_date_of, face_value_of, symbol_of
 
-# Projection helper for rights terms -- replaced by SubjectClassifier.rights_terms
-# once that lands. Percentage dividends + consolidation are already in the classifier.
-_RIGHTS_RATIO = re.compile(r"rights\b[^0-9]*?(\d+)\s*:\s*(\d+)", re.IGNORECASE)
-_RIGHTS_PREM = re.compile(r"(?:prem(?:ium)?|@)\D*?(?:rs|re)?\.?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
-_RIGHTS_PAR = re.compile(r"at\s*par", re.IGNORECASE)
-_RIGHTS_NON_EQUITY = re.compile(r"warrant|ccps|pccps|\bncd\b|\bpcd\b|debenture|\bfcd\b|partly\s*paid", re.IGNORECASE)
+RATIO_BUCKET = "bonus/split/consolidation"
 
 
 def _dividend_parses(record: dict) -> bool:
@@ -36,10 +30,8 @@ def _dividend_parses(record: dict) -> bool:
     return SUBJECTS.dividend_amount(subject, face_value=face_value_of(record)) is not None
 
 
-def _rights_parses(subject: str) -> bool:
-    if _RIGHTS_NON_EQUITY.search(subject) or not _RIGHTS_RATIO.search(subject):
-        return False
-    return bool(_RIGHTS_PREM.search(subject) or _RIGHTS_PAR.search(subject))
+def _rights_parses(record: dict) -> bool:
+    return SUBJECTS.rights_terms(SUBJECTS.subject_of(record), face_value=face_value_of(record)) is not None
 
 
 def _load_records(root: Path) -> list[dict]:
@@ -58,13 +50,13 @@ def _coverage_table(records: list[dict]) -> None:
         ca_type = SUBJECTS.classify(subject)
         by_type[ca_type.value] += 1
         if ca_type in (CorporateActionType.BONUS, CorporateActionType.SPLIT):
-            bucket, hit = "bonus/split/consolidation", SUBJECTS.price_factor(subject) is not None
+            bucket, hit = RATIO_BUCKET, SUBJECTS.price_factor(subject) is not None
         elif ca_type is CorporateActionType.CONSOLIDATION:
-            bucket, hit = "bonus/split/consolidation", SUBJECTS.consolidation_factor(subject) is not None
+            bucket, hit = RATIO_BUCKET, SUBJECTS.consolidation_factor(subject) is not None
         elif ca_type is CorporateActionType.DIVIDEND:
             bucket, hit = "dividend", _dividend_parses(record)
         elif ca_type is CorporateActionType.RIGHTS:
-            bucket, hit = "rights", _rights_parses(subject)
+            bucket, hit = "rights", _rights_parses(record)
         else:
             continue
         total[bucket] += 1
@@ -75,7 +67,7 @@ def _coverage_table(records: list[dict]) -> None:
     for name, count in by_type.most_common():
         print(f"{name:<26}{count:>8}")
     print(f"\n{'adjustable terms':<26}{'parsed':>10}{'total':>8}{'rate':>8}")
-    for bucket in ("bonus/split/consolidation", "dividend", "rights"):
+    for bucket in (RATIO_BUCKET, "dividend", "rights"):
         got, tot = parsed[bucket], total[bucket]
         rate = f"{100 * got / tot:.1f}%" if tot else "n/a"
         print(f"{bucket:<26}{got:>10}{tot:>8}{rate:>8}")
@@ -91,7 +83,7 @@ def _unparsed_events(records: list[dict], lo: date, hi: date) -> list[tuple[str,
         ca_type = SUBJECTS.classify(subject)
         if ca_type is CorporateActionType.DIVIDEND and not _dividend_parses(record):
             out.append((symbol_of(record).upper(), ex, subject))
-        elif ca_type is CorporateActionType.RIGHTS and not _rights_parses(subject):
+        elif ca_type is CorporateActionType.RIGHTS and not _rights_parses(record):
             out.append((symbol_of(record).upper(), ex, subject))
     return out
 

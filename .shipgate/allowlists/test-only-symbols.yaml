@@ -11,6 +11,11 @@ entries:
     reason: >-
       Public streaming read API for memory-bounded multi-year passes over a
       per-session dataset; for library consumers, covered by tests/test_nsedata.py.
+  - path: src/powernse/corporate_actions.py:CorporateActions.skipped_events
+    reason: >-
+      Public diagnostic companion to opt-in rights adjustment -- lists
+      price-affecting records whose terms would not parse. For library consumers,
+      covered by tests/test_corporate_actions.py.
   - path: src/powernse/calendar.py:TradingCalendar.offset
     reason: >-
       Public calendar arithmetic added for data-provider consumers (the

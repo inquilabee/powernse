@@ -6,6 +6,7 @@ an archive. :class:`powernse.data.NSEData` does the wiring.
 """
 
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
 from enum import StrEnum
 
@@ -62,11 +63,10 @@ class CorporateActionType(StrEnum):
 
 # Price-affecting: the action changes per-share economics (a classification, not a
 # claim that this library adjusts for it). Non-price-affecting (e.g. MEETING) is
-# informational only. Only BONUS / SPLIT / DIVIDEND feed the divisor in ``adjust``
-# / ``factors``; RIGHTS, BUYBACK, CAPITAL_REDUCTION, CONSOLIDATION, REDEMPTION and
-# DISTRIBUTION are flagged here but left unadjusted -- deriving their factor needs
-# terms (ratio, subscription/tender price) that NSE's free-text subject does not
-# reliably carry.
+# informational only. BONUS / SPLIT / CONSOLIDATION / DIVIDEND feed the divisor by
+# default; RIGHTS does too when opted in (``apply``). BUYBACK, CAPITAL_REDUCTION,
+# REDEMPTION and DISTRIBUTION are flagged here but never adjusted -- their factor
+# needs terms (tender price, spun-off value) NSE's free-text subject does not carry.
 PRICE_AFFECTING_TYPES = frozenset(
     {
         CorporateActionType.DIVIDEND,
@@ -80,6 +80,30 @@ PRICE_AFFECTING_TYPES = frozenset(
         CorporateActionType.DISTRIBUTION,
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class RightsTerms:
+    """Parsed terms of a rights issue: ``new`` shares per ``held``, at ``subscription_price`` each."""
+
+    new: int
+    held: int
+    subscription_price: float
+
+
+@dataclass(frozen=True, slots=True)
+class SkippedEvent:
+    """A price-affecting record in the requested ``apply`` set whose terms would not parse."""
+
+    symbol: str
+    ex_date: date | None
+    type: CorporateActionType
+    subject: str
+
+
+# Event categories ``CorporateActions`` can turn into a divisor; ``apply`` selects a subset.
+ADJUSTABLE = frozenset({"bonus", "split", "consolidation", "dividend", "rights"})
+DEFAULT_APPLY = ADJUSTABLE - {"rights"}
 
 BONUS_RATIO = re.compile(r"bonus\s*(?:issue\s*)?(\d+)\s*:\s*(\d+)", re.IGNORECASE)
 SPLIT_RATIO = re.compile(r"(?:split|face\s*value\s*split).*?(\d+)\s*(?:for|:|/)\s*(\d+)", re.IGNORECASE)
@@ -97,6 +121,14 @@ PERCENT_DIVIDEND = re.compile(r"div(?:idend)?\s*[-:]?\s*(\d+(?:\.\d+)?)\s*%", re
 CONSOLIDATION_TERMS = re.compile(
     r"consolidat\w*.*?(?:rs\.?|re\.?)\s*(\d+(?:\.\d+)?).*?to\s+(?:rs\.?|re\.?)\s*(\d+(?:\.\d+)?)",
     re.IGNORECASE,
+)
+# "Rights A:B @ Premium Rs X/-" and its variants (Prem@Rs, "At Par" -> premium 0).
+RIGHTS_RATIO = re.compile(r"rights\b[^0-9]*?(\d+)\s*:\s*(\d+)", re.IGNORECASE)
+RIGHTS_PREMIUM = re.compile(r"(?:prem(?:ium)?|@)[^0-9]*?(?:rs\.?|re\.?)?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+RIGHTS_AT_PAR = re.compile(r"\bat\s*par\b", re.IGNORECASE)
+# Rights on non-equity instruments (warrants, convertibles) or partly-paid: different math -> skip.
+RIGHTS_NON_EQUITY = re.compile(
+    r"warrant|\bccps\b|pccps|\bncd\b|\bpcd\b|\bfcd\b|debenture|partly\s*paid|\bncds?\b", re.IGNORECASE
 )
 
 # Order matters: more specific patterns (scheme/meeting/buyback) must be checked
@@ -202,6 +234,30 @@ class SubjectClassifier:
             return None
         return old_fv / new_fv
 
+    def rights_terms(self, subject: str, *, face_value: float | None) -> RightsTerms | None:
+        """``(new:held, subscription price)`` for an equity rights subject, or ``None``.
+
+        Subscription price is ``face_value + premium`` (``At Par`` -> premium 0).
+        Non-equity rights (warrants, convertibles) and partly-paid issues return
+        ``None`` -- their adjustment differs and the terms are unreliable.
+        """
+        text = subject.strip()
+        if face_value is None or RIGHTS_NON_EQUITY.search(text):
+            return None
+        ratio = RIGHTS_RATIO.search(text)
+        if ratio is None:
+            return None
+        new, held = int(ratio.group(1)), int(ratio.group(2))
+        if new <= 0 or held <= 0:
+            return None
+        if RIGHTS_AT_PAR.search(text):
+            premium = 0.0
+        elif (prem := RIGHTS_PREMIUM.search(text)) is not None:
+            premium = float(prem.group(1))
+        else:
+            return None
+        return RightsTerms(new=new, held=held, subscription_price=face_value + premium)
+
     def describe(self, record: Record) -> Record:
         """One classified row: symbol, ex_date, type, subject, and any derived numbers."""
         subject = self.subject_of(record)
@@ -228,24 +284,38 @@ SUBJECTS = SubjectClassifier()
 
 
 class CorporateActions:
-    """One symbol's classified CA history and the bonus/split/dividend price math.
+    """One symbol's classified CA history and its price-adjustment math.
 
-    Construct from the records (and, for dividends, the bars) you already have;
-    ``NSEData`` fetches those and calls in.
+    Construct from the records (and, for dividend/rights, the bars) you already
+    have; ``NSEData`` fetches those and calls in.
 
-    Adjustment scope: ``factors`` / ``adjust`` divide out **bonus, split, and
-    dividend** events only. Rights issues, buyback tenders, capital reductions and
-    the like are still classified by ``classified()`` (and marked
-    ``price_affecting``) but are **not** adjusted -- their factor depends on terms
-    (ratio, subscription/tender price) that NSE's free-text subject line does not
-    carry reliably. Handle those out of band if your history needs them.
+    Adjustment scope: ``factors`` / ``adjust`` divide out **bonus, split,
+    consolidation, and dividend** events by default. **Rights** issues are also
+    adjusted (theoretical ex-rights price) when ``"rights"`` is in ``apply`` --
+    ~90 % of NSE rights subjects carry a parseable ratio + premium; the rest are
+    reported by ``skipped_events()``. Buyback tenders, capital reductions,
+    demergers and redemptions stay classified (and ``price_affecting``) but are
+    **never** adjusted -- their factor needs terms NSE's free-text subject line
+    does not carry.
     """
 
     FRAME_COLUMNS = ("symbol", "ex_date", "type", "subject", "price_affecting", "dividend_amount", "price_factor")
 
-    def __init__(self, records: list[Record], *, classifier: SubjectClassifier = SUBJECTS) -> None:
+    def __init__(
+        self,
+        records: list[Record],
+        *,
+        classifier: SubjectClassifier = SUBJECTS,
+        apply: frozenset[str] | None = None,
+    ) -> None:
+        selected = DEFAULT_APPLY if apply is None else frozenset(apply)
+        unknown = selected - ADJUSTABLE
+        if unknown:
+            msg = f"apply must be a subset of {sorted(ADJUSTABLE)}, got extra {sorted(unknown)}"
+            raise ValueError(msg)
         self._records = records
         self._classifier = classifier
+        self._apply = selected
 
     def classified(self) -> pd.DataFrame:
         """CA history as a DataFrame, one row per record, sorted by ex-date."""
@@ -261,7 +331,11 @@ class CorporateActions:
         Duplicate ex-dates stay as separate entries -- the cumulative product in
         ``factors`` multiplies them in correctly either way.
         """
-        combined = sorted(self._ratio_events() + self._dividend_price_events(bars, self._dividend_events()))
+        combined = sorted(
+            self._ratio_events()
+            + self._dividend_price_events(bars, self._dividend_events())
+            + self._rights_price_events(bars, self._rights_events())
+        )
         if not combined:
             return pd.Series(dtype=float)
         dates, factors = zip(*combined, strict=True)
@@ -292,9 +366,10 @@ class CorporateActions:
         return pd.Series(values, index=pd.Index(ordered_dates, name="trade_date"), name="factor")
 
     def adjust(self, bars: pd.DataFrame) -> pd.DataFrame:
-        """Bonus/split/dividend-adjusted bars, cumulative so the newest bar keeps factor 1.0.
+        """Adjusted bars (``apply`` event set), cumulative so the newest bar keeps factor 1.0.
 
-        Rights / buyback / capital-reduction events are not applied -- see the class docstring.
+        Default set: bonus / split / consolidation / dividend. Buyback,
+        capital-reduction and demerger events are never applied -- see the class docstring.
         """
         if bars.empty:
             return empty_frame(ADJUSTED_OHLC_SCHEMA)
@@ -311,13 +386,34 @@ class CorporateActions:
         ADJUSTED_OHLC_SCHEMA.validate(adjusted)
         return adjusted
 
+    def skipped_events(self) -> list[SkippedEvent]:
+        """Price-affecting records in the ``apply`` set whose terms would not parse (the holes)."""
+        out: list[SkippedEvent] = []
+        for record in self._records:
+            subject = self._classifier.subject_of(record)
+            ca_type = self._classifier.classify(subject)
+            if ca_type.value not in self._apply or ca_type not in PRICE_AFFECTING_TYPES:
+                continue
+            if not self._terms_parse(record, ca_type, subject):
+                out.append(SkippedEvent(symbol_of(record), ex_date_of(record), ca_type, subject))
+        return out
+
+    def _terms_parse(self, record: Record, ca_type: CorporateActionType, subject: str) -> bool:
+        if ca_type is CorporateActionType.DIVIDEND:
+            return self._classifier.dividend_amount(subject, face_value=face_value_of(record)) is not None
+        if ca_type is CorporateActionType.RIGHTS:
+            return self._classifier.rights_terms(subject, face_value=face_value_of(record)) is not None
+        if ca_type is CorporateActionType.CONSOLIDATION:
+            return self._classifier.consolidation_factor(subject) is not None
+        return self._classifier.price_factor(subject) is not None
+
     def _ratio_events(self) -> list[tuple[date, float]]:
         """Ex-date divisors readable straight from the subject: bonus, split, consolidation."""
         events: list[tuple[date, float]] = []
         for record in self._records:
             subject = self._classifier.subject_of(record)
-            factor = self._classifier.price_factor(subject)
-            if factor is None and self._classifier.classify(subject) is CorporateActionType.CONSOLIDATION:
+            factor = self._classifier.price_factor(subject) if {"bonus", "split"} & self._apply else None
+            if factor is None and "consolidation" in self._apply:
                 factor = self._classifier.consolidation_factor(subject)
             ex_date = ex_date_of(record)
             if factor is not None and factor != 1.0 and ex_date is not None:
@@ -325,6 +421,8 @@ class CorporateActions:
         return events
 
     def _dividend_events(self) -> list[tuple[date, float]]:
+        if "dividend" not in self._apply:
+            return []
         events: list[tuple[date, float]] = []
         for record in self._records:
             amount = self._classifier.dividend_amount(
@@ -335,36 +433,83 @@ class CorporateActions:
                 events.append((ex_date, amount))
         return events
 
-    @staticmethod
-    def _dividend_price_events(
-        bars: pd.DataFrame, dividend_events: list[tuple[date, float]]
-    ) -> list[tuple[date, float]]:
-        """Turn ``(ex_date, dividend)`` pairs into divisor events.
-
-        Unlike a split/bonus ratio, a dividend factor isn't derivable from the
-        text alone -- it needs the close on the last trading day *before* the
-        ex-date, found here with a backward as-of join (strictly prior). Total-
-        return convention ``factor = 1 - dividend / prior_close``, stored as its
-        divisor ``prior_close / (prior_close - dividend)``. Events with no prior
-        bar, or a dividend at or above the prior close, are dropped.
-        """
-        if not dividend_events or bars.empty:
+    def _rights_events(self) -> list[tuple[date, RightsTerms]]:
+        if "rights" not in self._apply:
             return []
-        events_frame = pd.DataFrame(dividend_events, columns=["ex_date", "amount"]).sort_values("ex_date")
+        events: list[tuple[date, RightsTerms]] = []
+        for record in self._records:
+            subject = self._classifier.subject_of(record)
+            if self._classifier.classify(subject) is not CorporateActionType.RIGHTS:
+                continue
+            terms = self._classifier.rights_terms(subject, face_value=face_value_of(record))
+            ex_date = ex_date_of(record)
+            if terms is not None and ex_date is not None:
+                events.append((ex_date, terms))
+        return events
+
+    @staticmethod
+    def _with_prior_close(bars: pd.DataFrame, events_frame: pd.DataFrame) -> pd.DataFrame:
+        """Left-join each event row to the close on the last trading day strictly before its ex-date."""
         closes = bars[["trade_date", "close"]].sort_values("trade_date")
-        # merge_asof needs sortable numeric/datetime keys, not plain `date` objects (object dtype);
-        # join on a throwaway datetime64 view of each column, keep the original date values.
-        merged = pd.merge_asof(
-            events_frame.assign(_ex_dt=pd.to_datetime(events_frame["ex_date"])),
+        # merge_asof needs sortable datetime keys, not object-dtype `date`; join on a
+        # throwaway datetime64 view of each column, keep the original date values.
+        return pd.merge_asof(
+            events_frame.sort_values("ex_date").assign(_ex_dt=pd.to_datetime(events_frame["ex_date"])),
             closes.assign(_trade_dt=pd.to_datetime(closes["trade_date"])),
             left_on="_ex_dt",
             right_on="_trade_dt",
             direction="backward",
             allow_exact_matches=False,
         )
+
+    @classmethod
+    def _dividend_price_events(
+        cls, bars: pd.DataFrame, dividend_events: list[tuple[date, float]]
+    ) -> list[tuple[date, float]]:
+        """``(ex_date, dividend)`` -> divisor events.
+
+        A dividend factor isn't in the text -- it needs the close on the last
+        trading day before the ex-date (backward as-of join). Total-return
+        convention ``factor = 1 - dividend / prior_close``, stored as its divisor
+        ``prior_close / (prior_close - dividend)``. Events with no prior bar, or a
+        dividend at or above the prior close, are dropped.
+        """
+        if not dividend_events or bars.empty:
+            return []
+        merged = cls._with_prior_close(bars, pd.DataFrame(dividend_events, columns=["ex_date", "amount"]))
         results: list[tuple[date, float]] = []
         for ex_date, amount, prior_close in zip(merged["ex_date"], merged["amount"], merged["close"], strict=True):
             if pd.isna(prior_close) or amount <= 0 or prior_close <= amount:
                 continue
             results.append((ex_date, prior_close / (prior_close - amount)))
+        return results
+
+    @classmethod
+    def _rights_price_events(
+        cls, bars: pd.DataFrame, rights_events: list[tuple[date, RightsTerms]]
+    ) -> list[tuple[date, float]]:
+        """``(ex_date, RightsTerms)`` -> divisor events via the theoretical ex-rights price.
+
+        ``TERP = (held*C + new*S) / (new + held)`` with ``C`` the close on the
+        last trading day before the ex-date and ``S`` the subscription price;
+        divisor ``C / TERP``. Deep-out-of-the-money rights (``TERP >= C``) are
+        dropped -- NSE would not adjust the official series for those either.
+        """
+        if not rights_events or bars.empty:
+            return []
+        frame = pd.DataFrame(
+            [(ex, t.new, t.held, t.subscription_price) for ex, t in rights_events],
+            columns=["ex_date", "new", "held", "price"],
+        )
+        merged = cls._with_prior_close(bars, frame)
+        results: list[tuple[date, float]] = []
+        for ex_date, new, held, price, prior_close in zip(
+            merged["ex_date"], merged["new"], merged["held"], merged["price"], merged["close"], strict=True
+        ):
+            if pd.isna(prior_close):
+                continue
+            terp = (held * prior_close + new * price) / (new + held)
+            if terp <= 0 or terp >= prior_close:
+                continue
+            results.append((ex_date, prior_close / terp))
         return results

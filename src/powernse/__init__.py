@@ -4,7 +4,13 @@ from importlib.metadata import PackageNotFoundError, version
 
 from powernse.archive import ArchiveRoot
 from powernse.calendar import iter_trading_dates
-from powernse.corporate_actions import CorporateActions, CorporateActionType, SubjectClassifier
+from powernse.corporate_actions import (
+    CorporateActions,
+    CorporateActionType,
+    RightsTerms,
+    SkippedEvent,
+    SubjectClassifier,
+)
 from powernse.data import NSEData
 from powernse.downloaders import (
     BhavcopyDownloader,
@@ -59,7 +65,9 @@ __all__ = [
     "OhlcSchema",
     "PayloadError",
     "PowerNseError",
+    "RightsTerms",
     "SecuritySchema",
+    "SkippedEvent",
     "Settings",
     "SubjectClassifier",
     "iter_trading_dates",

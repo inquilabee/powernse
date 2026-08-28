@@ -127,6 +127,65 @@ def test_frame_classifies_and_sorts(tmp_path: Path) -> None:
     assert list(frame["price_affecting"]) == [True, True]
 
 
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [
+        ("Rights 1:1 @ Premium Rs 90/-", (1, 1, 100.0)),
+        ("Rights 2:5 @ Premium Rs.50/- Per Share", (2, 5, 60.0)),
+        ("Rights 1:2 Prem@Rs.79/-", (1, 2, 89.0)),
+        ("Rights 4:7 At Par", (4, 7, 10.0)),
+        ("Interim Dividend- Rs 3 Per Share / Rights 1:16 @ Premium Rs 554 Per Share", (1, 16, 564.0)),
+        ("Rights 1:1", None),  # no premium / par
+        ("Rights - 7 Ccps And 7 Warrants:40", None),  # non-equity
+        ("Rights Equity/Warrant", None),
+    ],
+)
+def test_rights_terms(subject: str, expected: tuple[int, int, float] | None) -> None:
+    terms = SUBJECTS.rights_terms(subject, face_value=10.0)
+    got = None if terms is None else (terms.new, terms.held, terms.subscription_price)
+    assert got == expected
+
+
+def test_rights_terms_needs_face_value() -> None:
+    assert SUBJECTS.rights_terms("Rights 1:1 @ Premium Rs 90/-", face_value=None) is None
+
+
+def test_rights_adjustment_is_opt_in_and_uses_terp() -> None:
+    # prior close (2024-01-01) = 200; Rights 1:1 @ Premium Rs 90 on faceVal 10 -> S = 100
+    # TERP = (1*200 + 1*100) / 2 = 150 ; divisor = 200 / 150
+    bars = bars_frame((date(2024, 1, 1), 200.0), (date(2024, 1, 2), 150.0))
+    records = [{"symbol": "TEST", "subject": "Rights 1:1 @ Premium Rs 90", "faceVal": "10", "exDate": "2024-01-02"}]
+
+    assert CorporateActions(records).price_events(bars).empty  # default: rights not applied
+
+    withr = CorporateActions(records, apply={"bonus", "split", "consolidation", "dividend", "rights"})
+    assert withr.price_events(bars).to_dict() == {date(2024, 1, 2): pytest.approx(200.0 / 150.0)}
+    adjusted = withr.adjust(bars).set_index("trade_date")["close"]
+    assert adjusted[date(2024, 1, 1)] == pytest.approx(150.0)  # 200 / (200/150)
+    assert adjusted[date(2024, 1, 2)] == 150.0  # newest bar untouched
+
+
+def test_skipped_events_reports_unparsed_rights() -> None:
+    records = [
+        {"symbol": "A", "subject": "Rights 1:1 @ Premium Rs 5", "faceVal": "10", "exDate": "2024-02-01"},
+        {"symbol": "B", "subject": "Rights Equity/Warrant", "faceVal": "10", "exDate": "2024-03-01"},
+    ]
+    skipped = CorporateActions(records, apply={"rights"}).skipped_events()
+    assert [(s.symbol, s.type) for s in skipped] == [("B", CorporateActionType.RIGHTS)]
+
+
+def test_rights_deep_otm_dropped() -> None:
+    # subscription price far above market -> TERP >= prior close -> no adjustment
+    bars = bars_frame((date(2024, 1, 1), 50.0), (date(2024, 1, 2), 50.0))
+    records = [{"symbol": "T", "subject": "Rights 1:1 @ Premium Rs 990", "faceVal": "10", "exDate": "2024-01-02"}]
+    assert CorporateActions(records, apply={"rights"}).price_events(bars).empty
+
+
+def test_apply_rejects_unknown_category() -> None:
+    with pytest.raises(ValueError, match="apply must be a subset"):
+        CorporateActions([], apply={"bonus", "wat"})
+
+
 def test_dividend_adjustment_reduces_only_prior_bars() -> None:
     bars = bars_frame((date(2024, 1, 1), 100.0), (date(2024, 1, 2), 95.0))
     actions = CorporateActions([{"subject": "Dividend - Rs 5 Per Share", "exDate": "2024-01-02"}])
