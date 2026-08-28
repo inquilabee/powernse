@@ -35,6 +35,13 @@ close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date
 adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
 ```
 
+```python
+# Typed delivery / traded-value reads from the staged sec_bhavdata_full archive
+deliv = data.delivery("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+day = data.delivery_on(date(2024, 8, 9))                       # every EQ row that day; series=None for all series
+pct = data.delivery_frame(column="delivery_pct", symbols=["RELIANCE", "TCS"])  # Date x Symbol matrix
+```
+
 Indexes — `Index("nifty50")` carries identity from a bundled catalog of every
 NSE equity index (no archive needed); `data.index(name)` binds it to the staged
 archive for data reads:

@@ -48,7 +48,9 @@ class DatedFrameReader[RowT: SchemaRow](ArchiveReader, ABC):
             return
         with path.open(newline="", encoding="utf-8") as handle:
             for raw in csv.DictReader(handle):
-                row = self.parser.from_row(raw, trade_date=day)
+                # NSE headers carry stray leading spaces (" SERIES", " DATE1", ...)
+                clean = {key.strip(): value for key, value in raw.items() if key is not None}
+                row = self.parser.from_row(clean, trade_date=day)
                 if row is not None:
                     yield row
 

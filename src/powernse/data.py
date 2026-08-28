@@ -17,7 +17,14 @@ import pandas as pd
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
 from powernse.index import Index
-from powernse.reading import BhavcopyReader, CorporateActionReader, FoReader, IndexReader, SnapshotReader
+from powernse.reading import (
+    BhavcopyReader,
+    CorporateActionReader,
+    DeliveryReader,
+    FoReader,
+    IndexReader,
+    SnapshotReader,
+)
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
 from powernse.settings import Settings
 
@@ -34,6 +41,7 @@ class NSEData:
             archive_root = Settings.resolve(root).archive_root
             self._archive = ArchiveRoot.open(archive_root) if create else ArchiveRoot.connect(archive_root)
         self._bhavcopy = BhavcopyReader(self._archive)
+        self._delivery = DeliveryReader(self._archive)
         self._fo = FoReader(self._archive)
         self._index = IndexReader(self._archive)
         self._actions = CorporateActionReader(self._archive)
@@ -107,6 +115,32 @@ class NSEData:
     def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
         """XBOM sessions in the window that have no staged bhavcopy file."""
         return self._bhavcopy.coverage_gaps(from_date=from_date, to_date=to_date)
+
+    # -- delivery / traded value -----------------------------------------------
+
+    def delivery(
+        self, symbol: str, *, from_date: date | None = None, to_date: date | None = None, series: str = "EQ"
+    ) -> pd.DataFrame:
+        """Delivery qty/%, turnover, and trade count for one symbol (DeliverySchema-shaped)."""
+        return self._delivery.delivery(symbol, from_date=from_date, to_date=to_date, series=series)
+
+    def delivery_on(self, trade_date: date, *, symbol: str | None = None, series: str | None = "EQ") -> pd.DataFrame:
+        """All (or one symbol / one series) delivery rows from a single staged full-bhavcopy day."""
+        return self._delivery.on(trade_date, symbol=symbol, series=series)
+
+    def delivery_frame(
+        self,
+        *,
+        column: str = "delivery_pct",
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+    ) -> pd.DataFrame:
+        """Date x Symbol matrix of one delivery column (delivery_pct / delivery_qty / turnover_lacs / volume)."""
+        return self._delivery.wide_frame(
+            column=column, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+        )
 
     def bhavcopy_path(self, trade_date: date) -> Path:
         return self._bhavcopy.staged_path(trade_date)

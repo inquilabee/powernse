@@ -2,6 +2,7 @@
 
 from powernse.reading.bhavcopy import BhavcopyReader
 from powernse.reading.corporate import CorporateActionReader
+from powernse.reading.delivery import DeliveryReader
 from powernse.reading.futures import FoReader
 from powernse.reading.index import IndexReader
 from powernse.reading.snapshots import SnapshotReader
@@ -9,6 +10,7 @@ from powernse.reading.snapshots import SnapshotReader
 __all__ = [
     "BhavcopyReader",
     "CorporateActionReader",
+    "DeliveryReader",
     "FoReader",
     "IndexReader",
     "SnapshotReader",

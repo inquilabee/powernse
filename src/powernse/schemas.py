@@ -47,6 +47,34 @@ class IndexRow(TypedDict):
     close: float
 
 
+class DeliveryRow(TypedDict):
+    """One parsed ``sec_bhavdata_full`` row, matching ``DeliverySchema``'s columns."""
+
+    trade_date: date
+    symbol: str
+    series: str
+    prev_close: float
+    close: float
+    avg_price: float
+    volume: int
+    turnover_lacs: float
+    trades: int
+    delivery_qty: int | None
+    delivery_pct: float | None
+
+
+class DealRow(TypedDict):
+    """One parsed bulk- or block-deal row, matching ``DealSchema``'s columns."""
+
+    trade_date: date
+    symbol: str
+    security_name: str
+    client_name: str
+    side: str
+    quantity: int
+    price: float
+
+
 class OhlcSchema(Schema):
     trade_date = Column(dtype=date, nullable=False)
     symbol = Column(dtype=str, nullable=False)
@@ -96,10 +124,36 @@ class IndexSchema(Schema):
     close = Column(dtype=float, nullable=False)
 
 
+class DeliverySchema(Schema):
+    trade_date = Column(dtype=date, nullable=False)
+    symbol = Column(dtype=str, nullable=False)
+    series = Column(dtype=str, nullable=False)
+    prev_close = Column(dtype=float, nullable=False)
+    close = Column(dtype=float, nullable=False)
+    avg_price = Column(dtype=float, nullable=False)
+    volume = Column(dtype=int, nullable=False)
+    turnover_lacs = Column(dtype=float, nullable=False)
+    trades = Column(dtype=int, nullable=False)
+    delivery_qty = Column(dtype=int, nullable=True)
+    delivery_pct = Column(dtype=float, nullable=True)
+
+
+class DealSchema(Schema):
+    trade_date = Column(dtype=date, nullable=False)
+    symbol = Column(dtype=str, nullable=False)
+    security_name = Column(dtype=str, nullable=False)
+    client_name = Column(dtype=str, nullable=False)
+    side = Column(dtype=str, nullable=False)
+    quantity = Column(dtype=int, nullable=False)
+    price = Column(dtype=float, nullable=False)
+
+
 OHLC_SCHEMA = OhlcSchema()
 ADJUSTED_OHLC_SCHEMA = AdjustedOhlcSchema()
 FO_SCHEMA = FoSchema()
 INDEX_SCHEMA = IndexSchema()
+DELIVERY_SCHEMA = DeliverySchema()
+DEAL_SCHEMA = DealSchema()
 
 
 def empty_frame(schema: Schema) -> pd.DataFrame:

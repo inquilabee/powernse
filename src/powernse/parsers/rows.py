@@ -12,14 +12,14 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from typing import ClassVar
 
-from powernse.schemas import FoRow, IndexRow, OhlcRow
+from powernse.schemas import DealRow, DeliveryRow, FoRow, IndexRow, OhlcRow
 
 logger = logging.getLogger(__name__)
 
 RawRow = Mapping[str, str]
 FieldMap = Mapping[str, tuple[str, ...]]
 
-type SchemaRow = OhlcRow | FoRow | IndexRow
+type SchemaRow = OhlcRow | FoRow | IndexRow | DeliveryRow | DealRow
 
 
 class RowParser[RowT: SchemaRow](ABC):
@@ -31,6 +31,8 @@ class RowParser[RowT: SchemaRow](ABC):
     NUMERIC: ClassVar[tuple[str, ...]] = ()
     #: extra sentinel values that count as "missing" for a NUMERIC field
     NUMERIC_BLANKS: ClassVar[frozenset[str]] = frozenset()
+    #: characters stripped from a NUMERIC value before ``float()`` (e.g. thousands commas)
+    NUMERIC_STRIP: ClassVar[str] = ""
     #: strptime formats tried (after ISO) for the row's trade-date
     DATE_FORMATS: ClassVar[tuple[str, ...]] = ("%d-%b-%Y", "%d-%b-%y")
 
@@ -72,12 +74,19 @@ class RowParser[RowT: SchemaRow](ABC):
             picked[name] = value
         return picked
 
-    @staticmethod
-    def _floats(picked: dict[str, str], names: tuple[str, ...]) -> dict[str, float] | None:
+    def _floats(self, picked: dict[str, str], names: tuple[str, ...]) -> dict[str, float] | None:
+        strip = self.NUMERIC_STRIP
         try:
-            return {name: float(picked[name]) for name in names}
+            return {
+                name: float(picked[name].translate({ord(c): None for c in strip}) if strip else picked[name])
+                for name in names
+            }
         except ValueError:
             return None
+
+    def optional_float(self, row: RawRow, keys: tuple[str, ...]) -> float | None:
+        raw = self.first(row, keys)
+        return None if raw is None or raw in self.NUMERIC_BLANKS else float(raw)
 
     def parse_date(self, raw: str | None, *, formats: tuple[str, ...] | None = None) -> date | None:
         if raw is None or not (text := raw.strip()):
@@ -194,6 +203,74 @@ class IndexClosesRowParser(RowParser[IndexRow]):
         }
 
 
+class DeliveryRowParser(RowParser[DeliveryRow]):
+    """``sec_bhavdata_full`` row -> :class:`DeliveryRow`. DELIV_* is ``-`` for non-delivery series."""
+
+    REQUIRED: ClassVar[FieldMap] = {
+        "symbol": ("SYMBOL",),
+        "series": ("SERIES",),
+        "prev_close": ("PREV_CLOSE",),
+        "close": ("CLOSE_PRICE",),
+        "avg_price": ("AVG_PRICE",),
+        "volume": ("TTL_TRD_QNTY",),
+        "turnover_lacs": ("TURNOVER_LACS",),
+        "trades": ("NO_OF_TRADES",),
+    }
+    NUMERIC = ("prev_close", "close", "avg_price", "volume", "turnover_lacs", "trades")
+    NUMERIC_STRIP = ","
+    NUMERIC_BLANKS = frozenset({"-"})
+    DATE_KEYS = ("DATE1",)
+    DELIV_QTY_KEYS = ("DELIV_QTY",)
+    DELIV_PER_KEYS = ("DELIV_PER",)
+
+    def _build(self, row: RawRow, picked: dict[str, str], numbers: dict[str, float], trade_date: date) -> DeliveryRow:
+        qty = self.optional_float(row, self.DELIV_QTY_KEYS)
+        pct = self.optional_float(row, self.DELIV_PER_KEYS)
+        return {
+            "trade_date": self.parse_date(self.first(row, self.DATE_KEYS)) or trade_date,
+            "symbol": picked["symbol"].upper(),
+            "series": picked["series"].upper(),
+            "prev_close": numbers["prev_close"],
+            "close": numbers["close"],
+            "avg_price": numbers["avg_price"],
+            "volume": int(numbers["volume"]),
+            "turnover_lacs": numbers["turnover_lacs"],
+            "trades": int(numbers["trades"]),
+            "delivery_qty": int(qty) if qty is not None else None,
+            "delivery_pct": pct,
+        }
+
+
+class DealRowParser(RowParser[DealRow]):
+    """Bulk- or block-deal row -> :class:`DealRow` (block has no ``Remarks``)."""
+
+    REQUIRED: ClassVar[FieldMap] = {
+        "trade_date": ("Date",),
+        "symbol": ("Symbol",),
+        "security_name": ("Security Name",),
+        "client_name": ("Client Name",),
+        "side": ("Buy/Sell",),
+        "quantity": ("Quantity Traded",),
+        "price": ("Trade Price / Wght. Avg. Price",),
+    }
+    NUMERIC = ("quantity", "price")
+    NUMERIC_STRIP = ","
+
+    def _build(self, row: RawRow, picked: dict[str, str], numbers: dict[str, float], trade_date: date) -> DealRow:
+        del row
+        return {
+            "trade_date": self.parse_date(picked["trade_date"]) or trade_date,
+            "symbol": picked["symbol"].upper(),
+            "security_name": picked["security_name"],
+            "client_name": picked["client_name"],
+            "side": picked["side"].strip().upper(),
+            "quantity": int(numbers["quantity"]),
+            "price": numbers["price"],
+        }
+
+
 BHAVCOPY_ROWS = BhavcopyRowParser()
 FO_BHAVCOPY_ROWS = FoBhavcopyRowParser()
 INDEX_CLOSES_ROWS = IndexClosesRowParser()
+DELIVERY_ROWS = DeliveryRowParser()
+DEAL_ROWS = DealRowParser()
