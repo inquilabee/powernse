@@ -31,6 +31,46 @@ def _stage_constituents(root: Path, day: date, name: str, symbols: list[str]) ->
     p.write_text(json.dumps({"data": [{"symbol": s, "series": "EQ"} for s in symbols]}), encoding="utf-8")
 
 
+def test_index_standalone_identity() -> None:
+    nifty = Index("nifty50")
+    assert (nifty.name, nifty.code, nifty.category, nifty.fno, nifty.known) == (
+        "NIFTY 50",
+        "NIFTY 50",
+        "broad",
+        True,
+        True,
+    )
+    assert repr(nifty) == "Index('NIFTY 50')"
+    assert Index("NIFTY FIN SERVICE").name == "NIFTY FINANCIAL SERVICES"  # by code
+
+    unknown = Index("My Custom Basket")
+    assert (unknown.known, unknown.name, unknown.code, unknown.category, unknown.fno) == (
+        False,
+        "My Custom Basket",
+        None,
+        None,
+        False,
+    )
+    assert unknown.exists() is False
+    assert Index("nifty it").exists() is True  # catalogued, no archive needed
+
+
+def test_index_standalone_data_ops_need_an_archive() -> None:
+    with pytest.raises(ArchiveError, match="not bound to an archive"):
+        Index("NIFTY 50").ohlc()
+    with pytest.raises(ArchiveError, match="not bound"):
+        Index("NIFTY 50").symbols(date(2024, 1, 1))
+
+
+def test_index_catalog_and_find() -> None:
+    cat = Index.catalog()
+    assert len(cat) > 100
+    assert all(isinstance(i, Index) and i.known for i in cat)
+    assert "NIFTY 50" in {i.name for i in cat}
+    assert Index.find("nifty bank").name == "NIFTY BANK"
+    assert Index.find("not a real index") is None
+
+
 def test_indexes_lists_staged_names(tmp_path: Path) -> None:
     _stage_closes(tmp_path, date(2024, 8, 1))
     _stage_closes(tmp_path, date(2024, 8, 2))
