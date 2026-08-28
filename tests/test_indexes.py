@@ -2,7 +2,7 @@
 
 import pytest
 
-from powernse.indexes import IndexEntry, load_entries, lookup
+from powernse.index import IndexEntry, load_entries, lookup
 
 CATEGORIES = {"broad", "sectoral", "thematic", "strategy", "fixed_income"}
 

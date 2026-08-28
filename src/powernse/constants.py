@@ -5,6 +5,7 @@ NSE_HOME_URL = "https://www.nseindia.com/"
 ARCHIVE_BASE_URL = "https://nsearchives.nseindia.com"
 CORPORATE_ACTIONS_API_URL = "https://www.nseindia.com/api/corporates-corporateActions"
 INDEX_CONSTITUENTS_API_URL = "https://www.nseindia.com/api/equity-stock-indices"
+ALL_INDICES_API_URL = "https://www.nseindia.com/api/allIndices"
 
 # NSE switched CM bhavcopy naming on this calendar date (inclusive of new format).
 UDIFF_SWITCH_DATE_ISO = "2024-07-08"

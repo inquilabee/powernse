@@ -22,7 +22,7 @@ gaps = data.coverage_gaps(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 adjusted = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 
 fo = data.fo_bars("RELIANCE", instrument_type="FUTSTK")
-indexes = data.index_ohlc("Nifty 50", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+indexes = data.index("Nifty 50").ohlc(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 full_rows = data.full_bhavcopy_rows(date(2024, 8, 9))
 bulk = data.bulk_deals(date(2024, 8, 9))
 
@@ -35,17 +35,27 @@ close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date
 adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
 ```
 
-Indexes — `data.indexes()` lists every staged index name; `data.index(name)` is
-a handle:
+Indexes — `Index("nifty50")` carries identity from a bundled catalog of every
+NSE equity index (no archive needed); `data.index(name)` binds it to the staged
+archive for data reads:
 
 ```python
-names = data.indexes()                                  # ["Nifty 50", "Nifty 500", ...]
-nifty = data.index("Nifty 50")
+from powernse import Index
+
+nifty = Index("nifty50")                                # normalizes via the catalog
+nifty.name, nifty.code, nifty.category, nifty.fno       # "NIFTY 50", "NIFTY 50", "broad", True
+Index.catalog()                                         # every catalogued index (unbound)
+
+# data reads need an archive:
+data.indexes()                                          # index names in the latest staged file
+nifty = data.index("nifty50")                           # same handle, now bound
 nifty.ohlc(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 nifty.latest()                                          # newest close row, or None
-nifty.symbols(date(2024, 8, 1))                         # EQ constituents on that snapshot
+nifty.symbols(date(2024, 8, 1))                         # EQ constituents on that snapshot (needs index-constituents downloads)
 nifty.constituent_dates()                              # staged snapshot dates
 ```
+
+`powernse indexes` lists staged index names; `powernse indexes --known` lists the bundled catalog.
 
 Trading calendar arithmetic:
 

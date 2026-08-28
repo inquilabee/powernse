@@ -62,13 +62,12 @@ def test_index_standalone_data_ops_need_an_archive() -> None:
         Index("NIFTY 50").symbols(date(2024, 1, 1))
 
 
-def test_index_catalog_and_find() -> None:
+def test_index_catalog() -> None:
     cat = Index.catalog()
     assert len(cat) > 100
     assert all(isinstance(i, Index) and i.known for i in cat)
     assert "NIFTY 50" in {i.name for i in cat}
-    assert Index.find("nifty bank").name == "NIFTY BANK"
-    assert Index.find("not a real index") is None
+    assert {i.category for i in cat} <= {"broad", "sectoral", "thematic", "strategy", "fixed_income"}
 
 
 def test_indexes_lists_staged_names(tmp_path: Path) -> None:
@@ -86,6 +85,16 @@ def test_indexes_cli(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None
     assert main(["indexes", "--root", str(tmp_path)]) == 0
     assert capsys.readouterr().out.split() == ["Nifty", "50", "Nifty", "500"]
     assert main(["indexes", "--root", str(tmp_path / "empty")]) == 1
+
+
+def test_indexes_cli_known_needs_no_archive(capsys: pytest.CaptureFixture[str]) -> None:
+    from powernse.cli import main
+    from powernse.index import load_entries
+
+    assert main(["indexes", "--known", "--root", "/no/such/archive"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert len(lines) == len(load_entries())
+    assert any(line.startswith("NIFTY 50\tbroad\tfno") for line in lines)
 
 
 def test_index_handle_ohlc_latest_exists(tmp_path: Path) -> None:
