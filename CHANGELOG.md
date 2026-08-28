@@ -4,6 +4,8 @@
 
 ### Added
 
+- `NSEData.wide_frames(columns=[...], symbols=, from_date=, to_date=, series=, adjusted=) -> dict[str, DataFrame]`: one Date × Symbol matrix per column, sharing a single pass over the staged days
+- `NSEData.wide_frame(adjusted=True)` now works for every OHLCV column, not just close — open/high/low/close divide by the per-symbol bonus/split/dividend factor, `volume` multiplies (the `adjusted=True` + non-close `ValueError` is gone)
 - Equity security master: `powernse equity-list` downloads NSE's `EQUITY_L.csv`; `NSEData.securities() -> DataFrame` (whole master, `SecuritySchema`: symbol / name / series / listing_date / paid_up_value / market_lot / isin / face_value), `NSEData.security(symbol)` / `NSEData.security_by_isin(isin) -> Series | None`, and a `powernse securities [--symbol | --isin]` read command. New `EquityListDownloader`, `powernse.schemas.SecuritySchema` / `SecurityRow`, `equity_list` dataset
 
 - Typed delivery / traded-value reads from the staged `sec_bhavdata_full` archive: `NSEData.delivery(symbol, from_date=, to_date=, series=)` (per-symbol history — delivery qty/%, turnover, trade count, `DeliverySchema`-shaped), `NSEData.delivery_on(trade_date, symbol=, series=)` (one staged day; `series=None` for every series), `NSEData.delivery_frame(column=, symbols=, from_date=, to_date=, series=)` (Date × Symbol matrix of `delivery_pct` / `delivery_qty` / `turnover_lacs` / `volume`). `powernse.schemas` gains `DeliverySchema` / `DeliveryRow`

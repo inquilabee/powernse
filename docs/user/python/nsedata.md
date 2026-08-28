@@ -42,6 +42,13 @@ data.is_banned("SAIL", date(2024, 8, 9))     # bool
 # Date x Symbol matrix for one OHLCV column, read across staged days in a single pass
 close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
+
+# adjusted=True works for every OHLCV column: open/high/low/close divide by the
+# bonus/split/dividend factor, volume multiplies
+adj_vol = data.wide_frame(column="volume", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
+
+# Several columns in one pass over the staged days -> {column: DataFrame}
+panel = data.wide_frames(columns=["close", "volume"], symbols=["RELIANCE", "TCS"], adjusted=True)
 ```
 
 ```python

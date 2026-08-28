@@ -85,23 +85,50 @@ class BhavcopyReader(DatedFrameReader[OhlcRow]):
         to_date: date | None = None,
         series: str = "EQ",
     ) -> pd.DataFrame:
-        getter = self._COLUMN_GETTERS.get(column.strip().lower())
-        if getter is None:
-            msg = f"column must be one of {tuple(self._COLUMN_GETTERS)}, got {column!r}"
+        key = column.strip().lower()
+        return self.wide_frames(columns=(key,), symbols=symbols, from_date=from_date, to_date=to_date, series=series)[
+            key
+        ]
+
+    def wide_frames(
+        self,
+        *,
+        columns: Iterable[str],
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+    ) -> dict[str, pd.DataFrame]:
+        """One Date x Symbol matrix per requested OHLCV column, all in a single pass over staged days."""
+        keys = tuple(dict.fromkeys(name.strip().lower() for name in columns))
+        if not keys:
+            msg = "columns must be non-empty"
             raise ValueError(msg)
+        getters = {}
+        for key in keys:
+            getter = self._COLUMN_GETTERS.get(key)
+            if getter is None:
+                msg = f"column must be one of {tuple(self._COLUMN_GETTERS)}, got {key!r}"
+                raise ValueError(msg)
+            getters[key] = getter
+
         series_needle = series.strip().upper()
         wanted = {s.strip().upper() for s in symbols} if symbols is not None else None
-
-        matrix: dict[date, dict[str, float]] = {}
+        matrices: dict[str, dict[date, dict[str, float]]] = {key: {} for key in keys}
         for day in self.window(from_date, to_date):
-            row = {
-                bar["symbol"]: getter(bar)
+            todays = [
+                bar
                 for bar in self.rows_on(day)
                 if bar["series"] == series_needle and (wanted is None or bar["symbol"] in wanted)
-            }
-            if row:
-                matrix[day] = row
+            ]
+            for key, getter in getters.items():
+                row = {bar["symbol"]: getter(bar) for bar in todays}
+                if row:
+                    matrices[key][day] = row
 
-        frame = pd.DataFrame.from_dict(matrix, orient="index").sort_index()
-        frame.index.name = "Date"
-        return frame
+        out: dict[str, pd.DataFrame] = {}
+        for key in keys:
+            frame = pd.DataFrame.from_dict(matrices[key], orient="index").sort_index()
+            frame.index.name = "Date"
+            out[key] = frame
+        return out

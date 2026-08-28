@@ -93,21 +93,40 @@ class NSEData:
     ) -> pd.DataFrame:
         """Date x Symbol matrix for one OHLCV column in a single pass over staged bhavcopy days.
 
-        ``adjusted=True`` divides each symbol's column by its cumulative
-        bonus/split/dividend factor (newest date == 1.0), the same math as
-        ``ohlc_adjusted`` -- only ``column="close"`` is supported for it.
+        ``adjusted=True`` applies each symbol's cumulative bonus/split/dividend
+        factor (newest date == 1.0), the same math as ``ohlc_adjusted``: prices
+        (open/high/low/close) are divided, ``volume`` is multiplied.
         """
+        key = column.strip().lower()
         raw = self._bhavcopy.wide_frame(
-            column=column, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+            column=key, symbols=symbols, from_date=from_date, to_date=to_date, series=series
         )
         if not adjusted or raw.empty:
             return raw
-        if column != "close":
-            msg = f"adjusted=True only supports column='close', got {column!r}"
-            raise ValueError(msg)
-        return self._adjust_matrix(raw)
+        return self._adjust_matrix(raw, multiply=key == "volume")
 
-    def _adjust_matrix(self, raw: pd.DataFrame) -> pd.DataFrame:
+    def wide_frames(
+        self,
+        *,
+        columns: Iterable[str] = ("close",),
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+        adjusted: bool = False,
+    ) -> dict[str, pd.DataFrame]:
+        """One ``wide_frame`` per column, sharing a single pass over staged days. ``adjusted`` as in ``wide_frame``."""
+        raw = self._bhavcopy.wide_frames(
+            columns=columns, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+        )
+        if not adjusted:
+            return raw
+        return {
+            key: frame if frame.empty else self._adjust_matrix(frame, multiply=key == "volume")
+            for key, frame in raw.items()
+        }
+
+    def _adjust_matrix(self, raw: pd.DataFrame, *, multiply: bool = False) -> pd.DataFrame:
         start, end = raw.index[0], raw.index[-1]
         out = raw.copy()
         for symbol in raw.columns:
@@ -119,7 +138,7 @@ class NSEData:
                 continue
             bars = pd.DataFrame({"trade_date": list(col.index), "close": col.to_numpy()})
             factors = CorporateActions(records).factors(bars).reindex(raw.index)
-            out[symbol] = raw[symbol] / factors
+            out[symbol] = raw[symbol] * factors if multiply else raw[symbol] / factors
         return out
 
     def coverage(self, dataset: Dataset, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
