@@ -13,6 +13,7 @@ from powernse.parsers.rows import (
     IndexClosesRowParser,
     RowParser,
 )
+from powernse.parsers.secban import parse_secban
 
 __all__ = [
     "BHAVCOPY_ROWS",
@@ -26,4 +27,5 @@ __all__ = [
     "FoBhavcopyRowParser",
     "IndexClosesRowParser",
     "RowParser",
+    "parse_secban",
 ]

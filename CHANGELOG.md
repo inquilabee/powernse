@@ -5,6 +5,12 @@
 ### Added
 
 - Typed delivery / traded-value reads from the staged `sec_bhavdata_full` archive: `NSEData.delivery(symbol, from_date=, to_date=, series=)` (per-symbol history — delivery qty/%, turnover, trade count, `DeliverySchema`-shaped), `NSEData.delivery_on(trade_date, symbol=, series=)` (one staged day; `series=None` for every series), `NSEData.delivery_frame(column=, symbols=, from_date=, to_date=, series=)` (Date × Symbol matrix of `delivery_pct` / `delivery_qty` / `turnover_lacs` / `volume`). `powernse.schemas` gains `DeliverySchema` / `DeliveryRow`
+- Typed bulk / block deal reads: `NSEData.bulk_deals(from_date=, to_date=, symbol=, side=)` and `NSEData.block_deals(...)` return a `DealSchema`-shaped DataFrame across the staged window, filterable by symbol and BUY/SELL side. `powernse.schemas` gains `DealSchema` / `DealRow`
+- F&O securities-in-ban reads: `NSEData.secban(on=None) -> set[str]` and `NSEData.is_banned(symbol, on=None) -> bool`, keyed by the effective trade date parsed from each `fo_secban` file's header (`on=None` → the latest staged ban date). `powernse.parsers.parse_secban(text)` exposes the parse
+
+### Changed — breaking
+
+- `NSEData.bulk_deals()` / `block_deals()` are now keyword-only window reads returning a DataFrame — the old `bulk_deals(label_date) -> list[dict]` / `block_deals(label_date)` / `fo_secban(label_date)` raw-CSV forms are removed (`fo_secban` is replaced by `secban()` / `is_banned()`). `full_bhavcopy_rows()` is unchanged
 
 ## 0.3.0 — 2026-08-28
 

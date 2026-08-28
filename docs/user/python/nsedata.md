@@ -24,9 +24,18 @@ adjusted = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=da
 fo = data.fo_bars("RELIANCE", instrument_type="FUTSTK")
 indexes = data.index("Nifty 50").ohlc(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 full_rows = data.full_bhavcopy_rows(date(2024, 8, 9))
-bulk = data.bulk_deals(date(2024, 8, 9))
 
 print(data.inventory())
+```
+
+```python
+# Bulk / block deals across the staged window (DealSchema-shaped); filter by symbol / side
+bulk = data.bulk_deals(from_date=date(2024, 8, 1), to_date=date(2024, 8, 9), symbol="RELIANCE")
+block = data.block_deals(side="BUY")
+
+# F&O trade ban, keyed by the effective trade date parsed from each file's header
+banned = data.secban()                       # set[str] for the latest staged ban date
+data.is_banned("SAIL", date(2024, 8, 9))     # bool
 ```
 
 ```python

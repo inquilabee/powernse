@@ -16,13 +16,16 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
+from powernse.datasets import BLOCK_DEALS, BULK_DEALS
 from powernse.index import Index
 from powernse.reading import (
     BhavcopyReader,
     CorporateActionReader,
+    DealsReader,
     DeliveryReader,
     FoReader,
     IndexReader,
+    SecbanReader,
     SnapshotReader,
 )
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
@@ -45,6 +48,9 @@ class NSEData:
         self._fo = FoReader(self._archive)
         self._index = IndexReader(self._archive)
         self._actions = CorporateActionReader(self._archive)
+        self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
+        self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
+        self._secban = SecbanReader(self._archive)
         self._snapshots = SnapshotReader(self._archive)
 
     @classmethod
@@ -205,19 +211,42 @@ class NSEData:
         records = self._actions.records_in_adjustment_window(symbol, window_start=window_start, end=end)
         return CorporateActions(records).adjust(bars)
 
+    # -- deals + F&O ban --------------------------------------------------------
+
+    def bulk_deals(
+        self,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        symbol: str | None = None,
+        side: str | None = None,
+    ) -> pd.DataFrame:
+        """Bulk deals across the staged window (DealSchema-shaped); filter by ``symbol`` / ``side``."""
+        return self._bulk_deals.deals(from_date=from_date, to_date=to_date, symbol=symbol, side=side)
+
+    def block_deals(
+        self,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        symbol: str | None = None,
+        side: str | None = None,
+    ) -> pd.DataFrame:
+        """Block deals across the staged window (DealSchema-shaped); filter by ``symbol`` / ``side``."""
+        return self._block_deals.deals(from_date=from_date, to_date=to_date, symbol=symbol, side=side)
+
+    def secban(self, on: date | None = None) -> set[str]:
+        """Symbols in the F&O trade ban for ``on`` (default: the latest staged ban date)."""
+        return self._secban.banned(on)
+
+    def is_banned(self, symbol: str, on: date | None = None) -> bool:
+        """Whether ``symbol`` is in the F&O trade ban for ``on`` (default: latest staged ban date)."""
+        return symbol.strip().upper() in self._secban.banned(on)
+
     # -- snapshots + inventory ----------------------------------------------
 
     def full_bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
         return self._snapshots.full_bhavcopy_rows(trade_date)
-
-    def bulk_deals(self, label_date: date) -> list[dict[str, str]]:
-        return self._snapshots.bulk_deals(label_date)
-
-    def block_deals(self, label_date: date) -> list[dict[str, str]]:
-        return self._snapshots.block_deals(label_date)
-
-    def fo_secban(self, label_date: date) -> list[dict[str, str]]:
-        return self._snapshots.fo_secban(label_date)
 
     def inventory(self) -> dict[str, int]:
         """Staged file counts by dataset, plus the manifest byte size."""
