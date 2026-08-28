@@ -2,42 +2,43 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-08-28
+
+Large release: pandas became the data interface, then the whole read layer was
+restructured and grown into a research-grade data surface. No compatibility
+shims — see the migration notes below.
+
 ### Added
 
-- `powernse.corporate_actions` module: `CorporateActions` class (classification + `frame()` + `adjusted_ohlc()`), `CorporateActionType`, `classify_subject()`. Replaces `powernse.adjust` (deleted, no compatibility shim). Top-level exports: `from powernse import CorporateActions, CorporateActionType`
-- `NSEData.wide_frame()`: Date x Symbol matrix for one OHLCV column, read across staged bhavcopy days in a single pass (values are unadjusted)
-- `powernse.SubjectClassifier`: the CA-subject reader (`classify` / `price_factor` / `dividend_amount` / `describe`), extracted from the loose `classify_subject()` / `*_from_subject()` functions
-- `NSEData.corporate_actions(symbol, from_date=, to_date=)`: classified CA history as a DataFrame; `NSEData.actions_for(symbol, ...)` for the unclassified records
-- `powernse.Index` handle + `NSEData.indexes(on=)` / `NSEData.index(name)`: list every staged index name, then `data.index("Nifty 50").ohlc()` / `.latest()` / `.symbols(on)` / `.constituent_dates()` / `.exists()`. Replaces the flat `NSEData.index_ohlc()` / `index_symbols()`
-- `NSEData.wide_frame(..., adjusted=True)`: Date x Symbol *adjusted*-close matrix (per-symbol bonus/split/dividend factor, `column="close"` only); `CorporateActions.factors(bars)` exposes the per-bar cumulative divisor on its own
-- `TradingCalendar.sessions(from, to)` / `count(from, to)` / `offset(day, n)`: trading-day list, count, and the session `n` steps from a date
-
-### Changed — breaking (structure)
-
-Internal reshape; the `NSEData` + downloaders + `Settings`/errors surface is otherwise unchanged.
-
-- `CorporateActions` is constructed from records, not an archive: `CorporateActions(records).classified()` / `.price_events(bars)` / `.adjust(bars)`. `CorporateActions(archive)`, `.frame()`, `.apply()`, `.adjusted_ohlc()` are gone — use `NSEData.corporate_actions()` / `NSEData.ohlc_adjusted()` for the archive-backed path
-- `classify_subject()`, `price_adjustment_factor_from_subject()`, `dividend_amount_from_subject()` → methods on `SubjectClassifier` (`SUBJECTS` is the default instance)
-- `NSEData.bhavcopy_rows()` removed (use `on()` for a typed frame); `bhavcopy_frame()` and `latest_full_bhavcopy_date()` removed (unused)
-- `NSEData.index_ohlc()` / `index_symbols()` removed -- use `NSEData.index(name).ohlc()` / `.symbols(on)`
-- `powernse.calendar.is_weekend` / `calendar_session_bounds` → `TradingCalendar` (`XBOM` is the module singleton; `iter_trading_dates` unchanged)
-- Downloaders: the per-archive `*_archive_url` / `staged_*_csv_path` / `staged_*_csv_key` / `latest_staged_*_date` / `resolve_*_resume_range` module functions are gone. Remote URLs are `@staticmethod archive_url` / `request_url` on each downloader; staged paths are `ArchiveRoot.staged_path(dataset, day)` via the new `powernse.datasets` registry; resume windows are `resolve_dated_resume_range(root, dataset, ...)`
-- `powernse.archive.extract_zip_payload_to_csv_bytes` → `extract_csv_from_zip` (in the new `powernse.archive.payloads`, with `looks_like_html`); `powernse.http` no longer re-exports `looks_like_html`
-- Every downloader now shares one `ArchiveDownloader.__init__`. A hand-built `Settings(sleep_seconds=…)` / `Settings(skip_existing=…)` passed as the `root` argument to a dated or snapshot downloader is now honoured (previously silently ignored by those subclasses)
+- `powernse.schemas`: `OhlcSchema` / `AdjustedOhlcSchema` / `FoSchema` / `IndexSchema` ([pdschema](https://github.com/inquilabee/pdschema) `Schema` subclasses). Every DataFrame-returning method validates its result against one before returning. New dependency: `pdschema` (pulls in `pyarrow`)
+- `powernse.corporate_actions`: `CorporateActions` (pure — built from records), `CorporateActionType`, `SubjectClassifier` (`classify` / `price_factor` / `dividend_amount` / `describe`). Replaces the deleted `powernse.adjust`
+- `NSEData.corporate_actions(symbol, from_date=, to_date=)`: classified CA history as a DataFrame; `NSEData.actions_for(symbol, ...)` for the raw records
+- `NSEData.wide_frame(column=, symbols=, from_date=, to_date=, series=, adjusted=)`: single-pass Date × Symbol matrix for one OHLCV column; `adjusted=True` applies the per-symbol bonus/split/dividend factor (`column="close"` only). `CorporateActions.factors(bars)` exposes the per-bar cumulative divisor on its own
+- `powernse.Index` handle + `NSEData.indexes(on=)` / `NSEData.index(name)`: list every staged index name, then `data.index("Nifty 50").ohlc()` / `.latest()` / `.symbols(on)` / `.constituent_dates()` / `.exists()`. New `powernse indexes` CLI command
+- `TradingCalendar` (in `powernse.calendar`, `XBOM` is the module singleton) with `sessions(from, to)` / `count(from, to)` / `offset(day, n)` — trading-day list, count, and the session `n` steps from a date
+- `powernse.datasets` registry (`Dataset` per archive family) and `ArchiveRoot.staged_path(dataset, day)` / `staged_key` / `latest_staged_date` / `staged_dates`
+- `powernse.window.DateWindow`, `powernse.archive.payloads` (`looks_like_html`, `extract_csv_from_zip`), and an internal `powernse.reading` subsystem behind the `NSEData` facade
 
 ### Changed — breaking
 
-pandas is now the core interface, not a bolt-on:
-
-- `NSEData.ohlc()`, `NSEData.on()`, `NSEData.fo_bars()`, `NSEData.index_ohlc()`, `NSEData.ohlc_adjusted()`, and `CorporateActions.adjusted_ohlc()` / `CorporateActions.apply()` now return `pandas.DataFrame` instead of `list[OhlcBar]` / `list[AdjustedOhlcBar]` / `list[FoBar]` / `list[IndexBar]`. `NSEData.ohlc_frame()` is removed — `ohlc()` is now the one method (same for the other `_frame`-suffixed siblings, which never existed for these)
-- `NSEData.latest()` returns `pandas.Series | None` (one OHLC row) instead of `OhlcBar | None`
-- `OhlcBar`, `AdjustedOhlcBar`, `FoBar`, and `IndexBar` are removed entirely — no compatibility shim. `CorporateActions.price_events()` returns a `pandas.Series` (ex-date index, multiplier values) instead of `list[tuple[date, float]]`, and its `bars` parameter (like `apply()`'s) is now a DataFrame instead of `list[OhlcBar]`
-- Added `powernse.schemas`: `OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema` ([pdschema](https://github.com/inquilabee/pdschema) `Schema` subclasses) take over the type/nullability contract the four dataclasses used to enforce, validated at the point each method returns its DataFrame. New dependency: `pdschema` (pulls in `pyarrow` transitively)
-- `CorporateActions._apply_adjustments`'s cumulative-adjustment-factor walk is rewritten as a vectorized pandas/numpy computation (`searchsorted` into a suffix cumulative-product of sorted events) instead of a manual event-index-walking loop over dataclass instances
+- Bulk reads return `pandas.DataFrame`; `NSEData.latest()` returns `pandas.Series | None`. The `OhlcBar` / `AdjustedOhlcBar` / `FoBar` / `IndexBar` dataclasses are removed, as is `NSEData.ohlc_frame()` (use `ohlc()`)
+- `CorporateActions` is constructed from records, not an archive: `CorporateActions(records).classified()` / `.price_events(bars)` / `.adjust(bars)`. `CorporateActions(archive)`, `.frame()`, `.apply()`, `.adjusted_ohlc()` are gone — use `NSEData.corporate_actions()` / `NSEData.ohlc_adjusted()`. `price_events()` returns a `pandas.Series`
+- `classify_subject()` / `price_adjustment_factor_from_subject()` / `dividend_amount_from_subject()` → methods on `SubjectClassifier` (`SUBJECTS` is the default instance)
+- `NSEData.index_ohlc()` / `index_symbols()` removed — use `NSEData.index(name).ohlc()` / `.symbols(on)`. `NSEData.bhavcopy_rows()` removed (use `on()`); `bhavcopy_frame()` and `latest_full_bhavcopy_date()` removed
+- `powernse.calendar.is_weekend` / `calendar_session_bounds` → `TradingCalendar` (`iter_trading_dates` unchanged)
+- Downloaders: the per-archive `*_archive_url` / `staged_*_csv_path` / `staged_*_csv_key` / `latest_staged_*_date` / `resolve_*_resume_range` module functions are gone. Remote URLs are `@staticmethod archive_url` / `request_url` on each downloader; staged paths go through `ArchiveRoot` + `powernse.datasets`; `resolve_dated_resume_range(root, dataset, ...)` takes a `Dataset`
+- `powernse.archive.extract_zip_payload_to_csv_bytes` → `powernse.archive.payloads.extract_csv_from_zip`; `powernse.http` no longer re-exports `looks_like_html`
+- Every downloader shares one `ArchiveDownloader.__init__`; a hand-built `Settings(sleep_seconds=…)` / `Settings(skip_existing=…)` passed as the `root` argument to a dated/snapshot downloader is now honoured (previously ignored by those subclasses)
 
 ### Fixed
 
-- `CorporateActions.apply()` / `NSEData.ohlc_adjusted()` no longer apply a corporate action to the entire loaded bar range when its ex-date falls after the newest bar (e.g. an announced-but-not-yet-effective bonus/split/dividend) — such events are now dropped instead of retroactively adjusting bars that predate the action taking effect
+- `NSEData.ohlc_adjusted()` no longer applies a corporate action to the whole loaded bar range when its ex-date falls after the newest bar (an announced-but-not-yet-effective bonus/split/dividend) — such events are dropped instead of retroactively adjusting earlier bars
+
+### Internal
+
+- The cumulative-adjustment-factor walk is a vectorized pandas/numpy computation (`searchsorted` into a suffix cumulative-product of sorted events)
+- `NSEData` is a ~170-line facade over five `powernse.reading` collaborators; `parsers.rows` is a `RowParser[RowT]` Template Method; `bundle.py` folded into `BundleFetcher`; the `data ↔ corporate_actions` import cycle removed
+- ShipGate `--suite full` (25 checks) is the enforced gate; the `.shipgate/` policy subset is versioned and the suite runs sequentially
 
 ## 0.1.3 — 2026-08-25
 
