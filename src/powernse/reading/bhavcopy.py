@@ -85,23 +85,57 @@ class BhavcopyReader(DatedFrameReader[OhlcRow]):
         to_date: date | None = None,
         series: str = "EQ",
     ) -> pd.DataFrame:
-        getter = self._COLUMN_GETTERS.get(column.strip().lower())
-        if getter is None:
-            msg = f"column must be one of {tuple(self._COLUMN_GETTERS)}, got {column!r}"
-            raise ValueError(msg)
+        key = column.strip().lower()
+        return self.wide_frames(columns=(key,), symbols=symbols, from_date=from_date, to_date=to_date, series=series)[
+            key
+        ]
+
+    def wide_frames(
+        self,
+        *,
+        columns: Iterable[str],
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+    ) -> dict[str, pd.DataFrame]:
+        """One Date x Symbol matrix per requested OHLCV column, all in a single pass over staged days."""
+        getters = self._resolve_getters(columns)
         series_needle = series.strip().upper()
         wanted = {s.strip().upper() for s in symbols} if symbols is not None else None
-
-        matrix: dict[date, dict[str, float]] = {}
+        matrices: dict[str, dict[date, dict[str, float]]] = {key: {} for key in getters}
         for day in self.window(from_date, to_date):
-            row = {
-                bar["symbol"]: getter(bar)
-                for bar in self.rows_on(day)
-                if bar["series"] == series_needle and (wanted is None or bar["symbol"] in wanted)
-            }
-            if row:
-                matrix[day] = row
+            for key, row in self._day_columns(day, getters, series_needle, wanted).items():
+                matrices[key][day] = row
+        return {key: self._as_matrix(cells) for key, cells in matrices.items()}
 
-        frame = pd.DataFrame.from_dict(matrix, orient="index").sort_index()
+    def _day_columns(
+        self,
+        day: date,
+        getters: dict[str, Callable[[OhlcRow], float]],
+        series_needle: str,
+        wanted: set[str] | None,
+    ) -> dict[str, dict[str, float]]:
+        todays = [
+            bar
+            for bar in self.rows_on(day)
+            if bar["series"] == series_needle and (wanted is None or bar["symbol"] in wanted)
+        ]
+        return {key: row for key, getter in getters.items() if (row := {bar["symbol"]: getter(bar) for bar in todays})}
+
+    def _resolve_getters(self, columns: Iterable[str]) -> dict[str, Callable[[OhlcRow], float]]:
+        keys = tuple(dict.fromkeys(name.strip().lower() for name in columns))
+        if not keys:
+            msg = "columns must be non-empty"
+            raise ValueError(msg)
+        try:
+            return {key: self._COLUMN_GETTERS[key] for key in keys}
+        except KeyError as exc:
+            msg = f"column must be one of {tuple(self._COLUMN_GETTERS)}, got {exc.args[0]!r}"
+            raise ValueError(msg) from exc
+
+    @staticmethod
+    def _as_matrix(cells: dict[date, dict[str, float]]) -> pd.DataFrame:
+        frame = pd.DataFrame.from_dict(cells, orient="index").sort_index()
         frame.index.name = "Date"
         return frame

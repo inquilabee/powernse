@@ -42,6 +42,22 @@ data.is_banned("SAIL", date(2024, 8, 9))     # bool
 # Date x Symbol matrix for one OHLCV column, read across staged days in a single pass
 close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
+
+# adjusted=True works for every OHLCV column: open/high/low/close divide by the
+# bonus/split/dividend factor, volume multiplies
+adj_vol = data.wide_frame(column="volume", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
+
+# Several columns in one pass over the staged days -> {column: DataFrame}
+panel = data.wide_frames(columns=["close", "volume"], symbols=["RELIANCE", "TCS"], adjusted=True)
+```
+
+```python
+# Stream one validated frame per staged day (memory-bounded multi-year passes).
+# Supports bhavcopy / fo_bhavcopy / full_bhavcopy / index_closes / bulk_deals / block_deals.
+from powernse.datasets import BHAVCOPY
+
+for day, frame in data.iter_days(BHAVCOPY, from_date=date(2020, 1, 1), to_date=date(2024, 12, 31)):
+    ...  # frame is that day's OhlcSchema-shaped bhavcopy
 ```
 
 ```python
@@ -49,6 +65,13 @@ adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5)
 deliv = data.delivery("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 day = data.delivery_on(date(2024, 8, 9))                       # every EQ row that day; series=None for all series
 pct = data.delivery_frame(column="delivery_pct", symbols=["RELIANCE", "TCS"])  # Date x Symbol matrix
+```
+
+```python
+# Equity security master (latest staged EQUITY_L): symbol / ISIN / name / listing date / face value
+master = data.securities()                          # whole table, SecuritySchema-shaped
+data.security("RELIANCE")                           # one row (Series), or None
+data.security_by_isin("INE002A01018")              # reverse lookup, or None
 ```
 
 Indexes — `Index("nifty50")` carries identity from a bundled catalog of every
@@ -93,9 +116,12 @@ staged span:
 from powernse.datasets import FO_BHAVCOPY
 
 data.coverage(FO_BHAVCOPY)                             # sessions missing an F&O bhavcopy file
+data.audit_manifest()                                 # [ManifestIssue(local_path, kind)] — sha256 drift / missing files
 ```
 
-`powernse verify` reports the same gaps for the core dated archives from the shell (exit 1 if any).
+`powernse verify` reports the session gaps for the core dated archives from the
+shell (exit 1 if any); `powernse verify --hashes` also re-hashes every staged
+file against the download manifest.
 
 Corporate actions — `data.corporate_actions(symbol, ...)` classifies each staged
 record (type, subject, derived `price_factor` / `dividend_amount`) into a frame;
@@ -127,6 +153,14 @@ CorporateActions(records).classified()                  # classified history fra
 from corporate-action subjects; unrecognized subjects are skipped. Dividend adjustment
 uses the close on the prior trading day, so it needs OHLC bars loaded before the CA
 records.
+
+**Adjustment scope.** Only bonus, split, and dividend events feed the divisor in
+`ohlc_adjusted` / `wide_frame(adjusted=True)` / `CorporateActions.factors`. Rights
+issues and buyback tenders are still classified by `corporate_actions()` (and
+flagged `price_affecting`), but they are **not** price-adjusted — their factor
+depends on terms (subscription / tender price, ratio) that NSE's free-text
+subject line does not carry reliably. Adjust for those out of band if a long
+history needs them.
 
 Each DataFrame-returning method validates its result against a `powernse.schemas` schema
 (`OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema`) before returning it — the

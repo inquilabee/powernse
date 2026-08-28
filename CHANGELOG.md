@@ -7,14 +7,22 @@
 - Typed delivery / traded-value reads from the staged `sec_bhavdata_full` archive: `NSEData.delivery(symbol, from_date=, to_date=, series=)` (per-symbol history — delivery qty/%, turnover, trade count, `DeliverySchema`-shaped), `NSEData.delivery_on(trade_date, symbol=, series=)` (one staged day; `series=None` for every series), `NSEData.delivery_frame(column=, symbols=, from_date=, to_date=, series=)` (Date × Symbol matrix of `delivery_pct` / `delivery_qty` / `turnover_lacs` / `volume`). `powernse.schemas` gains `DeliverySchema` / `DeliveryRow`
 - Typed bulk / block deal reads: `NSEData.bulk_deals(from_date=, to_date=, symbol=, side=)` and `NSEData.block_deals(...)` return a `DealSchema`-shaped DataFrame across the staged window, filterable by symbol and buy/sell side. `powernse.schemas` gains `DealSchema` / `DealRow`
 - F&O securities-in-ban reads: `NSEData.secban(on=None) -> set[str]` and `NSEData.is_banned(symbol, on=None) -> bool`, keyed by the effective trade date parsed from each `fo_secban` file's header (`on=None` → the latest staged ban date). `powernse.parsers.parse_secban(text)` exposes the parse
+- Equity security master: `powernse equity-list` downloads NSE's `EQUITY_L.csv`; `NSEData.securities() -> DataFrame` (whole master, `SecuritySchema`: symbol / name / series / listing_date / paid_up_value / market_lot / isin / face_value), `NSEData.security(symbol)` / `NSEData.security_by_isin(isin) -> Series | None`, and a `powernse securities [--symbol | --isin]` read command. New `EquityListDownloader`, `powernse.schemas.SecuritySchema` / `SecurityRow`, `equity_list` dataset
 - `NSEData.coverage(dataset, from_date=, to_date=) -> list[date]`: session gaps for any dated archive; the window defaults to that dataset's full staged span. `NSEData.coverage_gaps()` is now `coverage(BHAVCOPY, ...)`
 - `TradingCalendar.is_session(day) -> bool` and `TradingCalendar.holidays(from_date, to_date) -> list[date]` (weekday non-sessions in the range)
-- `powernse verify [--dataset KEY] [--from] [--to]`: reports staged-session gaps for the core dated archives (bhavcopy / F&O bhavcopy / index closes / full bhavcopy), exit 1 if any dataset has a gap
+- `NSEData.wide_frames(columns=[...], symbols=, from_date=, to_date=, series=, adjusted=) -> dict[str, DataFrame]`: one Date × Symbol matrix per column, sharing a single pass over the staged days
+- `NSEData.wide_frame(adjusted=True)` now works for every OHLCV column, not just close — open/high/low/close divide by the per-symbol bonus/split/dividend factor, `volume` multiplies (the old `adjusted=True` + non-close `ValueError` is gone)
+- `NSEData.iter_days(dataset, from_date=, to_date=) -> Iterator[(date, DataFrame)]`: stream one validated frame per staged day for memory-bounded multi-year passes (bhavcopy / F&O bhavcopy / full bhavcopy / index closes / bulk / block deals)
+- `powernse verify [--dataset KEY] [--from] [--to] [--hashes]`: reports staged-session gaps for the core dated archives (bhavcopy / F&O bhavcopy / index closes / full bhavcopy); `--hashes` also re-hashes every staged file against the `sha256` recorded per download in `manifest/downloads.jsonl`. `NSEData.audit_manifest() -> list[ManifestIssue]` exposes the audit. Exit 1 on any problem
 
 ### Changed — breaking
 
 - `NSEData.bulk_deals()` / `block_deals()` are now keyword-only window reads returning a DataFrame — the old `bulk_deals(label_date) -> list[dict]` / `block_deals(label_date)` / `fo_secban(label_date)` raw-CSV forms are removed (`fo_secban` is replaced by `secban()` / `is_banned()`). `full_bhavcopy_rows()` is unchanged
 - `NSEData.coverage_gaps()` with no `from_date` / `to_date` now scans the full staged bhavcopy span instead of only the latest staged day
+
+### Docs
+
+- Documented the adjustment boundary: `ohlc_adjusted` / `wide_frame(adjusted=True)` / `CorporateActions.factors` apply bonus / split / dividend only; rights issues and buyback tenders are classified but never price-adjusted
 
 ## 0.3.0 — 2026-08-28
 

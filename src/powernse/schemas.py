@@ -75,6 +75,19 @@ class DealRow(TypedDict):
     price: float
 
 
+class SecurityRow(TypedDict):
+    """One parsed ``EQUITY_L.csv`` row, matching ``SecuritySchema``'s columns."""
+
+    symbol: str
+    name: str
+    series: str
+    listing_date: date
+    paid_up_value: float
+    market_lot: int
+    isin: str
+    face_value: float
+
+
 class OhlcSchema(Schema):
     trade_date = Column(dtype=date, nullable=False)
     symbol = Column(dtype=str, nullable=False)
@@ -148,12 +161,24 @@ class DealSchema(Schema):
     price = Column(dtype=float, nullable=False)
 
 
+class SecuritySchema(Schema):
+    symbol = Column(dtype=str, nullable=False)
+    name = Column(dtype=str, nullable=False)
+    series = Column(dtype=str, nullable=False)
+    listing_date = Column(dtype=date, nullable=False)
+    paid_up_value = Column(dtype=float, nullable=False)
+    market_lot = Column(dtype=int, nullable=False)
+    isin = Column(dtype=str, nullable=False)
+    face_value = Column(dtype=float, nullable=False)
+
+
 OHLC_SCHEMA = OhlcSchema()
 ADJUSTED_OHLC_SCHEMA = AdjustedOhlcSchema()
 FO_SCHEMA = FoSchema()
 INDEX_SCHEMA = IndexSchema()
 DELIVERY_SCHEMA = DeliverySchema()
 DEAL_SCHEMA = DealSchema()
+SECURITY_SCHEMA = SecuritySchema()
 
 
 def empty_frame(schema: Schema) -> pd.DataFrame:

@@ -164,10 +164,58 @@ def test_wide_frame_adjusted_matches_ohlc_adjusted(tmp_path: Path) -> None:
     assert per_symbol["close"].tolist() == [adj.loc[day_before, "RELIANCE"], adj.loc[ex_day, "RELIANCE"]]
 
 
-def test_wide_frame_adjusted_only_close(tmp_path: Path) -> None:
-    _write_legacy(tmp_path, date(2024, 1, 2), "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,1,1,1,1,1\n")
-    with pytest.raises(ValueError, match="only supports column='close'"):
-        NSEData(tmp_path).wide_frame(column="volume", adjusted=True)
+def test_wide_frame_adjusted_all_ohlcv(tmp_path: Path) -> None:
+    day_before, ex_day = date(2024, 8, 1), date(2024, 8, 2)
+    for trade_date, px in ((day_before, 200.0), (ex_day, 100.0)):
+        _write_legacy(
+            tmp_path,
+            trade_date,
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{px},{px},{px},{px},100\n",
+        )
+    ca = staged_path(tmp_path, CORPORATE_ACTIONS, ex_day)
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    ca.write_text('[{"symbol":"RELIANCE","subject":"Bonus 1:1","exDate":"2024-08-02"}]', encoding="utf-8")
+
+    data = NSEData(tmp_path)
+    # prices divide by the factor (2.0) before the ex-date
+    for column in ("open", "high", "low", "close"):
+        frame = data.wide_frame(column=column, from_date=day_before, to_date=ex_day, adjusted=True)
+        assert frame.loc[day_before, "RELIANCE"] == 100.0
+        assert frame.loc[ex_day, "RELIANCE"] == 100.0
+    # volume multiplies by the factor before the ex-date
+    vol = data.wide_frame(column="volume", from_date=day_before, to_date=ex_day, adjusted=True)
+    assert vol.loc[day_before, "RELIANCE"] == 200.0
+    assert vol.loc[ex_day, "RELIANCE"] == 100.0
+
+
+def test_iter_days_yields_staged_days_only(tmp_path: Path) -> None:
+    body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,1,2,0,1,10\n"
+    _write_legacy(tmp_path, date(2024, 1, 2), body)
+    _write_legacy(tmp_path, date(2024, 1, 4), body)  # 2024-01-03 left as a gap
+
+    days = list(NSEData(tmp_path).iter_days(BHAVCOPY, from_date=date(2024, 1, 2), to_date=date(2024, 1, 4)))
+    assert [day for day, _ in days] == [date(2024, 1, 2), date(2024, 1, 4)]
+    for _, frame in days:
+        assert list(frame["symbol"]) == ["RELIANCE"]
+
+
+def test_iter_days_rejects_unsupported_dataset(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="iter_days does not support"):
+        list(NSEData(tmp_path).iter_days(CORPORATE_ACTIONS))
+
+
+def test_wide_frames_multi_column_matches_singles(tmp_path: Path) -> None:
+    _write_legacy(
+        tmp_path,
+        date(2024, 1, 2),
+        "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,2500,2520,2490,2510,100\nTCS,EQ,3600,3625,3590,3610,80\n",
+    )
+    data = NSEData(tmp_path)
+    lo = hi = date(2024, 1, 2)
+    frames = data.wide_frames(columns=["close", "volume", "close"], from_date=lo, to_date=hi)
+    assert list(frames) == ["close", "volume"]  # de-duped, order preserved
+    for column in ("close", "volume"):
+        assert frames[column].equals(data.wide_frame(column=column, from_date=lo, to_date=hi))
 
 
 def test_ohlc_cli(tmp_path: Path) -> None:

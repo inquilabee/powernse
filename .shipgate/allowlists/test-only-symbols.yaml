@@ -7,6 +7,10 @@ entries:
     reason: >-
       Public read API (unclassified CA records mentioning a symbol across the
       window); low-level escape hatch beside corporate_actions().
+  - path: src/powernse/data.py:NSEData.iter_days
+    reason: >-
+      Public streaming read API for memory-bounded multi-year passes over a
+      per-session dataset; for library consumers, covered by tests/test_nsedata.py.
   - path: src/powernse/calendar.py:TradingCalendar.offset
     reason: >-
       Public calendar arithmetic added for data-provider consumers (the

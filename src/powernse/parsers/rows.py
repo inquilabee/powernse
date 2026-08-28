@@ -12,14 +12,14 @@ from collections.abc import Mapping
 from datetime import date, datetime
 from typing import ClassVar
 
-from powernse.schemas import DealRow, DeliveryRow, FoRow, IndexRow, OhlcRow
+from powernse.schemas import DealRow, DeliveryRow, FoRow, IndexRow, OhlcRow, SecurityRow
 
 logger = logging.getLogger(__name__)
 
 RawRow = Mapping[str, str]
 FieldMap = Mapping[str, tuple[str, ...]]
 
-type SchemaRow = OhlcRow | FoRow | IndexRow | DeliveryRow | DealRow
+type SchemaRow = OhlcRow | FoRow | IndexRow | DeliveryRow | DealRow | SecurityRow
 
 
 class RowParser[RowT: SchemaRow](ABC):
@@ -269,8 +269,39 @@ class DealRowParser(RowParser[DealRow]):
         }
 
 
+class SecurityRowParser(RowParser[SecurityRow]):
+    """``EQUITY_L.csv`` row -> :class:`SecurityRow` (the equity security master)."""
+
+    REQUIRED: ClassVar[FieldMap] = {
+        "symbol": ("SYMBOL",),
+        "name": ("NAME OF COMPANY",),
+        "series": ("SERIES",),
+        "listing_date": ("DATE OF LISTING",),
+        "paid_up_value": ("PAID UP VALUE",),
+        "market_lot": ("MARKET LOT",),
+        "isin": ("ISIN NUMBER",),
+        "face_value": ("FACE VALUE",),
+    }
+    NUMERIC = ("paid_up_value", "market_lot", "face_value")
+    NUMERIC_STRIP = ","
+
+    def _build(self, row: RawRow, picked: dict[str, str], numbers: dict[str, float], trade_date: date) -> SecurityRow:
+        del row, trade_date
+        return {
+            "symbol": picked["symbol"].upper(),
+            "name": picked["name"].strip(),
+            "series": picked["series"].upper(),
+            "listing_date": self.parse_date(picked["listing_date"]) or date.min,
+            "paid_up_value": numbers["paid_up_value"],
+            "market_lot": int(numbers["market_lot"]),
+            "isin": picked["isin"].upper(),
+            "face_value": numbers["face_value"],
+        }
+
+
 BHAVCOPY_ROWS = BhavcopyRowParser()
 FO_BHAVCOPY_ROWS = FoBhavcopyRowParser()
 INDEX_CLOSES_ROWS = IndexClosesRowParser()
 DELIVERY_ROWS = DeliveryRowParser()
 DEAL_ROWS = DealRowParser()
+SECURITY_ROWS = SecurityRowParser()

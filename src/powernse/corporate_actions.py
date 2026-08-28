@@ -60,8 +60,13 @@ class CorporateActionType(StrEnum):
     OTHER = "other"
 
 
-# Price-affecting: changes per-share economics and is a real adjustment candidate.
-# Non-price-affecting (e.g. MEETING): informational only, never adjusted.
+# Price-affecting: the action changes per-share economics (a classification, not a
+# claim that this library adjusts for it). Non-price-affecting (e.g. MEETING) is
+# informational only. Only BONUS / SPLIT / DIVIDEND feed the divisor in ``adjust``
+# / ``factors``; RIGHTS, BUYBACK, CAPITAL_REDUCTION, CONSOLIDATION, REDEMPTION and
+# DISTRIBUTION are flagged here but left unadjusted -- deriving their factor needs
+# terms (ratio, subscription/tender price) that NSE's free-text subject does not
+# reliably carry.
 PRICE_AFFECTING_TYPES = frozenset(
     {
         CorporateActionType.DIVIDEND,
@@ -195,6 +200,13 @@ class CorporateActions:
 
     Construct from the records (and, for dividends, the bars) you already have;
     ``NSEData`` fetches those and calls in.
+
+    Adjustment scope: ``factors`` / ``adjust`` divide out **bonus, split, and
+    dividend** events only. Rights issues, buyback tenders, capital reductions and
+    the like are still classified by ``classified()`` (and marked
+    ``price_affecting``) but are **not** adjusted -- their factor depends on terms
+    (ratio, subscription/tender price) that NSE's free-text subject line does not
+    carry reliably. Handle those out of band if your history needs them.
     """
 
     FRAME_COLUMNS = ("symbol", "ex_date", "type", "subject", "price_affecting", "dividend_amount", "price_factor")
@@ -248,7 +260,10 @@ class CorporateActions:
         return pd.Series(values, index=pd.Index(ordered_dates, name="trade_date"), name="factor")
 
     def adjust(self, bars: pd.DataFrame) -> pd.DataFrame:
-        """Bonus/split/dividend-adjusted bars, cumulative so the newest bar keeps factor 1.0."""
+        """Bonus/split/dividend-adjusted bars, cumulative so the newest bar keeps factor 1.0.
+
+        Rights / buyback / capital-reduction events are not applied -- see the class docstring.
+        """
         if bars.empty:
             return empty_frame(ADJUSTED_OHLC_SCHEMA)
         ordered = bars.sort_values("trade_date").reset_index(drop=True)

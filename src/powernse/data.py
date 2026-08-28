@@ -7,7 +7,7 @@ additionally compose a reader with
 :class:`powernse.corporate_actions.CorporateActions`.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Self
@@ -16,7 +16,15 @@ import pandas as pd
 
 from powernse.archive import ArchiveRoot
 from powernse.corporate_actions import CorporateActions
-from powernse.datasets import BHAVCOPY, BLOCK_DEALS, BULK_DEALS, Dataset
+from powernse.datasets import (
+    BHAVCOPY,
+    BLOCK_DEALS,
+    BULK_DEALS,
+    FO_BHAVCOPY,
+    FULL_BHAVCOPY,
+    INDEX_CLOSES,
+    Dataset,
+)
 from powernse.index import Index
 from powernse.reading import (
     BhavcopyReader,
@@ -26,7 +34,10 @@ from powernse.reading import (
     DeliveryReader,
     FoReader,
     IndexReader,
+    ManifestAudit,
+    ManifestIssue,
     SecbanReader,
+    SecurityMasterReader,
     SnapshotReader,
 )
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
@@ -53,7 +64,17 @@ class NSEData:
         self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
         self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
         self._secban = SecbanReader(self._archive)
+        self._securities = SecurityMasterReader(self._archive)
+        self._manifest = ManifestAudit(self._archive)
         self._snapshots = SnapshotReader(self._archive)
+        self._frame_readers = {
+            BHAVCOPY.key: self._bhavcopy,
+            FO_BHAVCOPY.key: self._fo,
+            FULL_BHAVCOPY.key: self._delivery,
+            INDEX_CLOSES.key: self._index,
+            BULK_DEALS.key: self._bulk_deals,
+            BLOCK_DEALS.key: self._block_deals,
+        }
 
     @classmethod
     def open(cls, root: Path | str | None = None, *, create: bool = False) -> Self:
@@ -91,21 +112,40 @@ class NSEData:
     ) -> pd.DataFrame:
         """Date x Symbol matrix for one OHLCV column in a single pass over staged bhavcopy days.
 
-        ``adjusted=True`` divides each symbol's column by its cumulative
-        bonus/split/dividend factor (newest date == 1.0), the same math as
-        ``ohlc_adjusted`` -- only ``column="close"`` is supported for it.
+        ``adjusted=True`` applies each symbol's cumulative bonus/split/dividend
+        factor (newest date == 1.0), the same math as ``ohlc_adjusted``: prices
+        (open/high/low/close) are divided, ``volume`` is multiplied.
         """
+        key = column.strip().lower()
         raw = self._bhavcopy.wide_frame(
-            column=column, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+            column=key, symbols=symbols, from_date=from_date, to_date=to_date, series=series
         )
         if not adjusted or raw.empty:
             return raw
-        if column != "close":
-            msg = f"adjusted=True only supports column='close', got {column!r}"
-            raise ValueError(msg)
-        return self._adjust_matrix(raw)
+        return self._adjust_matrix(raw, multiply=key == "volume")
 
-    def _adjust_matrix(self, raw: pd.DataFrame) -> pd.DataFrame:
+    def wide_frames(
+        self,
+        *,
+        columns: Iterable[str] = ("close",),
+        symbols: Iterable[str] | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+        adjusted: bool = False,
+    ) -> dict[str, pd.DataFrame]:
+        """One ``wide_frame`` per column, sharing a single pass over staged days. ``adjusted`` as in ``wide_frame``."""
+        raw = self._bhavcopy.wide_frames(
+            columns=columns, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+        )
+        if not adjusted:
+            return raw
+        return {
+            key: frame if frame.empty else self._adjust_matrix(frame, multiply=key == "volume")
+            for key, frame in raw.items()
+        }
+
+    def _adjust_matrix(self, raw: pd.DataFrame, *, multiply: bool = False) -> pd.DataFrame:
         start, end = raw.index[0], raw.index[-1]
         out = raw.copy()
         for symbol in raw.columns:
@@ -117,7 +157,7 @@ class NSEData:
                 continue
             bars = pd.DataFrame({"trade_date": list(col.index), "close": col.to_numpy()})
             factors = CorporateActions(records).factors(bars).reindex(raw.index)
-            out[symbol] = raw[symbol] / factors
+            out[symbol] = raw[symbol] * factors if multiply else raw[symbol] / factors
         return out
 
     def coverage(self, dataset: Dataset, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
@@ -127,6 +167,21 @@ class NSEData:
     def coverage_gaps(self, *, from_date: date | None = None, to_date: date | None = None) -> list[date]:
         """XBOM sessions that have no staged bhavcopy file (``coverage(BHAVCOPY, ...)``)."""
         return self._coverage.missing(BHAVCOPY, from_date=from_date, to_date=to_date)
+
+    def iter_days(
+        self, dataset: Dataset, *, from_date: date | None = None, to_date: date | None = None
+    ) -> Iterator[tuple[date, pd.DataFrame]]:
+        """Stream ``(day, frame)`` for each staged day of a per-session dataset -- memory-bounded multi-year passes.
+
+        Supports bhavcopy, F&O bhavcopy, full bhavcopy (delivery), index closes,
+        and bulk / block deals; other datasets raise ``ValueError``.
+        """
+        reader = self._frame_readers.get(dataset.key)
+        if reader is None:
+            supported = ", ".join(sorted(self._frame_readers))
+            msg = f"iter_days does not support {dataset.key!r}; choose from {supported}"
+            raise ValueError(msg)
+        return reader.iter_frames(from_date, to_date)
 
     # -- delivery / traded value -----------------------------------------------
 
@@ -208,7 +263,11 @@ class NSEData:
     def ohlc_adjusted(
         self, symbol: str, *, from_date: date | None = None, to_date: date | None = None, series: str = "EQ"
     ) -> pd.DataFrame:
-        """Equity OHLC with opt-in bonus/split/dividend adjustments (AdjustedOhlcSchema-shaped)."""
+        """Equity OHLC with opt-in bonus/split/dividend adjustments (AdjustedOhlcSchema-shaped).
+
+        Rights issues and buyback tenders are not adjusted -- see
+        :class:`powernse.corporate_actions.CorporateActions`.
+        """
         bars = self._bhavcopy.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
         if bars.empty:
             return empty_frame(ADJUSTED_OHLC_SCHEMA)
@@ -249,6 +308,20 @@ class NSEData:
         """Whether ``symbol`` is in the F&O trade ban for ``on`` (default: latest staged ban date)."""
         return symbol.strip().upper() in self._secban.banned(on)
 
+    # -- security master -----------------------------------------------------
+
+    def securities(self) -> pd.DataFrame:
+        """The whole equity security master from the latest staged ``EQUITY_L`` (SecuritySchema-shaped)."""
+        return self._securities.table()
+
+    def security(self, symbol: str) -> pd.Series | None:
+        """One security-master row by symbol, or ``None`` when absent."""
+        return self._securities.one(symbol)
+
+    def security_by_isin(self, isin: str) -> pd.Series | None:
+        """One security-master row by ISIN, or ``None`` when absent."""
+        return self._securities.by_isin(isin)
+
     # -- snapshots + inventory ----------------------------------------------
 
     def full_bhavcopy_rows(self, trade_date: date) -> list[dict[str, str]]:
@@ -257,3 +330,7 @@ class NSEData:
     def inventory(self) -> dict[str, int]:
         """Staged file counts by dataset, plus the manifest byte size."""
         return self._snapshots.inventory()
+
+    def audit_manifest(self) -> list[ManifestIssue]:
+        """Manifest-listed downloads that are now missing or whose sha256 no longer matches."""
+        return self._manifest.issues()

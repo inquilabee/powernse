@@ -3,6 +3,7 @@
 from datetime import date
 from typing import Annotated
 
+import pandas as pd
 import typer
 from requests import RequestException
 
@@ -42,6 +43,27 @@ def register_read_commands(app: typer.Typer) -> None:
         typer.echo(f"archive root: {data.root}")
         for key, value in data.inventory().items():
             typer.echo(f"  {key}: {value}")
+
+    _symbol_opt = typer.Option("--symbol", "-s", help="Filter to one symbol")
+    _isin_opt = typer.Option("--isin", "-i", help="Filter to one ISIN")
+
+    @app.command("securities")
+    def securities_cmd(
+        symbol: Annotated[str | None, _symbol_opt] = None,
+        isin: Annotated[str | None, _isin_opt] = None,
+        root: RootOpt = None,
+    ) -> None:
+        """Print the NSE equity security master (symbol / ISIN / name / listing date) from the latest EQUITY_L."""
+        data = NSEData(root, create=False)
+        if symbol is not None:
+            row = data.security(symbol)
+        elif isin is not None:
+            row = data.security_by_isin(isin)
+        else:
+            print_frame_or_exit(data.securities(), empty_message=f"No security master rows under {data.root}")
+            return
+        frame = pd.DataFrame([row]) if row is not None else pd.DataFrame()
+        print_frame_or_exit(frame, empty_message=f"No security master row for {symbol or isin!r} under {data.root}")
 
     @app.command("ohlc")
     def ohlc_cmd(
@@ -124,30 +146,38 @@ def register_read_commands(app: typer.Typer) -> None:
         print_frame_or_exit(frame, empty_message=f"No index rows for {index_name!r} under {data.root}")
 
     _dataset_opt = typer.Option("--dataset", "-d", help="One dataset key (default: the core dated archives)")
+    _hashes_opt = typer.Option("--hashes", help="Also re-hash every staged file against the download manifest")
 
     @app.command("verify")
     def verify_cmd(
         dataset: Annotated[str | None, _dataset_opt] = None,
         from_date: FromDateOpt = None,
         to_date: ToDateOpt = None,
+        hashes: Annotated[bool, _hashes_opt] = False,
         root: RootOpt = None,
     ) -> None:
-        """Report XBOM sessions missing from the staged archive; exit 1 if any dataset has gaps."""
+        """Report staged-session gaps (and, with --hashes, manifest sha256 drift); exit 1 on any problem."""
         data = NSEData(root, create=False)
-        missing_total = 0
+        problems = 0
         for target in verify_targets(dataset):
             try:
                 gaps = data.coverage(target, from_date=from_date, to_date=to_date)
             except ArchiveError as exc:
                 typer.echo(f"{target.key}: {exc}", err=True)
                 continue
-            missing_total += len(gaps)
+            problems += len(gaps)
             if gaps:
                 shown = ", ".join(day.isoformat() for day in gaps)
                 typer.echo(f"{target.key}: {len(gaps)} missing — {shown}")
             else:
                 typer.echo(f"{target.key}: complete")
-        if missing_total:
+        if hashes:
+            issues = data.audit_manifest()
+            problems += len(issues)
+            for issue in issues:
+                typer.echo(f"manifest {issue.kind}: {issue.local_path}")
+            typer.echo(f"manifest: {len(issues)} problem(s) across recorded downloads")
+        if problems:
             raise typer.Exit(code=1)
 
     @app.command("doctor")
