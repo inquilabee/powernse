@@ -13,7 +13,8 @@ make build
 
 Local docs site: `uv run --with mkdocs-material mkdocs serve`.
 
-Quality gates: [ShipGate](https://inquilabee.github.io/shipgate/) (`suite: standard`).
+Quality gates: [ShipGate](https://inquilabee.github.io/shipgate/) — the versioned
+`.shipgate/` policy pins `suite: full`, so `make check` and CI run the same gates.
 Release steps: [Publish](publish.md).
 
 Download CLI defaults to **soft-fail** (prints `failed=N`, exit 0). Cron, CI, and

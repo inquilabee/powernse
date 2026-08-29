@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/powernse-hero.png" alt="PowerNSE — end-of-day archives on disk" width="920"/>
+  <img src="docs/images/powernse-hero.svg" alt="PowerNSE — end-of-day archives on disk" width="920"/>
 </p>
 
 <p align="center">
@@ -77,8 +77,10 @@ pip install powernse
 powernse bhavcopy --resume
 powernse fo-bhavcopy --resume --days 30
 powernse index-closes --from 2024-08-01 --to 2024-08-05
-powernse fetch-bundle --force    # optional: GitHub-hosted archive
+powernse equity-list --date 2024-08-09   # EQUITY_L security master
+powernse fetch-bundle --force            # optional: GitHub-hosted archive
 powernse status
+powernse verify                          # session gaps in the core dated archives
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 powernse doctor
 ```
@@ -90,6 +92,7 @@ from powernse import BhavcopyDownloader, NSEData
 BhavcopyDownloader("./nse-data").download_range(date(2024, 8, 1), date(2024, 8, 5))
 data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+adj = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
 
 Walkthrough: [quickstart](https://inquilabee.github.io/powernse/user/quickstart/).
@@ -98,11 +101,12 @@ Walkthrough: [quickstart](https://inquilabee.github.io/powernse/user/quickstart/
 
 | Surface | Covers |
 | --- | --- |
-| Cash / F&O / full bhavcopy | Daily equity and derivatives archives |
-| Index closes & constituents | Index levels and membership snapshots |
-| Bulk / block deals, F&O ban | As-of snapshots |
-| Corporate actions | JSON for adjustment helpers |
-| `NSEData` / CLI | OHLC, coverage gaps, inventory, doctor |
+| Cash / F&O / full bhavcopy | Daily equity & derivatives archives; delivery / traded-value reads |
+| Index closes & constituents | Levels, membership snapshots, a bundled index catalog + `Index` handle |
+| Bulk / block deals, F&O ban | Typed DataFrames; `secban()` / `is_banned()` |
+| Security master (`EQUITY_L`) | symbol ↔ ISIN ↔ name ↔ listing date ↔ face value |
+| Corporate actions | Classify **and** adjust — bonus / split / dividend / consolidation, opt-in rights (TERP) |
+| `NSEData` / CLI | OHLC + adjusted OHLC, wide frames, streaming `iter_days`, coverage `verify`, manifest audit, doctor |
 | `fetch-bundle` | Zip extract of this repo's `nse-data/` |
 
 Trading days use XBOM sessions when `exchange-calendars` covers the window
@@ -117,7 +121,9 @@ nse-data/
   raw/full_bhavcopy/…
   raw/index_closes/…
   raw/bulk_deals/…  raw/block_deals/…  raw/fo_secban/…
+  raw/equity_list/YYYY/YYYY-MM-DD.csv
   raw/corporate_actions/YYYY/YYYY-MM-DD.json
+  raw/bse_corporate_actions/YYYY/YYYY-MM-DD.json
   raw/index_constituents/YYYY/YYYY-MM-DD_<index>.json
   manifest/downloads.jsonl
 ```

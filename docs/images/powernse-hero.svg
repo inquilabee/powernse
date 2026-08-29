@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" role="img" aria-label="PowerNSE — NSE end-of-day archives, on your disk">
+  <defs>
+    <linearGradient id="pn-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#072a28"/>
+      <stop offset="0.55" stop-color="#0b3d3a"/>
+      <stop offset="1" stop-color="#123f3b"/>
+    </linearGradient>
+    <radialGradient id="pn-glow" cx="0.1" cy="-0.05" r="0.75">
+      <stop offset="0" stop-color="#c4a35a" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#c4a35a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="400" rx="28" fill="url(#pn-bg)"/>
+  <rect width="1200" height="400" rx="28" fill="url(#pn-glow)"/>
+
+  <!-- brand mark -->
+  <g transform="translate(72 64)">
+    <rect width="64" height="64" rx="14" fill="#0e4b47"/>
+    <path d="M14 42 V22 h10.5 c6.2 0 10 3.4 10 8.6 0 5.3-3.8 8.7-10 8.7H20.5V42H14zm6.5-11.2h3.6c2.7 0 4.3-1.4 4.3-3.5s-1.6-3.5-4.3-3.5h-3.6v7z" fill="#e8f0ef"/>
+    <path d="M38 22h6.2l7.8 20h-6.8l-1.2-3.4H37l-1.2 3.4H29l7.8-20zm1.9 11.4h5.4l-2.7-7.6-2.7 7.6z" fill="#c4a35a"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="156" y="112" font-family="Arial, 'Helvetica Neue', 'DejaVu Sans', sans-serif" font-size="60" font-weight="700" letter-spacing="-1.5">
+    <tspan fill="#ffffff">Power</tspan><tspan fill="#c4a35a">NSE</tspan>
+  </text>
+
+  <!-- tagline -->
+  <text x="74" y="196" font-family="Arial, 'Helvetica Neue', 'DejaVu Sans', sans-serif" font-size="30" font-weight="400" fill="#cfe0dd">NSE end-of-day archives. On your disk.</text>
+  <text x="74" y="234" font-family="Arial, 'Helvetica Neue', 'DejaVu Sans', sans-serif" font-size="30" font-weight="400" fill="#cfe0dd">Under your control.</text>
+
+  <!-- meta line -->
+  <text x="74" y="286" font-family="'DejaVu Sans Mono', 'SFMono-Regular', Menlo, monospace" font-size="18" fill="#8fb0ac" letter-spacing="0.4">one CLI  ·  small Python API  ·  SHA-256 manifest</text>
+
+  <!-- feature line -->
+  <text x="74" y="330" font-family="Arial, 'Helvetica Neue', sans-serif" font-size="19" fill="#a9c3c0">bhavcopy  ·  F&amp;O  ·  indexes  ·  deals  ·  corporate actions</text>
+
+  <!-- gold underline -->
+  <path d="M74 356 H540" stroke="#c4a35a" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- chart motif -->
+  <g transform="translate(812 96)">
+    <path d="M0 216 L300 216 M0 210 L300 44" stroke="#c4a35a" stroke-width="2.5" fill="none" opacity="0.3" stroke-linecap="round"/>
+    <g fill="#c4a35a">
+      <rect x="6"   y="158" width="26" height="58"  rx="6" opacity="0.5"/>
+      <rect x="56"  y="126" width="26" height="90"  rx="6" opacity="0.62"/>
+      <rect x="106" y="146" width="26" height="70"  rx="6" opacity="0.5"/>
+      <rect x="156" y="92"  width="26" height="124" rx="6" opacity="0.8"/>
+      <rect x="206" y="112" width="26" height="104" rx="6" opacity="0.68"/>
+      <rect x="256" y="58"  width="26" height="158" rx="6"/>
+    </g>
+  </g>
+</svg>

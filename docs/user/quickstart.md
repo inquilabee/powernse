@@ -28,10 +28,12 @@ powernse fo-bhavcopy --resume --days 30
 powernse index-closes --from 2024-08-01 --to 2024-08-05
 powernse full-bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse bulk-deals --date 2024-08-09
+powernse equity-list --date 2024-08-09
 powernse corporate-actions --from 2024-08-01 --to 2024-08-05
 powernse doctor
 powernse status
-powernse verify                       # session gaps in the core dated archives (exit 1 if any)
+powernse verify --hashes              # session gaps + manifest sha256 audit (exit 1 if any)
+powernse securities --symbol RELIANCE
 powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 ```
 
@@ -70,9 +72,11 @@ from powernse import BhavcopyDownloader, NSEData
 BhavcopyDownloader("./nse-data").download_range(date(2024, 8, 1), date(2024, 8, 5))
 data = NSEData("./nse-data")
 bars = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+adj = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 ```
 
-OHLC helpers scan each day's CSV — prefer modest date windows.
+OHLC helpers scan each day's CSV — prefer modest date windows. Full API:
+[Use NSEData in Python](python/nsedata.md).
 
 ## Exit codes
 

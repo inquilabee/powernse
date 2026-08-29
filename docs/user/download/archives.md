@@ -59,7 +59,9 @@ nse-data/
   raw/bulk_deals/YYYY/YYYY-MM-DD.csv
   raw/block_deals/YYYY/YYYY-MM-DD.csv
   raw/fo_secban/YYYY/YYYY-MM-DD.csv
+  raw/equity_list/YYYY/YYYY-MM-DD.csv
   raw/corporate_actions/YYYY/YYYY-MM-DD.json
+  raw/bse_corporate_actions/YYYY/YYYY-MM-DD.json
   raw/index_constituents/YYYY/YYYY-MM-DD_<index>.json
   manifest/downloads.jsonl
 ```

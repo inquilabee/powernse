@@ -148,8 +148,9 @@ CorporateActions(records).classified()                  # classified history fra
 
 ## What you should see
 
-- `ohlc`, `ohlc_adjusted`, `fo_bars`, `index_ohlc`, `on` return `pandas.DataFrame` (empty
-  DataFrame — same columns, zero rows — if no matches; CLI `ohlc` exits `1` when empty)
+- `ohlc`, `ohlc_adjusted`, `fo_bars`, `on`, `delivery`, `bulk_deals`, `wide_frame`,
+  `securities`, `index(name).ohlc()` return `pandas.DataFrame` (empty DataFrame —
+  same columns, zero rows — if no matches; CLI `ohlc` exits `1` when empty)
 - `latest()` returns a one-row `pandas.Series`, or `None` if nothing is staged yet
 - `inventory()` counts files per archive prefix
 - Missing required files raise `ArchiveError`
@@ -189,10 +190,9 @@ is no free, machine-readable NSE F&O adjustment-factor file, and NSE's
 `corporatections.csv` is the same data as the JSON we already stage.
 
 Each DataFrame-returning method validates its result against a `powernse.schemas` schema
-(`OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema`) before returning it — the
-same column/type/nullability contract the old `OhlcBar`/`AdjustedOhlcBar`/`FoBar`/
-`IndexBar` dataclasses used to enforce. Validate your own frames the same way if you build
-one by hand:
+(`OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema`, `DeliverySchema`,
+`DealSchema`, `SecuritySchema`) before returning it — a column/type/nullability contract
+enforced on the way out. Validate your own frames the same way if you build one by hand:
 
 ```python
 from powernse import OhlcSchema
