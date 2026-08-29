@@ -105,7 +105,7 @@ Walkthrough: [quickstart](https://inquilabee.github.io/powernse/user/quickstart/
 | Index closes & constituents | Levels, membership snapshots, a bundled index catalog + `Index` handle |
 | Bulk / block deals, F&O ban | Typed DataFrames; `secban()` / `is_banned()` |
 | Security master (`EQUITY_L`) | symbol ↔ ISIN ↔ name ↔ listing date ↔ face value |
-| Corporate actions | Classify **and** adjust — bonus / split / dividend / consolidation, opt-in rights (TERP) |
+| Corporate actions | Classify **and** adjust — bonus / split / dividend / consolidation, opt-in rights (theoretical ex-rights price) |
 | `NSEData` / CLI | OHLC + adjusted OHLC, wide frames, streaming `iter_days`, coverage `verify`, manifest audit, doctor |
 | `fetch-bundle` | Zip extract of this repo's `nse-data/` |
 
