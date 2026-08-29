@@ -28,6 +28,7 @@ from powernse.datasets import (
 from powernse.index import Index
 from powernse.reading import (
     BhavcopyReader,
+    BseCorporateActionReader,
     CorporateActionReader,
     CoverageReader,
     DealsReader,
@@ -60,6 +61,7 @@ class NSEData:
         self._fo = FoReader(self._archive)
         self._index = IndexReader(self._archive)
         self._actions = CorporateActionReader(self._archive)
+        self._bse_actions = BseCorporateActionReader(self._archive)
         self._coverage = CoverageReader(self._archive)
         self._bulk_deals = DealsReader(self._archive, BULK_DEALS, "bulk deals")
         self._block_deals = DealsReader(self._archive, BLOCK_DEALS, "block deals")
@@ -109,12 +111,14 @@ class NSEData:
         to_date: date | None = None,
         series: str = "EQ",
         adjusted: bool = False,
+        include: Iterable[str] | None = None,
     ) -> pd.DataFrame:
         """Date x Symbol matrix for one OHLCV column in a single pass over staged bhavcopy days.
 
-        ``adjusted=True`` applies each symbol's cumulative bonus/split/dividend
-        factor (newest date == 1.0), the same math as ``ohlc_adjusted``: prices
-        (open/high/low/close) are divided, ``volume`` is multiplied.
+        ``adjusted=True`` applies each symbol's cumulative CA factor (newest date
+        == 1.0), the same math as ``ohlc_adjusted``: prices (open/high/low/close)
+        are divided, ``volume`` is multiplied. ``include`` selects the event set
+        (default: bonus / split / consolidation / dividend; add ``"rights"``).
         """
         key = column.strip().lower()
         raw = self._bhavcopy.wide_frame(
@@ -122,7 +126,7 @@ class NSEData:
         )
         if not adjusted or raw.empty:
             return raw
-        return self._adjust_matrix(raw, multiply=key == "volume")
+        return self._adjust_matrix(raw, multiply=key == "volume", include=include)
 
     def wide_frames(
         self,
@@ -133,30 +137,36 @@ class NSEData:
         to_date: date | None = None,
         series: str = "EQ",
         adjusted: bool = False,
+        include: Iterable[str] | None = None,
     ) -> dict[str, pd.DataFrame]:
-        """One ``wide_frame`` per column, sharing a single pass over staged days. ``adjusted`` as in ``wide_frame``."""
+        """One ``wide_frame`` per column in a single pass over staged days (``adjusted`` / ``include`` as there)."""
         raw = self._bhavcopy.wide_frames(
             columns=columns, symbols=symbols, from_date=from_date, to_date=to_date, series=series
         )
         if not adjusted:
             return raw
         return {
-            key: frame if frame.empty else self._adjust_matrix(frame, multiply=key == "volume")
+            key: frame if frame.empty else self._adjust_matrix(frame, multiply=key == "volume", include=include)
             for key, frame in raw.items()
         }
 
-    def _adjust_matrix(self, raw: pd.DataFrame, *, multiply: bool = False) -> pd.DataFrame:
+    def _adjust_matrix(
+        self, raw: pd.DataFrame, *, multiply: bool = False, include: Iterable[str] | None = None
+    ) -> pd.DataFrame:
+        apply = None if include is None else frozenset(include)
         start, end = raw.index[0], raw.index[-1]
         out = raw.copy()
         for symbol in raw.columns:
             col = raw[symbol].dropna()
             if col.empty:
                 continue
-            records = self._actions.records_in_adjustment_window(str(symbol), window_start=start, end=end)
+            records = self._actions.records_in_adjustment_window(
+                str(symbol), window_start=start, end=end, bse=self._bse_actions
+            )
             if not records:
                 continue
             bars = pd.DataFrame({"trade_date": list(col.index), "close": col.to_numpy()})
-            factors = CorporateActions(records).factors(bars).reindex(raw.index)
+            factors = CorporateActions(records, apply=apply).factors(bars).reindex(raw.index)
             out[symbol] = raw[symbol] * factors if multiply else raw[symbol] / factors
         return out
 
@@ -252,8 +262,12 @@ class NSEData:
     def corporate_actions(
         self, symbol: str, *, from_date: date | None = None, to_date: date | None = None
     ) -> pd.DataFrame:
-        """Classified CA history for a symbol: type / subject / price_factor / dividend_amount per ex-date."""
-        records = self._actions.records(symbol, from_date=from_date, to_date=to_date)
+        """Classified CA history for a symbol: type / subject / price_factor / dividend_amount per ex-date.
+
+        ``dividend_amount`` is backfilled from staged BSE corporate actions when
+        the NSE subject carries no figure (see ``powernse bse-corporate-actions``).
+        """
+        records = self._actions.records(symbol, from_date=from_date, to_date=to_date, bse=self._bse_actions)
         return CorporateActions(records).classified()
 
     def actions_for(self, symbol: str, *, from_date: date | None = None, to_date: date | None = None) -> list[Record]:
@@ -261,11 +275,20 @@ class NSEData:
         return self._actions.records(symbol, from_date=from_date, to_date=to_date)
 
     def ohlc_adjusted(
-        self, symbol: str, *, from_date: date | None = None, to_date: date | None = None, series: str = "EQ"
+        self,
+        symbol: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        series: str = "EQ",
+        include: Iterable[str] | None = None,
     ) -> pd.DataFrame:
-        """Equity OHLC with opt-in bonus/split/dividend adjustments (AdjustedOhlcSchema-shaped).
+        """Equity OHLC with corporate-action adjustments (AdjustedOhlcSchema-shaped).
 
-        Rights issues and buyback tenders are not adjusted -- see
+        Default event set: bonus / split / consolidation / dividend. Pass
+        ``include=("bonus","split","consolidation","dividend","rights")`` to also
+        apply rights issues (theoretical ex-rights price). Buyback tenders and
+        demergers are never adjusted -- see
         :class:`powernse.corporate_actions.CorporateActions`.
         """
         bars = self._bhavcopy.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
@@ -273,8 +296,11 @@ class NSEData:
             return empty_frame(ADJUSTED_OHLC_SCHEMA)
         window_start = from_date or bars["trade_date"].min()
         end = to_date or bars["trade_date"].max()
-        records = self._actions.records_in_adjustment_window(symbol, window_start=window_start, end=end)
-        return CorporateActions(records).adjust(bars)
+        records = self._actions.records_in_adjustment_window(
+            symbol, window_start=window_start, end=end, bse=self._bse_actions
+        )
+        apply = None if include is None else frozenset(include)
+        return CorporateActions(records, apply=apply).adjust(bars)
 
     # -- deals + F&O ban --------------------------------------------------------
 

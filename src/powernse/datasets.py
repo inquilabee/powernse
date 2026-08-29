@@ -56,6 +56,7 @@ BLOCK_DEALS = Dataset("block_deals", "csv")
 FO_SECBAN = Dataset("fo_secban", "csv")
 EQUITY_LIST = Dataset("equity_list", "csv")
 CORPORATE_ACTIONS = Dataset("corporate_actions", "json")
+BSE_CORPORATE_ACTIONS = Dataset("bse_corporate_actions", "json")
 INDEX_CONSTITUENTS = Dataset("index_constituents", "json")
 
 ALL: tuple[Dataset, ...] = (
@@ -68,5 +69,6 @@ ALL: tuple[Dataset, ...] = (
     FO_SECBAN,
     EQUITY_LIST,
     CORPORATE_ACTIONS,
+    BSE_CORPORATE_ACTIONS,
     INDEX_CONSTITUENTS,
 )

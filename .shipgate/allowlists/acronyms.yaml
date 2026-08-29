@@ -7,6 +7,8 @@ PR: pull request
 
 # PowerNSE domain terms
 NSE: National Stock Exchange of India
+BSE: Bombay Stock Exchange (Indian equity exchange, cross-check CA source)
+OTM: out of the money (option/rights strike above market)
 XBOM: exchange_calendars code for the NSE/BSE equity trading calendar
 OHLC: open / high / low / close
 OHLCV: open / high / low / close / volume

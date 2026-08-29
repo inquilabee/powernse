@@ -22,6 +22,8 @@ class ArchiveDownloader:
     """
 
     accept: ClassVar[str] = "*/*"
+    #: extra request headers merged over the NSE defaults (e.g. a non-NSE Referer)
+    request_headers: ClassVar[dict[str, str]] = {}
 
     def __init__(
         self,
@@ -70,7 +72,7 @@ class ArchiveDownloader:
         return self._skip_existing
 
     def fetch_bytes_throttled(self, url: str) -> bytes:
-        return self._http.fetch_bytes(url, accept=self.accept)
+        return self._http.fetch_bytes(url, accept=self.accept, extra_headers=self.request_headers or None)
 
     def destination_exists(self, relative_key: str) -> bool:
         return self._archive.exists(relative_key)

@@ -32,6 +32,7 @@ powernse fo-secban --date 2024-08-09
 powernse equity-list --date 2024-08-09   # EQUITY_L.csv security master
 
 powernse corporate-actions --from 2024-08-01 --to 2024-08-05
+powernse bse-corporate-actions --from 2024-01-01 --to 2024-12-31   # BSE dividend cross-check
 powernse index-constituents --index "NIFTY 50" --label-date 2024-08-05
 ```
 

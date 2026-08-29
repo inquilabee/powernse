@@ -3,11 +3,11 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from support import bars_frame, staged_path
+from support import bars_frame, staged_path, write_staged
 
-from powernse.corporate_actions import SUBJECTS, CorporateActions, CorporateActionType
+from powernse.corporate_actions import SUBJECTS, CorporateActions, CorporateActionType, dividend_hint_of
 from powernse.data import NSEData
-from powernse.datasets import CORPORATE_ACTIONS
+from powernse.datasets import BHAVCOPY, BSE_CORPORATE_ACTIONS, CORPORATE_ACTIONS
 
 
 @pytest.mark.parametrize(
@@ -42,6 +42,47 @@ def test_price_factor(subject: str, expected: float | None) -> None:
 )
 def test_dividend_amount(subject: str, expected: float | None) -> None:
     assert SUBJECTS.dividend_amount(subject) == expected
+
+
+@pytest.mark.parametrize(
+    ("subject", "face_value", "expected"),
+    [
+        ("Div 30%", 10.0, 3.0),
+        ("Div - 18%", 10.0, 1.8),
+        ("Agm/Div-50%/Rights-1:6", 2.0, 1.0),
+        ("Dividend 15 %", 100.0, 15.0),
+        ("Div 30%", None, None),  # needs face value
+        ("Dividend - Rs 5 Per Share", 10.0, 5.0),  # explicit rupees still win
+    ],
+)
+def test_percent_dividend(subject: str, face_value: float | None, expected: float | None) -> None:
+    assert SUBJECTS.dividend_amount(subject, face_value=face_value) == expected
+
+
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [
+        ("Consolidation Of Equity Shares From Re 1 Per Share To Rs 10 Per Share", 0.1),
+        ("Consolidation Rs 2 To Rs 10", 0.2),
+        ("Consolidation Of Equity Shares", None),
+        ("Face Value Split from Rs 10 to Rs 5", None),  # not a consolidation subject
+    ],
+)
+def test_consolidation_factor(subject: str, expected: float | None) -> None:
+    assert SUBJECTS.consolidation_factor(subject) == expected
+
+
+def test_percent_dividend_and_consolidation_adjust_bars() -> None:
+    bars = bars_frame((date(2024, 1, 1), 100.0), (date(2024, 1, 2), 100.0), (date(2024, 1, 3), 100.0))
+    records = [
+        {"symbol": "TEST", "subject": "Div 20%", "faceVal": "10", "exDate": "2024-01-02"},  # Rs 2/sh
+        {"symbol": "TEST", "subject": "Consolidation From Re 1 To Rs 2", "faceVal": "2", "exDate": "2024-01-03"},
+    ]
+    adjusted = CorporateActions(records).adjust(bars).set_index("trade_date")["close"]
+    assert adjusted[date(2024, 1, 3)] == 100.0  # newest bar untouched
+    assert adjusted[date(2024, 1, 2)] == 200.0  # consolidation divisor 0.5 only: 100 / 0.5
+    # 2024-01-01: dividend (100/98) x consolidation (0.5) -> 100 / (98/100 * 0.5 ... ) = 196.0
+    assert adjusted[date(2024, 1, 1)] == pytest.approx(196.0)
 
 
 @pytest.mark.parametrize(
@@ -85,6 +126,65 @@ def test_frame_classifies_and_sorts(tmp_path: Path) -> None:
     assert list(frame["price_affecting"]) == [True, True]
 
 
+@pytest.mark.parametrize(
+    ("subject", "expected"),
+    [
+        ("Rights 1:1 @ Premium Rs 90/-", (1, 1, 100.0)),
+        ("Rights 2:5 @ Premium Rs.50/- Per Share", (2, 5, 60.0)),
+        ("Rights 1:2 Prem@Rs.79/-", (1, 2, 89.0)),
+        ("Rights 4:7 At Par", (4, 7, 10.0)),
+        ("Interim Dividend- Rs 3 Per Share / Rights 1:16 @ Premium Rs 554 Per Share", (1, 16, 564.0)),
+        ("Rights 1:1", None),  # no premium / par
+        ("Rights - 7 Ccps And 7 Warrants:40", None),  # non-equity
+        ("Rights Equity/Warrant", None),
+    ],
+)
+def test_rights_terms(subject: str, expected: tuple[int, int, float] | None) -> None:
+    terms = SUBJECTS.rights_terms(subject, face_value=10.0)
+    got = None if terms is None else (terms.new, terms.held, terms.subscription_price)
+    assert got == expected
+
+
+def test_rights_terms_needs_face_value() -> None:
+    assert SUBJECTS.rights_terms("Rights 1:1 @ Premium Rs 90/-", face_value=None) is None
+
+
+def test_rights_adjustment_is_opt_in_and_uses_terp() -> None:
+    # prior close (2024-01-01) = 200; Rights 1:1 @ Premium Rs 90 on faceVal 10 -> S = 100
+    # TERP = (1*200 + 1*100) / 2 = 150 ; divisor = 200 / 150
+    bars = bars_frame((date(2024, 1, 1), 200.0), (date(2024, 1, 2), 150.0))
+    records = [{"symbol": "TEST", "subject": "Rights 1:1 @ Premium Rs 90", "faceVal": "10", "exDate": "2024-01-02"}]
+
+    assert CorporateActions(records).price_events(bars).empty  # default: rights not applied
+
+    withr = CorporateActions(records, apply={"bonus", "split", "consolidation", "dividend", "rights"})
+    assert withr.price_events(bars).to_dict() == {date(2024, 1, 2): pytest.approx(200.0 / 150.0)}
+    adjusted = withr.adjust(bars).set_index("trade_date")["close"]
+    assert adjusted[date(2024, 1, 1)] == pytest.approx(150.0)  # 200 / (200/150)
+    assert adjusted[date(2024, 1, 2)] == 150.0  # newest bar untouched
+
+
+def test_skipped_events_reports_unparsed_rights() -> None:
+    records = [
+        {"symbol": "A", "subject": "Rights 1:1 @ Premium Rs 5", "faceVal": "10", "exDate": "2024-02-01"},
+        {"symbol": "B", "subject": "Rights Equity/Warrant", "faceVal": "10", "exDate": "2024-03-01"},
+    ]
+    skipped = CorporateActions(records, apply={"rights"}).skipped_events()
+    assert [(s.symbol, s.type) for s in skipped] == [("B", CorporateActionType.RIGHTS)]
+
+
+def test_rights_deep_otm_dropped() -> None:
+    # subscription price far above market -> TERP >= prior close -> no adjustment
+    bars = bars_frame((date(2024, 1, 1), 50.0), (date(2024, 1, 2), 50.0))
+    records = [{"symbol": "T", "subject": "Rights 1:1 @ Premium Rs 990", "faceVal": "10", "exDate": "2024-01-02"}]
+    assert CorporateActions(records, apply={"rights"}).price_events(bars).empty
+
+
+def test_apply_rejects_unknown_category() -> None:
+    with pytest.raises(ValueError, match="apply must be a subset"):
+        CorporateActions([], apply={"bonus", "wat"})
+
+
 def test_dividend_adjustment_reduces_only_prior_bars() -> None:
     bars = bars_frame((date(2024, 1, 1), 100.0), (date(2024, 1, 2), 95.0))
     actions = CorporateActions([{"subject": "Dividend - Rs 5 Per Share", "exDate": "2024-01-02"}])
@@ -114,3 +214,52 @@ def test_apply_ignores_events_not_yet_effective() -> None:
     adjusted = actions.adjust(bars)
     assert adjusted["factor"].tolist() == [1.0, 1.0]
     assert adjusted["close"].tolist() == [200.0, 202.0]
+
+
+def _stage_bse(root: Path, day: date, rows: list[dict[str, object]]) -> None:
+    path = staged_path(root, BSE_CORPORATE_ACTIONS, day)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(rows), encoding="utf-8")
+
+
+def test_bse_backfills_dividend_amount_missing_from_nse_subject(tmp_path: Path) -> None:
+    day_before, ex_day = date(2024, 8, 1), date(2024, 8, 2)
+    for trade_date, close in ((day_before, 100.0), (ex_day, 98.0)):
+        write_staged(
+            tmp_path,
+            BHAVCOPY,
+            trade_date,
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{close},{close},{close},{close},100\n",
+        )
+    ca = staged_path(tmp_path, CORPORATE_ACTIONS, ex_day)
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    # NSE subject: dividend, but no per-share figure in the text
+    ca.write_text('[{"symbol":"RELIANCE","subject":"Dividend","exDate":"2024-08-02","faceVal":"10"}]', encoding="utf-8")
+    # BSE has the amount, one calendar day early (ex-date tolerance +/- 1)
+    _stage_bse(tmp_path, date(2024, 8, 1), [{"short_name": "RELIANCE", "Purpose": "Final Dividend - Rs. - 2.0000"}])
+
+    data = NSEData(tmp_path)
+    assert data.corporate_actions("RELIANCE", from_date=day_before, to_date=ex_day).loc[0, "dividend_amount"] == 2.0
+
+    adjusted = data.ohlc_adjusted("RELIANCE", from_date=day_before, to_date=ex_day).set_index("trade_date")["close"]
+    # prior close 100, dividend 2 -> divisor 100/98 on the pre-ex-date bar
+    assert adjusted[day_before] == pytest.approx(98.0)
+    assert adjusted[ex_day] == 98.0
+
+
+def test_nse_subject_amount_wins_over_bse() -> None:
+    record = {
+        "symbol": "X",
+        "subject": "Dividend - Rs 5 Per Share",
+        "exDate": "2024-08-02",
+        "dividend_amount_hint": 9.0,
+    }
+    events = CorporateActions([record]).price_events(bars_frame((date(2024, 8, 1), 100.0), (date(2024, 8, 2), 95.0)))
+    assert events.to_dict() == {date(2024, 8, 2): 100.0 / (100.0 - 5.0)}  # 5 from the subject, not 9 from BSE
+
+
+def test_dividend_hint_of_guards() -> None:
+    assert dividend_hint_of({"dividend_amount_hint": 3.5}) == 3.5
+    assert dividend_hint_of({"dividend_amount_hint": 0}) is None
+    assert dividend_hint_of({"dividend_amount_hint": True}) is None
+    assert dividend_hint_of({}) is None

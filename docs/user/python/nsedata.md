@@ -17,9 +17,14 @@ frame = data.ohlc("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 
 latest = data.latest("RELIANCE")  # pandas.Series | None, one OHLC row
 gaps = data.coverage_gaps(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
 
-# Opt-in bonus/split/dividend adjustment from staged corporate-actions JSON
-# (loads CA files from a bounded lookback window before from_date so ex-dates in-window are found)
+# Corporate-action adjustment from staged CA JSON (loads a bounded lookback window
+# before from_date so in-window ex-dates are found). Default: bonus/split/
+# consolidation/dividend; pass include=(...,"rights") to also apply rights issues.
 adjusted = data.ohlc_adjusted("RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+with_rights = data.ohlc_adjusted(
+    "RELIANCE", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5),
+    include=("bonus", "split", "consolidation", "dividend", "rights"),
+)
 
 fo = data.fo_bars("RELIANCE", instrument_type="FUTSTK")
 indexes = data.index("Nifty 50").ohlc(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
@@ -44,7 +49,7 @@ close = data.wide_frame(column="close", from_date=date(2024, 8, 1), to_date=date
 adj_close = data.wide_frame(from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
 
 # adjusted=True works for every OHLCV column: open/high/low/close divide by the
-# bonus/split/dividend factor, volume multiplies
+# CA factor, volume multiplies (include=(...) selects the event set, as in ohlc_adjusted)
 adj_vol = data.wide_frame(column="volume", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5), adjusted=True)
 
 # Several columns in one pass over the staged days -> {column: DataFrame}
@@ -149,18 +154,39 @@ CorporateActions(records).classified()                  # classified history fra
 - `inventory()` counts files per archive prefix
 - Missing required files raise `ArchiveError`
 
-`ohlc_adjusted` applies bonus (`A:B`), face-value split, and dividend adjustments parsed
-from corporate-action subjects; unrecognized subjects are skipped. Dividend adjustment
-uses the close on the prior trading day, so it needs OHLC bars loaded before the CA
+`ohlc_adjusted` parses adjustment terms straight from the corporate-action
+subject; unrecognized subjects are skipped. Dividend and rights adjustment use
+the close on the prior trading day, so they need OHLC bars loaded before the CA
 records.
 
-**Adjustment scope.** Only bonus, split, and dividend events feed the divisor in
-`ohlc_adjusted` / `wide_frame(adjusted=True)` / `CorporateActions.factors`. Rights
-issues and buyback tenders are still classified by `corporate_actions()` (and
-flagged `price_affecting`), but they are **not** price-adjusted — their factor
-depends on terms (subscription / tender price, ratio) that NSE's free-text
-subject line does not carry reliably. Adjust for those out of band if a long
-history needs them.
+**Adjustment scope.** The default event set for `ohlc_adjusted` /
+`wide_frame(adjusted=True)` / `CorporateActions.factors` is **bonus, split,
+consolidation, and dividend** — including percentage dividends (`Div 30%`,
+resolved against the record's face value). Against the bundled archive that
+parses ~98 % of bonus/split records and ~75 % of dividend records.
+
+**BSE dividend backfill.** Some NSE dividend records carry no per-share figure in
+their subject. Run `powernse bse-corporate-actions --from … --to …` to stage
+BSE's free corporate-actions feed; once it's present, `ohlc_adjusted` /
+`corporate_actions()` fill the missing amount from BSE for the same symbol and
+ex-date (± 1 day). It is automatic, dividends only, and the NSE subject wins
+whenever it has a number.
+
+**Rights issues** are opt-in: pass
+`include=("bonus", "split", "consolidation", "dividend", "rights")` to
+`ohlc_adjusted` / `wide_frame` / `wide_frames`, or `apply={…, "rights"}` to
+`CorporateActions`. The divisor is the theoretical ex-rights price from the
+ratio + subscription price in the subject (~94 % of NSE rights records parse;
+deep-out-of-the-money issues are left unadjusted, as NSE does).
+`CorporateActions(records, apply={"rights"}).skipped_events()` lists the records
+whose terms could not be read.
+
+**Not adjusted at all:** buyback tenders (no standard ex-date price move),
+demergers (need the spun-off entity's value), capital reductions and
+redemptions. These stay classified by `corporate_actions()` and flagged
+`price_affecting`; adjust for them out of band if a long history needs it. There
+is no free, machine-readable NSE F&O adjustment-factor file, and NSE's
+`corporatections.csv` is the same data as the JSON we already stage.
 
 Each DataFrame-returning method validates its result against a `powernse.schemas` schema
 (`OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema`) before returning it — the

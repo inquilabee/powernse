@@ -1,5 +1,6 @@
 """CSV parsers for staged archive rows."""
 
+from powernse.parsers.bse import parse_bse_dividend
 from powernse.parsers.rows import (
     BHAVCOPY_ROWS,
     DEAL_ROWS,
@@ -31,5 +32,6 @@ __all__ = [
     "IndexClosesRowParser",
     "RowParser",
     "SecurityRowParser",
+    "parse_bse_dividend",
     "parse_secban",
 ]
