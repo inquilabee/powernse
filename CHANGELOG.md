@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.1 — 2026-08-30
+
 ### Added
 
 - `NSEData.price_anomalies(symbol, from_date=, to_date=, threshold=0.4, series=) -> list[PriceAnomaly]` and `powernse anomalies SYMBOL`: flag one-day close moves past a threshold and tag each with the corporate action that explains it. `ca_type is None` is a **suspected unadjusted action** — NSE's equity CA feed omits ETF unit splits (NIFTYBEES / BANKBEES / GOLDBEES all split 1:10 on 2019-12-19 with no feed record), so `ohlc_adjusted` silently leaves those raw jumps in. `PriceAnomaly` exported from `powernse`; CLI exits 1 on any unexplained move
