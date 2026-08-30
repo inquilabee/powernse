@@ -49,7 +49,7 @@ powernse fo-bhavcopy --resume --days 14 --root ./nse-data
 powernse index-closes --resume --days 14 --root ./nse-data
 powernse full-bhavcopy --resume --days 14 --root ./nse-data
 powernse corporate-actions --from "$(date -u -d '14 days ago' +%F)" --to "$(date -u +%F)" --root ./nse-data
-powernse index-constituents --label-date "$(date -u +%F)" --root ./nse-data
+powernse index-constituents --date "$(date -u +%F)" --root ./nse-data
 powernse bulk-deals --date "$(date -u +%F)" --root ./nse-data
 powernse block-deals --date "$(date -u +%F)" --root ./nse-data
 powernse fo-secban --date "$(date -u +%F)" --root ./nse-data

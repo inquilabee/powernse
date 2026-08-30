@@ -48,7 +48,7 @@ jobs:
           TODAY=$(date -u +%F)
           FROM=$(date -u -d "$TODAY - $DAYS days" +%F)
           run_one corporate-actions uv run powernse corporate-actions --from "$FROM" --to "$TODAY" --root "$ROOT" --sleep 0.2 --strict
-          run_one index-constituents uv run powernse index-constituents --label-date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
+          run_one index-constituents uv run powernse index-constituents --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
           run_one bulk-deals uv run powernse bulk-deals --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
           run_one block-deals uv run powernse block-deals --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
           run_one fo-secban uv run powernse fo-secban --date "$TODAY" --root "$ROOT" --sleep 0.2 --strict
