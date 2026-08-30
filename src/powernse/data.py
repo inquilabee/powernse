@@ -8,14 +8,14 @@ additionally compose a reader with
 """
 
 from collections.abc import Iterable, Iterator
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Self
 
 import pandas as pd
 
 from powernse.archive import ArchiveRoot
-from powernse.corporate_actions import CorporateActions
+from powernse.corporate_actions import CorporateActions, PriceAnomaly
 from powernse.datasets import (
     BHAVCOPY,
     BLOCK_DEALS,
@@ -301,6 +301,54 @@ class NSEData:
         )
         apply = None if include is None else frozenset(include)
         return CorporateActions(records, apply=apply).adjust(bars)
+
+    def price_anomalies(
+        self,
+        symbol: str,
+        *,
+        from_date: date | None = None,
+        to_date: date | None = None,
+        threshold: float = 0.4,
+        series: str = "EQ",
+    ) -> list[PriceAnomaly]:
+        """One-day close moves of at least ``threshold`` (fraction), tagged with any CA that explains them.
+
+        A row with ``ca_type is None`` is a **suspected unadjusted corporate
+        action** -- e.g. an ETF unit split, which NSE's equity CA feed omits, so
+        ``ohlc_adjusted`` silently leaves the raw jump in place.
+        """
+        bars = self._bhavcopy.ohlc(symbol, from_date=from_date, to_date=to_date, series=series)
+        if len(bars) < 2:
+            return []
+        bars = bars.sort_values("trade_date").reset_index(drop=True)
+        changes = bars["close"].pct_change()
+        hit_rows = [i for i in range(1, len(bars)) if abs(changes.iloc[i]) >= threshold]
+        if not hit_rows:
+            return []
+        records = self._actions.records_in_adjustment_window(
+            symbol, window_start=bars["trade_date"].iloc[0], end=bars["trade_date"].iloc[-1]
+        )
+        affecting = CorporateActions(records).classified()
+        affecting = affecting[affecting["price_affecting"]] if not affecting.empty else affecting
+        needle = symbol.strip().upper()
+        return [
+            PriceAnomaly(
+                needle,
+                bars["trade_date"].iloc[i],
+                float(bars["close"].iloc[i - 1]),
+                float(bars["close"].iloc[i]),
+                float(changes.iloc[i]),
+                self._ca_near(affecting, bars["trade_date"].iloc[i]),
+            )
+            for i in hit_rows
+        ]
+
+    @staticmethod
+    def _ca_near(affecting: pd.DataFrame, day: date, *, slack: timedelta = timedelta(days=3)) -> str | None:
+        if affecting.empty:
+            return None
+        near = affecting[(affecting["ex_date"] >= day - slack) & (affecting["ex_date"] <= day + slack)]
+        return str(near.iloc[0]["type"]) if not near.empty else None
 
     # -- deals + F&O ban --------------------------------------------------------
 

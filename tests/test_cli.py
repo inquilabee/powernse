@@ -85,6 +85,24 @@ def test_verify_rejects_unknown_dataset(tmp_path: Path) -> None:
     assert code != 0
 
 
+def test_anomalies_cli_flags_unexplained(tmp_path: Path, capsys) -> None:
+    body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nETF,EQ,{c},{c},{c},{c},1000\n"
+    for day, close in ((date(2020, 1, 6), 1000.0), (date(2020, 1, 7), 1010.0), (date(2020, 1, 8), 101.0)):
+        write_staged(tmp_path, BHAVCOPY, day, body.format(c=close))
+    code = main(["anomalies", "ETF", "--from", "2020-01-01", "--to", "2020-01-31", "--root", str(tmp_path)])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "2020-01-08" in out and "UNEXPLAINED" in out
+
+
+def test_anomalies_cli_quiet_when_none(tmp_path: Path) -> None:
+    body = "SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nETF,EQ,{c},{c},{c},{c},1000\n"
+    for day, close in ((date(2020, 1, 6), 100.0), (date(2020, 1, 7), 101.0)):
+        write_staged(tmp_path, BHAVCOPY, day, body.format(c=close))
+    code = main(["anomalies", "ETF", "--from", "2020-01-01", "--to", "2020-01-31", "--root", str(tmp_path)])
+    assert code == 0
+
+
 def test_securities_read_by_symbol(tmp_path: Path, capsys) -> None:
     write_staged(tmp_path, EQUITY_LIST, date(2024, 8, 1), _EQUITY_L)
     code = main(["securities", "--symbol", "reliance", "--root", str(tmp_path)])

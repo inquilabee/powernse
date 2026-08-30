@@ -7,6 +7,7 @@ from powernse.calendar import iter_trading_dates
 from powernse.corporate_actions import (
     CorporateActions,
     CorporateActionType,
+    PriceAnomaly,
     RightsTerms,
     SkippedEvent,
     SubjectClassifier,
@@ -67,6 +68,7 @@ __all__ = [
     "OhlcSchema",
     "PayloadError",
     "PowerNseError",
+    "PriceAnomaly",
     "RightsTerms",
     "SecuritySchema",
     "SkippedEvent",

@@ -263,3 +263,35 @@ def test_dividend_hint_of_guards() -> None:
     assert dividend_hint_of({"dividend_amount_hint": 0}) is None
     assert dividend_hint_of({"dividend_amount_hint": True}) is None
     assert dividend_hint_of({}) is None
+
+
+def _write_bhav_series(root: Path, closes: dict[date, float]) -> None:
+    for day, close in closes.items():
+        write_staged(
+            root,
+            BHAVCOPY,
+            day,
+            f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nETF,EQ,{close},{close},{close},{close},1000\n",
+        )
+
+
+def test_price_anomalies_flags_unexplained_split(tmp_path: Path) -> None:
+    _write_bhav_series(
+        tmp_path,
+        {date(2019, 12, 17): 1290.0, date(2019, 12, 18): 1292.0, date(2019, 12, 19): 129.0, date(2019, 12, 20): 130.0},
+    )
+    hits = NSEData(tmp_path).price_anomalies("ETF", from_date=date(2019, 12, 1), to_date=date(2019, 12, 31))
+    assert len(hits) == 1
+    a = hits[0]
+    assert a.trade_date == date(2019, 12, 19)
+    assert a.ca_type is None  # nothing in the CA archive explains a -90% day
+    assert a.pct_change == pytest.approx(-0.9, abs=0.01)
+
+
+def test_price_anomalies_explained_by_staged_ca(tmp_path: Path) -> None:
+    _write_bhav_series(tmp_path, {date(2024, 8, 1): 200.0, date(2024, 8, 2): 100.0, date(2024, 8, 5): 101.0})
+    ca = staged_path(tmp_path, CORPORATE_ACTIONS, date(2024, 8, 2))
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    ca.write_text('[{"symbol":"ETF","subject":"Bonus 1:1","exDate":"2024-08-02"}]', encoding="utf-8")
+    hits = NSEData(tmp_path).price_anomalies("ETF", from_date=date(2024, 8, 1), to_date=date(2024, 8, 5))
+    assert [(h.trade_date, h.ca_type) for h in hits] == [(date(2024, 8, 2), "bonus")]
