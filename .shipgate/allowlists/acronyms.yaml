@@ -9,6 +9,10 @@ PR: pull request
 NSE: National Stock Exchange of India
 BSE: Bombay Stock Exchange (Indian equity exchange, cross-check CA source)
 OTM: out of the money (option/rights strike above market)
+ETF: exchange-traded fund
+NIFTYBEES: Nippon India ETF Nifty BeES (a traded symbol, used as an example)
+BANKBEES: Nippon India ETF Nifty Bank BeES (a traded symbol, used as an example)
+GOLDBEES: Nippon India ETF Gold BeES (a traded symbol, used as an example)
 XBOM: exchange_calendars code for the NSE/BSE equity trading calendar
 OHLC: open / high / low / close
 OHLCV: open / high / low / close / volume

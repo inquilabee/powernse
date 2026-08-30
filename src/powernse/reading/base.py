@@ -57,9 +57,15 @@ class DatedFrameReader[RowT: SchemaRow](ArchiveReader, ABC):
     def iter_frames(
         self, from_date: date | None = None, to_date: date | None = None
     ) -> Iterator[tuple[date, pd.DataFrame]]:
-        """One validated, schema-shaped frame per *staged* day in the window, yielded lazily."""
-        for day in self.window(from_date, to_date):
-            if self._archive.has_staged(self.dataset, day):
+        """One validated, schema-shaped frame per *staged* day in the window, yielded lazily.
+
+        Iterates the dataset's own staged dates -- for a per-session archive those
+        are trading days; for a label-dated snapshot archive (deals) they are the
+        download days.
+        """
+        window = self.window(from_date, to_date)
+        for day in self._archive.staged_dates(self.dataset):
+            if window.start <= day <= window.end:
                 yield day, self.to_frame(list(self.rows_on(day)))
 
     def to_frame(self, rows: list[RowT]) -> pd.DataFrame:

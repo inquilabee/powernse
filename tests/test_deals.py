@@ -43,6 +43,27 @@ def test_bulk_deals_range_and_filters(tmp_path: Path) -> None:
     assert list(sells["symbol"]) == ["TCS", "RELIANCE"]
 
 
+def test_bulk_deals_snapshot_labelled_off_session(tmp_path: Path) -> None:
+    # File downloaded on a Saturday (2026-08-29) carries Friday's deals -- the
+    # reader must still surface them for a query on the trade date, 2026-08-28.
+    write_staged(
+        tmp_path,
+        BULK_DEALS,
+        date(2026, 8, 29),
+        _BULK_HEADER + "28-AUG-2026,RELIANCE,Reliance Industries,ABC FUND,BUY,81000,1300.00,-\n",
+    )
+    data = NSEData(tmp_path)
+    friday = data.bulk_deals(from_date=date(2026, 8, 28), to_date=date(2026, 8, 28))
+    assert list(friday["symbol"]) == ["RELIANCE"]
+    assert list(friday["trade_date"]) == [date(2026, 8, 28)]
+    assert data.bulk_deals(from_date=date(2026, 8, 29), to_date=date(2026, 8, 29)).empty  # no Saturday rows
+    # iter_days streams by the file's label date
+    from powernse.datasets import BULK_DEALS as _BD
+
+    days = list(data.iter_days(_BD, from_date=date(2026, 8, 1), to_date=date(2026, 8, 31)))
+    assert [(d, len(f)) for d, f in days] == [(date(2026, 8, 29), 1)]
+
+
 def test_block_deals_read(tmp_path: Path) -> None:
     write_staged(
         tmp_path,

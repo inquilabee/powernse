@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- `NSEData.price_anomalies(symbol, from_date=, to_date=, threshold=0.4, series=) -> list[PriceAnomaly]` and `powernse anomalies SYMBOL`: flag one-day close moves past a threshold and tag each with the corporate action that explains it. `ca_type is None` is a **suspected unadjusted action** — NSE's equity CA feed omits ETF unit splits (NIFTYBEES / BANKBEES / GOLDBEES all split 1:10 on 2019-12-19 with no feed record), so `ohlc_adjusted` silently leaves those raw jumps in. `PriceAnomaly` exported from `powernse`; CLI exits 1 on any unexplained move
+
+### Fixed
+
+- `NSEData.bulk_deals()` / `block_deals()` (and `iter_days(BULK_DEALS/BLOCK_DEALS)`) now read the label-dated snapshot files and filter by the parsed `Date` column, instead of iterating trading sessions. Deal files downloaded on a weekend (or any day after the trade date) carry the prior session's rows — the old reader looked for a file named after the trading day and returned nothing, so every Sunday `Refresh nse-data` staged deals that were invisible to the API
+- Weekly `refresh-nse-data` workflow: `index-constituents` option is `--date`, not the pre-0.2 `--label-date`
+
 ## 0.4.0 — 2026-08-29
 
 ### Added

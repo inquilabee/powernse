@@ -101,6 +101,18 @@ class SkippedEvent:
     subject: str
 
 
+@dataclass(frozen=True, slots=True)
+class PriceAnomaly:
+    """A large one-day close move. ``ca_type is None`` means no CA explains it -- a suspected unadjusted action."""
+
+    symbol: str
+    trade_date: date
+    prev_close: float
+    close: float
+    pct_change: float
+    ca_type: str | None
+
+
 # Event categories ``CorporateActions`` can turn into a divisor; ``apply`` selects a subset.
 ADJUSTABLE = frozenset({"bonus", "split", "consolidation", "dividend", "rights"})
 DEFAULT_APPLY = ADJUSTABLE - {"rights"}

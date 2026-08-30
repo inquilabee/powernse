@@ -189,6 +189,24 @@ redemptions. These stay classified by `corporate_actions()` and flagged
 is no free, machine-readable NSE F&O adjustment-factor file, and NSE's
 `corporatections.csv` is the same data as the JSON we already stage.
 
+**Missing corporate actions.** NSE's equity CA feed omits some events entirely —
+notably **ETF unit splits** (NIFTYBEES, BANKBEES, GOLDBEES … all split 1:10 on
+2019-12-19 with no record in the feed). `ohlc_adjusted` can only work from what
+NSE published, so for those symbols it silently leaves the raw jump in. Guard
+against it:
+
+```python
+for a in data.price_anomalies("NIFTYBEES", from_date=date(2018, 1, 1), to_date=date(2020, 1, 1)):
+    print(a.trade_date, f"{a.pct_change:+.0%}", a.ca_type or "UNEXPLAINED")
+# 2019-12-19 -90% UNEXPLAINED   -> suspected unadjusted action
+```
+
+`price_anomalies(symbol, threshold=0.4)` returns `PriceAnomaly` rows for one-day
+close moves past the threshold; `ca_type is None` means no staged corporate
+action explains it. `powernse anomalies SYMBOL` is the shell form (exit 1 when
+any move is unexplained). Repair those bars, or pass a hand-built record to
+`CorporateActions([...]).adjust(bars)`.
+
 Each DataFrame-returning method validates its result against a `powernse.schemas` schema
 (`OhlcSchema`, `AdjustedOhlcSchema`, `FoSchema`, `IndexSchema`, `DeliverySchema`,
 `DealSchema`, `SecuritySchema`) before returning it — a column/type/nullability contract

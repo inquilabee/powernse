@@ -91,6 +91,32 @@ def register_read_commands(app: typer.Typer) -> None:
         frame = data.ohlc_adjusted(symbol, from_date=from_date, to_date=to_date, series=series)
         print_frame_or_exit(frame, empty_message=f"No adjusted OHLC rows for {symbol.upper()} under {data.root}")
 
+    _threshold_opt = typer.Option("--threshold", "-t", help="Minimum one-day |return| to flag (fraction)")
+
+    @app.command("anomalies")
+    def anomalies_cmd(
+        symbol: Annotated[str, typer.Argument(help="NSE ticker")],
+        from_date: FromDateOpt = None,
+        to_date: ToDateOpt = None,
+        threshold: Annotated[float, _threshold_opt] = 0.4,
+        series: SeriesOpt = "EQ",
+        root: RootOpt = None,
+    ) -> None:
+        """Flag big one-day close moves; exit 1 if any has no corporate action to explain it."""
+        data = NSEData(root, create=False)
+        found = data.price_anomalies(symbol, from_date=from_date, to_date=to_date, threshold=threshold, series=series)
+        if not found:
+            typer.echo(f"{symbol.upper()}: no one-day move >= {threshold:.0%} in the window")
+            return
+        unexplained = 0
+        for a in found:
+            tag = a.ca_type or "UNEXPLAINED"
+            unexplained += a.ca_type is None
+            typer.echo(f"{a.trade_date.isoformat()}  {a.pct_change:+.1%}  {a.prev_close:.2f} -> {a.close:.2f}  {tag}")
+        if unexplained:
+            typer.echo(f"{symbol.upper()}: {unexplained} unexplained move(s) — suspected unadjusted action", err=True)
+            raise typer.Exit(code=1)
+
     @app.command("fo-ohlc")
     def fo_ohlc_cmd(
         symbol: Annotated[str, typer.Argument(help="Underlying ticker")],
