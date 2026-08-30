@@ -1,6 +1,7 @@
 """Read bulk / block deals and the F&O securities-in-ban snapshot."""
 
-from datetime import date
+from datetime import date, timedelta
+from typing import ClassVar
 
 import pandas as pd
 
@@ -17,6 +18,9 @@ class DealsReader(DatedFrameReader[DealRow]):
 
     schema = DEAL_SCHEMA
     parser = DEAL_ROWS
+    #: a deal file's label date (download day) can trail its trade date by a few
+    #: days (weekend / delayed run), so scan a wider label window, then filter exactly
+    LABEL_SLACK: ClassVar[timedelta] = timedelta(days=7)
 
     def __init__(self, archive: ArchiveRoot, dataset: Dataset, label: str) -> None:
         super().__init__(archive)
@@ -31,15 +35,43 @@ class DealsReader(DatedFrameReader[DealRow]):
         symbol: str | None = None,
         side: str | None = None,
     ) -> pd.DataFrame:
+        """Deals whose parsed trade date is in ``[from_date, to_date]``.
+
+        Deal archives are label-dated snapshots (named for the download day), not
+        a per-session series -- a file downloaded on a weekend carries the prior
+        session's deals. So this walks the staged files and filters the frame by
+        the ``Date`` column, not by filename.
+        """
+        rows = self._matching_rows(self._label_dates(from_date, to_date), symbol, side)
+        frame = self._within(self.to_frame(rows), from_date, to_date)
+        return frame.drop_duplicates().sort_values("trade_date", kind="stable").reset_index(drop=True)
+
+    def _matching_rows(self, days: list[date], symbol: str | None, side: str | None) -> list[DealRow]:
         needle = symbol.strip().upper() if symbol else None
         side_needle = side.strip().upper() if side else None
-        rows = [
+        return [
             row
-            for day in self.window(from_date, to_date)
+            for day in days
             for row in self.rows_on(day)
             if (needle is None or row["symbol"] == needle) and (side_needle is None or row["side"] == side_needle)
         ]
-        return self.to_frame(rows)
+
+    @staticmethod
+    def _within(frame: pd.DataFrame, from_date: date | None, to_date: date | None) -> pd.DataFrame:
+        if from_date is not None:
+            frame = frame[frame["trade_date"] >= from_date]
+        if to_date is not None:
+            frame = frame[frame["trade_date"] <= to_date]
+        return frame
+
+    def _label_dates(self, from_date: date | None, to_date: date | None) -> list[date]:
+        lo = from_date - self.LABEL_SLACK if from_date else None
+        hi = to_date + self.LABEL_SLACK if to_date else None
+        return [
+            day
+            for day in self._archive.staged_dates(self.dataset)
+            if (lo is None or day >= lo) and (hi is None or day <= hi)
+        ]
 
 
 class SecbanReader(ArchiveReader):
