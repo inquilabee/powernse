@@ -6,7 +6,7 @@ Membership (constituents) changes with every rebalance and stays archive-backed.
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cache
 from importlib.resources import files
 from typing import Literal, Self
@@ -45,13 +45,8 @@ class IndexCatalog:
     def load(cls) -> Self:
         """The bundled catalog (parsed once, then cached), with historical aliases merged in."""
         raw = json.loads(files("powernse.index.resources").joinpath("indexes.json").read_text(encoding="utf-8"))
-        return cls(tuple(cls._entry(item) for item in raw))
-
-    @staticmethod
-    def _entry(item: dict[str, object]) -> IndexEntry:
-        fields = {key: value for key, value in item.items() if key != "aliases"}
-        aliases = tuple(INDEX_ALIASES.get(str(item["name"]), ()))
-        return IndexEntry(**fields, aliases=aliases)
+        entries = (replace(IndexEntry(**item), aliases=tuple(INDEX_ALIASES.get(item["name"], ()))) for item in raw)
+        return cls(tuple(entries))
 
     def all(self) -> tuple[IndexEntry, ...]:
         return self._entries

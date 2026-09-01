@@ -1,6 +1,13 @@
 entries:
   - path: src/shipgate/catalog/bundled/catalog/tools
     reason: One YAML file per bundled tool definition is intentional catalog layout.
+  - path: src/powernse/reading
+    reason: >-
+      One reader per staged dataset family (bhavcopy / fo / delivery / index /
+      corporate / bse-corporate / deals+secban / coverage / manifest-audit /
+      snapshots) over a shared DatedFrameReader base, plus the adjusted-read
+      cache. This is the whole read subsystem behind NSEData; splitting it by
+      subfolder would fragment a cohesive one-class-per-file unit.
   - path: tests
     reason: >-
       Flat one-file-per-source-area pytest suite (test_bhavcopy.py ...

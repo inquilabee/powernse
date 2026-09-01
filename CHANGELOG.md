@@ -6,10 +6,10 @@
 
 ### Added
 
-- **Historical index-name aliases.** `NSEData(root).index("NIFTY 50").ohlc(...)` now returns the continuous series across NSE's renames — the staged `ind_close_all` files carry whichever name was current on that date (`S&P CNX Nifty` → `CNX Nifty` → `Nifty 50`, `Bank Nifty` → `Nifty Bank`, `CNX IT` → `Nifty IT`, …). `IndexEntry.aliases`; an old name resolves too (`index("CNX Nifty").known` is `True`, `.name` is `"NIFTY 50"`). Map curated in `powernse/index/aliases.py` (GH #4)
-- **`powernse index-closes --backfill`** (and on the other dated download commands): fetch the history *before* the earliest staged file, from the source's known start — the leading gap `--resume` (forward-only) can't reach. `Dataset.history_start`; index closes start `2012-02-21` (`ind_close_all` 404s before that). Soft-exits with "nothing to backfill" once the history is staged. The published `nse-data/` bundle now ships index-close history back to 2012-02, like bhavcopy (GH #5)
-- **`powernse --version`** prints the installed version (GH #5)
-- **Opt-in on-disk cache for adjusted wide-frame reads.** `NSEData(root, cache_dir=…)` (or `POWERNSE_CACHE_DIR`) memoises `wide_frame(adjusted=True)` / `wide_frames(adjusted=True)` results to disk, keyed by the request plus the latest staged bhavcopy day so a refresh invalidates it. `wide_frame` / `wide_frames` gain `cache: bool = True`. `powernse.reading.WideFrameCache` (GH #3)
+- **Historical index-name aliases.** `NSEData(root).index("NIFTY 50").ohlc(...)` now returns the continuous series across NSE's renames — the staged `ind_close_all` files carry whichever name was current on that date (`S&P CNX Nifty` → `CNX Nifty` → `Nifty 50`, `Bank Nifty` → `Nifty Bank`, `CNX IT` → `Nifty IT`, …). `IndexEntry.aliases`; an old name resolves too (`index("CNX Nifty").known` is `True`, `.name` is `"NIFTY 50"`). Map curated in `powernse/index/aliases.py` (#4)
+- **`powernse index-closes --backfill`** (and on the other dated download commands): fetch the history *before* the earliest staged file, from the source's known start — the leading gap `--resume` (forward-only) can't reach. `Dataset.history_start`; index closes start `2012-02-21` (`ind_close_all` 404s before that). Soft-exits with "nothing to backfill" once the history is staged. The published `nse-data/` bundle now ships index-close history back to 2012-02, like bhavcopy (#5)
+- **`powernse --version`** prints the installed version (#5)
+- **Opt-in on-disk cache for adjusted wide-frame reads.** `NSEData(root, cache_dir=…)` (or `POWERNSE_CACHE_DIR`) memoises `wide_frame(adjusted=True)` / `wide_frames(adjusted=True)` results to disk, keyed by the request plus the latest staged bhavcopy day so a refresh invalidates it. `wide_frame` / `wide_frames` gain `cache: bool = True`. `powernse.reading.WideFrameCache` (#3)
 
 ## 0.4.1 — 2026-08-30
 

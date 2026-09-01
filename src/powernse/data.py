@@ -145,8 +145,8 @@ class NSEData:
 
         if self._cache is None or not cache:
             return compute()
-        parts = self._frame_key("wide_frame", [key], symbols, from_date, to_date, series, include)
-        return self._cache.cached(parts, compute)
+        parts = self._frame_key(key, symbols, from_date, to_date, series, include)
+        return self._cache.frame(parts, compute)
 
     def wide_frames(
         self,
@@ -169,14 +169,13 @@ class NSEData:
                 columns=columns, symbols=symbols, from_date=from_date, to_date=to_date, series=series
             )
         norm = tuple(dict.fromkeys(name.strip().lower() for name in columns))
-
-        def compute() -> dict[str, pd.DataFrame]:
-            return self._adjusted_wide_frames(norm, symbols, from_date, to_date, series, include)
-
         if self._cache is None or not cache:
-            return compute()
-        parts = self._frame_key("wide_frames", norm, symbols, from_date, to_date, series, include)
-        return self._cache.cached(parts, compute)
+            return self._adjusted_wide_frames(norm, symbols, from_date, to_date, series, include)
+        return self._cache.frames(
+            norm,
+            key_for=lambda col: self._frame_key(col, symbols, from_date, to_date, series, include),
+            compute=lambda cols: self._adjusted_wide_frames(cols, symbols, from_date, to_date, series, include),
+        )
 
     def _adjusted_wide_frames(
         self,
@@ -197,18 +196,17 @@ class NSEData:
 
     def _frame_key(
         self,
-        kind: str,
-        columns: Iterable[str],
+        column: str,
         symbols: Iterable[str] | None,
         from_date: date | None,
         to_date: date | None,
         series: str,
         include: Iterable[str] | None,
     ) -> dict[str, object]:
+        """Cache identity for one adjusted Date x Symbol matrix (shared by ``wide_frame`` / ``wide_frames``)."""
         return {
-            "kind": kind,
             "root": str(self._archive.root),
-            "columns": sorted(columns),
+            "column": column,
             "symbols": sorted({s.strip().upper() for s in symbols}) if symbols is not None else None,
             "from_date": from_date,
             "to_date": to_date,

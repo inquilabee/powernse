@@ -24,20 +24,22 @@ app = typer.Typer(
 )
 
 
-def _version_callback(value: bool) -> None:
+def print_version(value: bool) -> None:
+    """Eager ``--version`` handler: print the installed version and exit."""
     if value:
         typer.echo(package_version())
         raise typer.Exit()
 
 
 @app.callback()
-def _root(
+def main_options(
     version: Annotated[
         bool,
-        typer.Option("--version", callback=_version_callback, is_eager=True, help="Show the version and exit."),
+        typer.Option("--version", callback=print_version, is_eager=True, help="Show the version and exit."),
     ] = False,
 ) -> None:
     """Download and use NSE India end-of-day equity archives."""
+
 
 register_dated_download_command(
     app,
