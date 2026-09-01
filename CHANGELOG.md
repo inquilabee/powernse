@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-09-01
+
 ### Added
 
 - **Historical index-name aliases.** `NSEData(root).index("NIFTY 50").ohlc(...)` now returns the continuous series across NSE's renames — the staged `ind_close_all` files carry whichever name was current on that date (`S&P CNX Nifty` → `CNX Nifty` → `Nifty 50`, `Bank Nifty` → `Nifty Bank`, `CNX IT` → `Nifty IT`, …). `IndexEntry.aliases`; an old name resolves too (`index("CNX Nifty").known` is `True`, `.name` is `"NIFTY 50"`). Map curated in `powernse/index/aliases.py` (GH #4)
