@@ -110,7 +110,13 @@ class HistoricalIndexSource(ABC):
 
     @staticmethod
     def _chunks(from_date: date, to_date: date) -> list[tuple[date, date]]:
-        """Split the span into contiguous <=1-year windows; the NSE endpoint rejects wider."""
+        """Split the span into contiguous windows the endpoint won't truncate.
+
+        NSE's ``indicesHistory`` returns at most ~70 rows per call regardless of
+        the window, so a wide pull silently comes back near-weekly;
+        ``INDEX_HISTORY_MAX_CHUNK_DAYS`` keeps each request's session count under
+        that cap.
+        """
         step = timedelta(days=INDEX_HISTORY_MAX_CHUNK_DAYS - 1)
         spans: list[tuple[date, date]] = []
         start = from_date

@@ -15,8 +15,10 @@ NSE_INDEX_HISTORY_REFERER = "https://www.nseindia.com/reports-indices-historical
 NIFTY_INDICES_HISTORY_URL = "https://www.niftyindices.com/Backpage.aspx/getHistoricaldatatabletoString"
 NIFTY_INDICES_REFERER = "https://www.niftyindices.com/reports/historical-data"
 
-# NSE's indicesHistory endpoint rejects windows wider than a year; deep pulls are chunked.
-INDEX_HISTORY_MAX_CHUNK_DAYS = 365
+# NSE's indicesHistory endpoint silently caps a response at ~70 rows however wide the
+# window, so a year-wide pull returns roughly one row a week. Chunk small enough that a
+# dense stretch (~62 sessions in 90 calendar days) still lands under the cap.
+INDEX_HISTORY_MAX_CHUNK_DAYS = 90
 # NIFTY 50 base date -- the earliest EOD index level NSE / NSE Indices publish.
 INDEX_HISTORY_FROM_DATE = "1995-11-03"
 

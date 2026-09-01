@@ -17,7 +17,7 @@ DEFAULT_FROM = date.fromisoformat(INDEX_HISTORY_FROM_DATE)
 DEFAULT_TO = (INDEX_CLOSES.history_start or DEFAULT_FROM) - timedelta(days=1)
 
 INDEX_HELP = f"Index name (repeatable). Default: {len(LONG_HISTORY_INDEX_NAMES)} long-history indices."
-ALL_HELP = "Pull every catalogued index (~2 min at --sleep 0.2). Overrides --index."
+ALL_HELP = "Pull every catalogued index (~15 min at --sleep 0.2). Overrides --index."
 
 
 def register_index_history_command(app: typer.Typer) -> None:

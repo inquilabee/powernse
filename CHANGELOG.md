@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Fixed
+
+- **`index-history` staged a near-weekly series before ~2012.** NSE's
+  `indicesHistory` endpoint silently caps a response at ~70 rows however wide the
+  requested window, so the 365-day chunks came back at roughly one session a week
+  and a default backfill left whole quarters missing — unusable on a daily grid
+  (a 200-DMA, calendar rules, dip triggers). `INDEX_HISTORY_MAX_CHUNK_DAYS` is now
+  90 (~62 sessions, under the cap), so a pull stages every trading day; a full
+  `index-history --all` now takes ~15 min rather than ~2. Re-run `powernse
+  index-history` (add `--no-skip-existing`) to densify an archive an earlier
+  version staged. `powernse/constants.py`
+
 ## 0.6.1 — 2026-09-01
 
 ### Added

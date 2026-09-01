@@ -6,6 +6,7 @@ from pathlib import Path
 
 from support import staged_path
 
+from powernse.constants import INDEX_HISTORY_MAX_CHUNK_DAYS
 from powernse.data import NSEData
 from powernse.datasets import INDEX_CLOSES
 from powernse.downloaders import LONG_HISTORY_INDEX_NAMES
@@ -79,10 +80,13 @@ def test_fetch_series_chunks_wide_range() -> None:
 
     src = _Chunked(http=None)  # type: ignore[arg-type]
     rows = src.fetch_series("NIFTY 50", date(2018, 1, 1), date(2020, 3, 1))
-    assert len(calls) == 3
+    assert len(calls) > 1
     assert calls[0][0] == date(2018, 1, 1)
+    assert calls[-1][1] == date(2020, 3, 1)
     for (_, prev_end), (next_start, _) in zip(calls, calls[1:], strict=False):
         assert (next_start - prev_end).days == 1
+    # every window stays under the endpoint's silent row cap
+    assert all((end - start).days < INDEX_HISTORY_MAX_CHUNK_DAYS for start, end in calls)
     assert rows == sorted(rows, key=lambda r: r.trade_date)
 
 
