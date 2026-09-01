@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.2 — 2026-09-01
+
 ### Fixed
 
 - **`index-history` staged a near-weekly series before ~2012.** NSE's
