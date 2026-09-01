@@ -155,6 +155,16 @@ def test_catalog_every_canonical_name_resolves_to_itself() -> None:
         assert lookup(entry.name) is entry  # an alias key never shadows a real name
 
 
+def test_every_historical_alias_resolves_to_its_index() -> None:
+    from powernse.index import lookup
+    from powernse.index.aliases import INDEX_ALIASES
+
+    for canonical, old_names in INDEX_ALIASES.items():
+        for old in old_names:
+            entry = lookup(old)
+            assert entry is not None and entry.name == canonical, f"{old!r} does not resolve to {canonical!r}"
+
+
 def test_index_handle_constituents(tmp_path: Path) -> None:
     _stage_closes(tmp_path, date(2024, 8, 1))
     _stage_constituents(tmp_path, date(2024, 8, 1), "Nifty 50", ["RELIANCE", "TCS"])

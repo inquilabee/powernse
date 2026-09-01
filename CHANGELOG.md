@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.6.1 — 2026-09-01
+
+### Added
+
+- Historical-name aliases for 18 more indices now that `index-history` has staged their pre-rename data — the `CNX Auto/Energy/FMCG/Finance/Media/Metal/Pharma/PSU Bank/Realty/MNC/PSE/Service Sector/Commodities/Consumption/Infrastructure/Dividend Opportunities` series and `CNX Smallcap` / `CNX Nifty Dividend`. `NSEData(root).index("NIFTY PHARMA").ohlc(from_date=date(2001, 1, 1), …)` (and the other sectoral / thematic names) now returns the full series across NSE's 2015 `CNX → NIFTY` rebrand instead of truncating at it. `powernse/index/aliases.py`
+
 ## 0.6.0 — 2026-09-01
 
 ### Added
