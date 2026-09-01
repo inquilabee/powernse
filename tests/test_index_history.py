@@ -50,7 +50,7 @@ def _nse_source() -> NseIndicesHistorySource:
 
 def test_nse_parse_flat_envelope() -> None:
     src = _nse_source()
-    rows = src._parse(json.dumps(_NSE_FLAT).encode(), index_name="NIFTY 50")
+    rows = src._parse(json.dumps(_NSE_FLAT).encode(), "NIFTY 50")
     assert [r.trade_date for r in rows] == [date(2025, 12, 15), date(1995, 11, 3)]
     assert rows[0].close == 1005.5
     assert rows[1].open is None and rows[1].close == 1000.0
@@ -59,8 +59,8 @@ def test_nse_parse_flat_envelope() -> None:
 def test_nse_parse_nested_envelope_matches_flat() -> None:
     nested = {"data": {"indexCloseOnlineRecords": _NSE_FLAT["data"], "indexTurnoverRecords": []}}
     src = _nse_source()
-    flat = src._parse(json.dumps(_NSE_FLAT).encode(), index_name="NIFTY 50")
-    got = src._parse(json.dumps(nested).encode(), index_name="NIFTY 50")
+    flat = src._parse(json.dumps(_NSE_FLAT).encode(), "NIFTY 50")
+    got = src._parse(json.dumps(nested).encode(), "NIFTY 50")
     assert [(r.trade_date, r.close) for r in got] == [(r.trade_date, r.close) for r in flat]
 
 
@@ -93,8 +93,8 @@ def test_niftyindices_parse_double_encoded_and_list() -> None:
     ]
     src = object.__new__(NiftyIndicesHistorySource)
     src._http = None  # type: ignore[attr-defined]
-    as_string = src._parse(json.dumps({"d": json.dumps(table)}).encode(), index_name="NIFTY 50")
-    as_list = src._parse(json.dumps({"d": table}).encode(), index_name="NIFTY 50")
+    as_string = src._parse(json.dumps({"d": json.dumps(table)}).encode(), "NIFTY 50")
+    as_list = src._parse(json.dumps({"d": table}).encode(), "NIFTY 50")
     assert [r.trade_date for r in as_string] == [date(1995, 11, 3)]
     assert as_string[0].close == 1000.0 and as_string[0].open is None
     assert [(r.trade_date, r.close) for r in as_list] == [(r.trade_date, r.close) for r in as_string]
@@ -109,7 +109,7 @@ class _StubSource(HistoricalIndexSource):
     def _fetch_chunk(self, index_name: str, start: date, end: date) -> bytes:  # pragma: no cover
         raise AssertionError("stub does not fetch")
 
-    def _parse(self, payload: bytes, *, index_name: str) -> list[IndexHistoryRow]:  # pragma: no cover
+    def _records(self, payload: bytes, index_name: str) -> list[object]:  # pragma: no cover
         raise AssertionError("stub does not parse")
 
     def fetch_series(self, index_name: str, from_date: date, to_date: date) -> list[IndexHistoryRow]:
@@ -123,7 +123,7 @@ class _BrokenSource(HistoricalIndexSource):
     def _fetch_chunk(self, index_name: str, start: date, end: date) -> bytes:  # pragma: no cover
         raise AssertionError("unused")
 
-    def _parse(self, payload: bytes, *, index_name: str) -> list[IndexHistoryRow]:  # pragma: no cover
+    def _records(self, payload: bytes, index_name: str) -> list[object]:  # pragma: no cover
         raise AssertionError("unused")
 
     def fetch_series(self, index_name: str, from_date: date, to_date: date) -> list[IndexHistoryRow]:

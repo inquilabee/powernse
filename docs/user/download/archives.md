@@ -25,7 +25,7 @@ powernse bhavcopy --from 2024-08-01 --to 2024-08-05
 # index closes start 2012-02-21 (ind_close_all 404s before that).
 powernse index-closes --backfill
 
-# index-history: reach BEFORE 2012-02-21 — per-index EOD levels back to ~1995 from
+# index-history: reach BEFORE 2012-02-21 — per-index end-of-day levels back to ~1995 from
 # NSE's historical API, merged into the same index_closes files. Default: 24
 # long-history indices, [1995-11-03 .. 2012-02-20]. --all for every catalogued index.
 powernse index-history

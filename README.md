@@ -78,7 +78,7 @@ powernse bhavcopy --resume
 powernse fo-bhavcopy --resume --days 30
 powernse index-closes --from 2024-08-01 --to 2024-08-05
 powernse index-closes --backfill         # one-time: history before your earliest staged file
-powernse index-history                   # one-time: per-index EOD levels back to ~1995
+powernse index-history                   # one-time: per-index end-of-day levels back to ~1995
 powernse equity-list --date 2024-08-09   # EQUITY_L security master
 powernse fetch-bundle --force            # optional: GitHub-hosted archive
 powernse status

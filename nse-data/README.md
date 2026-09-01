@@ -53,7 +53,7 @@ powernse index-closes --backfill --root ./nse-data
 Index closes start **2012-02-21** (`ind_close_all` 404s before that); a full
 backfill is ~3,500 files / ~34 MB.
 
-To reach **before** 2012-02-21 — per-index EOD levels back to the NIFTY 50 base
+To reach **before** 2012-02-21 — per-index end-of-day levels back to the Nifty 50 base
 date (1995-11-03) from NSE's historical API, merged into the same
 `raw/index_closes/` files:
 
