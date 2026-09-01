@@ -25,6 +25,7 @@ from powernse.downloaders import (
     FullBhavcopyDownloader,
     IndexClosesDownloader,
     IndexConstituentsDownloader,
+    IndexHistoryDownloader,
 )
 from powernse.errors import ArchiveError, DownloadError, PayloadError, PowerNseError
 from powernse.index import Index
@@ -62,6 +63,7 @@ __all__ = [
     "FullBhavcopyDownloader",
     "IndexClosesDownloader",
     "IndexConstituentsDownloader",
+    "IndexHistoryDownloader",
     "Index",
     "IndexSchema",
     "NSEData",

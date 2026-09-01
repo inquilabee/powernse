@@ -13,9 +13,17 @@ from powernse.downloaders.index_constituents import (
     index_slug,
     parse_index_constituent_symbols,
 )
+from powernse.downloaders.index_history import (
+    LONG_HISTORY_INDEX_NAMES,
+    HistoricalIndexSource,
+    IndexHistoryDownloader,
+    NiftyIndicesHistorySource,
+    NseIndicesHistorySource,
+)
 from powernse.downloaders.resume import resolve_dated_backfill_range, resolve_dated_resume_range
 
 __all__ = [
+    "LONG_HISTORY_INDEX_NAMES",
     "BhavcopyDownloader",
     "BlockDealsDownloader",
     "BseCorporateActionsDownloader",
@@ -25,8 +33,12 @@ __all__ = [
     "FoBhavcopyDownloader",
     "FoSecbanDownloader",
     "FullBhavcopyDownloader",
+    "HistoricalIndexSource",
     "IndexClosesDownloader",
     "IndexConstituentsDownloader",
+    "IndexHistoryDownloader",
+    "NiftyIndicesHistorySource",
+    "NseIndicesHistorySource",
     "index_slug",
     "parse_index_constituent_symbols",
     "resolve_dated_backfill_range",

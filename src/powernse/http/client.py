@@ -55,10 +55,12 @@ class NseHttpClient:
         min_interval_seconds: float = MIN_REQUEST_INTERVAL_SECONDS,
         session: Session | None = None,
         fetch_override: Callable[[str], bytes] | None = None,
+        post_override: Callable[[str, bytes], bytes] | None = None,
     ) -> None:
         self._session = session or requests.Session()
         self._throttler = RequestThrottler(min_interval_seconds)
         self._fetch_override = fetch_override
+        self._post_override = post_override
         self._primed = False
         self._prime_error: str | None = None
 
@@ -107,6 +109,26 @@ class NseHttpClient:
         self.prime()
         return self._read_with_retry(url, accept=accept, extra_headers=extra_headers or {})
 
+    def post_bytes(
+        self,
+        url: str,
+        body: bytes,
+        *,
+        accept: str = "*/*",
+        content_type: str = "application/json",
+        extra_headers: dict[str, str] | None = None,
+    ) -> bytes:
+        """POST ``body`` and return the response bytes, primed + throttled + retried like ``fetch_bytes``."""
+        if self._post_override is not None:
+            self._throttler.wait()
+            try:
+                return self._post_override(url, body)
+            except RequestException as exc:
+                raise DownloadError(f"NSE post failed for {url}: {exc}") from exc
+        self.prime()
+        headers = {**DEFAULT_HEADERS, "Accept": accept, "Content-Type": content_type, **(extra_headers or {})}
+        return self._send_with_retry(lambda: self._session.post(url, data=body, headers=headers, timeout=60), url)
+
     @staticmethod
     def _is_retryable(exc: BaseException) -> bool:
         if isinstance(exc, requests.HTTPError):
@@ -115,6 +137,10 @@ class NseHttpClient:
         return isinstance(exc, RequestException)
 
     def _read_with_retry(self, url: str, *, accept: str, extra_headers: dict[str, str]) -> bytes:
+        headers = {**DEFAULT_HEADERS, "Accept": accept, **extra_headers}
+        return self._send_with_retry(lambda: self._session.get(url, headers=headers, timeout=60), url)
+
+    def _send_with_retry(self, do_request: Callable[[], Response], url: str) -> bytes:
         @retry(
             retry=retry_if_exception(self._is_retryable),
             stop=stop_after_attempt(MAX_HTTP_ATTEMPTS),
@@ -123,12 +149,10 @@ class NseHttpClient:
         )
         def _once() -> bytes:
             self._throttler.wait()
-            headers = {**DEFAULT_HEADERS, "Accept": accept, **extra_headers}
-            response = self._session.get(url, headers=headers, timeout=60)
+            response = do_request()
             response.raise_for_status()
-            content_type = response.headers.get("Content-Type")
             payload = response.content
-            if looks_like_html(payload, content_type=content_type):
+            if looks_like_html(payload, content_type=response.headers.get("Content-Type")):
                 raise DownloadError(f"NSE returned HTML instead of data for {url}")
             return payload
 
