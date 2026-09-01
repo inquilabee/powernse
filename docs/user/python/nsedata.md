@@ -56,6 +56,21 @@ adj_vol = data.wide_frame(column="volume", from_date=date(2024, 8, 1), to_date=d
 panel = data.wide_frames(columns=["close", "volume"], symbols=["RELIANCE", "TCS"], adjusted=True)
 ```
 
+An `adjusted=True` read re-parses the whole staged corporate-action archive, so
+repeated overlapping reads are expensive. Point `NSEData` at a cache directory
+(constructor arg or the `POWERNSE_CACHE_DIR` env var) to memoise adjusted
+frames on disk:
+
+```python
+data = NSEData("./nse-data", cache_dir="./.powernse-cache")
+data.wide_frame(adjusted=True, from_date=date(2019, 1, 1), to_date=date(2024, 12, 31))  # cold
+data.wide_frame(adjusted=True, from_date=date(2019, 1, 1), to_date=date(2024, 12, 31))  # served from disk
+```
+
+The key includes the latest staged bhavcopy day, so a `bhavcopy` refresh
+invalidates stale entries automatically. Pass `cache=False` to one call to skip
+it. Only `adjusted` reads are cached (a raw read is already a single fast pass).
+
 ```python
 # Stream one validated frame per staged day (memory-bounded multi-year passes).
 # Supports bhavcopy / fo_bhavcopy / full_bhavcopy / index_closes / bulk_deals / block_deals.

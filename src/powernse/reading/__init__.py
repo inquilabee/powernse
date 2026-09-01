@@ -2,6 +2,7 @@
 
 from powernse.reading.bhavcopy import BhavcopyReader
 from powernse.reading.bse_corporate import BseCorporateActionReader
+from powernse.reading.cache import WideFrameCache
 from powernse.reading.corporate import CorporateActionReader
 from powernse.reading.coverage import CoverageReader
 from powernse.reading.deals import DealsReader, SecbanReader
@@ -26,4 +27,5 @@ __all__ = [
     "SecbanReader",
     "SecurityMasterReader",
     "SnapshotReader",
+    "WideFrameCache",
 ]

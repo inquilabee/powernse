@@ -40,9 +40,10 @@ from powernse.reading import (
     SecbanReader,
     SecurityMasterReader,
     SnapshotReader,
+    WideFrameCache,
 )
 from powernse.schemas import ADJUSTED_OHLC_SCHEMA, empty_frame
-from powernse.settings import Settings
+from powernse.settings import EnvSettings, Settings
 
 Record = dict[str, object]
 
@@ -50,12 +51,20 @@ Record = dict[str, object]
 class NSEData:
     """Facade over the staged-archive read subsystem: OHLC, F&O, indices, corporate actions, snapshots."""
 
-    def __init__(self, root: Path | str | ArchiveRoot | None = None, *, create: bool = False) -> None:
+    def __init__(
+        self,
+        root: Path | str | ArchiveRoot | None = None,
+        *,
+        create: bool = False,
+        cache_dir: Path | str | None = None,
+    ) -> None:
         if isinstance(root, ArchiveRoot):
             self._archive = root
         else:
             archive_root = Settings.resolve(root).archive_root
             self._archive = ArchiveRoot.open(archive_root) if create else ArchiveRoot.connect(archive_root)
+        resolved_cache = cache_dir if cache_dir is not None else EnvSettings().powernse_cache_dir
+        self._cache = WideFrameCache.resolve(resolved_cache)
         self._bhavcopy = BhavcopyReader(self._archive)
         self._delivery = DeliveryReader(self._archive)
         self._fo = FoReader(self._archive)
@@ -79,8 +88,8 @@ class NSEData:
         }
 
     @classmethod
-    def open(cls, root: Path | str | None = None, *, create: bool = False) -> Self:
-        return cls(root, create=create)
+    def open(cls, root: Path | str | None = None, *, create: bool = False, cache_dir: Path | str | None = None) -> Self:
+        return cls(root, create=create, cache_dir=cache_dir)
 
     @property
     def root(self) -> Path:
@@ -112,6 +121,7 @@ class NSEData:
         series: str = "EQ",
         adjusted: bool = False,
         include: Iterable[str] | None = None,
+        cache: bool = True,
     ) -> pd.DataFrame:
         """Date x Symbol matrix for one OHLCV column in a single pass over staged bhavcopy days.
 
@@ -119,14 +129,24 @@ class NSEData:
         == 1.0), the same math as ``ohlc_adjusted``: prices (open/high/low/close)
         are divided, ``volume`` is multiplied. ``include`` selects the event set
         (default: bonus / split / consolidation / dividend; add ``"rights"``).
+
+        When ``NSEData`` was given a ``cache_dir`` (or ``POWERNSE_CACHE_DIR`` is
+        set), an ``adjusted`` result is cached on disk keyed by the request and
+        the latest staged bhavcopy day; ``cache=False`` skips that for one call.
         """
         key = column.strip().lower()
-        raw = self._bhavcopy.wide_frame(
-            column=key, symbols=symbols, from_date=from_date, to_date=to_date, series=series
-        )
-        if not adjusted or raw.empty:
-            return raw
-        return self._adjust_matrix(raw, multiply=key == "volume", include=include)
+        if not adjusted:
+            return self._bhavcopy.wide_frame(
+                column=key, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+            )
+
+        def compute() -> pd.DataFrame:
+            return self._adjusted_wide_frames([key], symbols, from_date, to_date, series, include)[key]
+
+        if self._cache is None or not cache:
+            return compute()
+        parts = self._frame_key("wide_frame", [key], symbols, from_date, to_date, series, include)
+        return self._cache.cached(parts, compute)
 
     def wide_frames(
         self,
@@ -138,16 +158,64 @@ class NSEData:
         series: str = "EQ",
         adjusted: bool = False,
         include: Iterable[str] | None = None,
+        cache: bool = True,
     ) -> dict[str, pd.DataFrame]:
-        """One ``wide_frame`` per column in a single pass over staged days (``adjusted`` / ``include`` as there)."""
+        """One ``wide_frame`` per column in a single pass over staged days.
+
+        ``adjusted`` / ``include`` / ``cache`` behave as on :meth:`wide_frame`.
+        """
+        if not adjusted:
+            return self._bhavcopy.wide_frames(
+                columns=columns, symbols=symbols, from_date=from_date, to_date=to_date, series=series
+            )
+        norm = tuple(dict.fromkeys(name.strip().lower() for name in columns))
+
+        def compute() -> dict[str, pd.DataFrame]:
+            return self._adjusted_wide_frames(norm, symbols, from_date, to_date, series, include)
+
+        if self._cache is None or not cache:
+            return compute()
+        parts = self._frame_key("wide_frames", norm, symbols, from_date, to_date, series, include)
+        return self._cache.cached(parts, compute)
+
+    def _adjusted_wide_frames(
+        self,
+        columns: Iterable[str],
+        symbols: Iterable[str] | None,
+        from_date: date | None,
+        to_date: date | None,
+        series: str,
+        include: Iterable[str] | None,
+    ) -> dict[str, pd.DataFrame]:
         raw = self._bhavcopy.wide_frames(
             columns=columns, symbols=symbols, from_date=from_date, to_date=to_date, series=series
         )
-        if not adjusted:
-            return raw
         return {
             key: frame if frame.empty else self._adjust_matrix(frame, multiply=key == "volume", include=include)
             for key, frame in raw.items()
+        }
+
+    def _frame_key(
+        self,
+        kind: str,
+        columns: Iterable[str],
+        symbols: Iterable[str] | None,
+        from_date: date | None,
+        to_date: date | None,
+        series: str,
+        include: Iterable[str] | None,
+    ) -> dict[str, object]:
+        return {
+            "kind": kind,
+            "root": str(self._archive.root),
+            "columns": sorted(columns),
+            "symbols": sorted({s.strip().upper() for s in symbols}) if symbols is not None else None,
+            "from_date": from_date,
+            "to_date": to_date,
+            "series": series.strip().upper(),
+            "adjusted": True,
+            "include": sorted(include) if include is not None else None,
+            "latest_bhavcopy": self.latest_bhavcopy_date(),
         }
 
     def _adjust_matrix(
