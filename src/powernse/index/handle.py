@@ -27,6 +27,7 @@ class Index:
         self.code: str | None = entry.code if entry else None
         self.category: Category | None = entry.category if entry else None
         self.fno: bool = entry.fno if entry else False
+        self.aliases: tuple[str, ...] = entry.aliases if entry else ()
 
     def __repr__(self) -> str:
         return f"Index({self.name!r})"
@@ -48,12 +49,16 @@ class Index:
         return self._reader
 
     def ohlc(self, *, from_date: date | None = None, to_date: date | None = None) -> pd.DataFrame:
-        """OHLC across staged index-closes files (IndexSchema-shaped)."""
-        return self._bound().ohlc(self.name, from_date=from_date, to_date=to_date)
+        """OHLC across staged index-closes files (IndexSchema-shaped).
+
+        Rows staged under a former NSE name for this index (``self.aliases``) are
+        included, so a query for the present-day name returns the continuous series.
+        """
+        return self._bound().ohlc(self.name, aliases=self.aliases, from_date=from_date, to_date=to_date)
 
     def latest(self) -> pd.Series | None:
         """Most recent staged close row, or ``None`` if this index has no staged data."""
-        return self._bound().latest_row(self.name)
+        return self._bound().latest_row(self.name, aliases=self.aliases)
 
     def symbols(self, on: date) -> list[str]:
         """EQ-series constituent symbols from the staged snapshot labelled ``on``."""

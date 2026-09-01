@@ -21,6 +21,13 @@ def test_help_exits_zero() -> None:
     assert code == 0
 
 
+def test_version_prints_installed_version(capsys) -> None:
+    from powernse import package_version
+
+    assert main(["--version"]) == 0
+    assert capsys.readouterr().out.strip() == package_version()
+
+
 def test_status_empty_archive(tmp_path: Path) -> None:
     code = main(["status", "--root", str(tmp_path)])
     assert code == 0

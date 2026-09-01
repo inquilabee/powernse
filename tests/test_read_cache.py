@@ -1,0 +1,91 @@
+"""Critical tests for the opt-in on-disk cache for adjusted wide-frame reads."""
+
+import pickle
+from datetime import date
+from pathlib import Path
+
+import pandas as pd
+from support import staged_path, write_staged
+
+from powernse.data import NSEData
+from powernse.datasets import BHAVCOPY, CORPORATE_ACTIONS
+from powernse.reading import WideFrameCache
+
+_PARTS = {"kind": "wide_frame", "columns": ["close"], "from_date": date(2024, 1, 1)}
+
+
+def _bhav(root: Path, day: date, close: float) -> None:
+    write_staged(
+        root,
+        BHAVCOPY,
+        day,
+        f"SYMBOL,SERIES,OPEN,HIGH,LOW,CLOSE,TOTTRDQTY\nRELIANCE,EQ,{close},{close},{close},{close},100\n",
+    )
+
+
+def _bonus_on(root: Path, ex_day: date) -> None:
+    ca = staged_path(root, CORPORATE_ACTIONS, ex_day)
+    ca.parent.mkdir(parents=True, exist_ok=True)
+    ca.write_text(f'[{{"symbol":"RELIANCE","subject":"Bonus 1:1","exDate":"{ex_day.isoformat()}"}}]', encoding="utf-8")
+
+
+def test_cache_roundtrips_and_treats_corruption_as_miss(tmp_path: Path) -> None:
+    cache = WideFrameCache(tmp_path)
+    frame = pd.DataFrame({"RELIANCE": [1.0, 2.0]})
+
+    got = cache.cached(_PARTS, lambda: frame)
+    assert got.equals(frame)
+    # second call is served without recomputing
+    assert cache.cached(_PARTS, lambda: (_ for _ in ()).throw(AssertionError("recomputed"))).equals(frame)
+
+    # a different key is a miss
+    assert cache.cached({**_PARTS, "columns": ["volume"]}, lambda: pd.DataFrame({"X": [9]})).columns.tolist() == ["X"]
+
+    # a truncated / foreign file is a miss, then overwritten
+    path = cache._path(_PARTS)
+    path.write_bytes(b"not a pickle")
+    rebuilt = pd.DataFrame({"RELIANCE": [3.0]})
+    assert cache.cached(_PARTS, lambda: rebuilt).equals(rebuilt)
+    with path.open("rb") as handle:
+        assert pickle.load(handle).equals(rebuilt)
+
+
+def test_wide_frame_adjusted_cache_hit_and_bhavcopy_invalidation(tmp_path: Path) -> None:
+    root, cache_dir = tmp_path / "arc", tmp_path / "cache"
+    day_before, ex_day = date(2024, 8, 1), date(2024, 8, 2)
+    _bhav(root, day_before, 200.0)
+    _bhav(root, ex_day, 100.0)
+    _bonus_on(root, ex_day)
+
+    data = NSEData(root, cache_dir=cache_dir)
+    cold = data.wide_frame(column="close", from_date=day_before, to_date=ex_day, adjusted=True)
+    assert cold.loc[day_before, "RELIANCE"] == 100.0  # halved by the 1:1 bonus factor
+
+    # the result is now on disk and byte-identical to an uncached recompute
+    (pkl,) = (cache_dir / "wide_frame").glob("*.pkl")
+    assert cold.equals(NSEData(root).wide_frame(column="close", from_date=day_before, to_date=ex_day, adjusted=True))
+
+    # overwrite the cache file with a sentinel -> proves the read path is used
+    sentinel = pd.DataFrame({"RELIANCE": [-1.0]})
+    with pkl.open("wb") as handle:
+        pickle.dump(sentinel, handle)
+    assert data.wide_frame(column="close", from_date=day_before, to_date=ex_day, adjusted=True).equals(sentinel)
+
+    # staging a newer bhavcopy day moves latest_bhavcopy_date -> new key -> recompute (not the sentinel)
+    _bhav(root, date(2024, 8, 5), 90.0)
+    fresh = NSEData(root, cache_dir=cache_dir).wide_frame(
+        column="close", from_date=day_before, to_date=ex_day, adjusted=True
+    )
+    assert fresh.loc[day_before, "RELIANCE"] == 100.0
+
+    # cache=False bypasses the store entirely
+    bypass = data.wide_frame(column="close", from_date=day_before, to_date=ex_day, adjusted=True, cache=False)
+    assert bypass.loc[day_before, "RELIANCE"] == 100.0
+
+
+def test_no_cache_dir_keeps_current_behaviour(tmp_path: Path) -> None:
+    _bhav(tmp_path, date(2024, 1, 2), 10.0)
+    data = NSEData(tmp_path)  # no cache_dir
+    frame = data.wide_frame(column="close", from_date=date(2024, 1, 2), to_date=date(2024, 1, 2), adjusted=True)
+    assert frame.loc[date(2024, 1, 2), "RELIANCE"] == 10.0
+    assert not (tmp_path / "wide_frame").exists()

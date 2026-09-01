@@ -9,8 +9,13 @@ import typer
 from powernse.cli.common import RESUME_HELP, echo_summary, parse_iso_date, resolve_range_or_resume
 from powernse.constants import DEFAULT_RESUME_DAYS, DEFAULT_SLEEP_SECONDS
 from powernse.datasets import Dataset
-from powernse.downloaders import resolve_dated_resume_range
+from powernse.downloaders import resolve_dated_backfill_range, resolve_dated_resume_range
 from powernse.settings import Settings
+
+BACKFILL_HELP = (
+    "Fetch the history *before* the earliest staged file, from this source's known start "
+    "(index closes: 2012-02) -- the leading gap --resume can't reach. Takes no --from/--to/--resume."
+)
 
 
 def register_dated_download_command(
@@ -24,6 +29,7 @@ def register_dated_download_command(
     @app.command(name, help=help_text)
     def dated_cmd(
         resume: Annotated[bool, typer.Option("--resume", help=RESUME_HELP)] = False,
+        backfill: Annotated[bool, typer.Option("--backfill", help=BACKFILL_HELP)] = False,
         from_date: Annotated[
             date | None,
             typer.Option("--from", parser=parse_iso_date, help="Start date YYYY-MM-DD (required unless --resume)"),
@@ -53,11 +59,13 @@ def register_dated_download_command(
         archive_root = Settings.resolve(root).archive_root
         resolved_from, resolved_to = resolve_range_or_resume(
             resume=resume,
+            backfill=backfill,
             from_date=from_date,
             to_date=to_date,
             days=days,
             archive_root=archive_root,
             resume_resolver=partial(resolve_dated_resume_range, dataset=dataset),
+            backfill_resolver=partial(resolve_dated_backfill_range, dataset=dataset),
             label=name,
         )
         downloader = downloader_cls(

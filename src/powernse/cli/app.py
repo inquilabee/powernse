@@ -1,8 +1,10 @@
 """Typer application entry for PowerNSE."""
 
+from typing import Annotated
+
 import typer
 
-from powernse import datasets
+from powernse import datasets, package_version
 from powernse.cli.bundle_cmd import register_bundle_commands
 from powernse.cli.dated import register_dated_download_command
 from powernse.cli.read import register_read_commands
@@ -20,6 +22,22 @@ app = typer.Typer(
     help="Download and use NSE India end-of-day equity archives.",
     no_args_is_help=True,
 )
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(package_version())
+        raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: Annotated[
+        bool,
+        typer.Option("--version", callback=_version_callback, is_eager=True, help="Show the version and exit."),
+    ] = False,
+) -> None:
+    """Download and use NSE India end-of-day equity archives."""
 
 register_dated_download_command(
     app,

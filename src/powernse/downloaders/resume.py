@@ -38,3 +38,28 @@ def resolve_dated_resume_range(
         msg = f"resume from_date {resolved_from} is after to_date {resolved_to}"
         raise ValueError(msg)
     return resolved_from, resolved_to
+
+
+def resolve_dated_backfill_range(
+    root: Path | ArchiveRoot,
+    dataset: Dataset,
+    *,
+    today: date | None = None,
+) -> tuple[date, date]:
+    """Resolve the window *before* what is staged: the source's known start -> earliest staged day.
+
+    ``--resume`` only ever walks forward from today, so a fresh archive (or one
+    seeded with a recent slice) can never reach a source's deep history. This
+    fills that leading gap: from ``dataset.history_start`` (or the empty-archive
+    floor) up to the day before the earliest staged file -- or up to today when
+    nothing is staged yet. ``skip_existing`` still guards already-present days.
+    """
+    archive = root if isinstance(root, ArchiveRoot) else ArchiveRoot.connect(root)
+    floor = dataset.history_start or EMPTY_ARCHIVE_FROM
+    earliest = archive.earliest_staged_date(dataset)
+    end = (earliest - timedelta(days=1)) if earliest is not None else (today or date.today())
+    if floor > end:
+        reached = f"the earliest staged day is {earliest.isoformat()}" if earliest else f"today is {end.isoformat()}"
+        msg = f"{dataset.key}: nothing to backfill -- source starts {floor.isoformat()} and {reached}"
+        raise ValueError(msg)
+    return floor, end

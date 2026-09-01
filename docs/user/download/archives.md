@@ -20,6 +20,11 @@ powernse bhavcopy --resume --days 30
 powernse bhavcopy --resume --from 2000-01-01   # uncapped history
 powernse bhavcopy --from 2024-08-01 --to 2024-08-05
 
+# --backfill: the history BEFORE your earliest staged file, from the source's
+# known start (--resume only walks forward, so it can't reach deep history).
+# index closes start 2012-02-21 (ind_close_all 404s before that).
+powernse index-closes --backfill
+
 # F&O bhavcopy, index closes, full bhav (delivery columns)
 powernse fo-bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse index-closes --from 2024-08-01 --to 2024-08-05

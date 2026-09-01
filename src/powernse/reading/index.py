@@ -1,5 +1,6 @@
 """Index OHLC / constituent-list / staged-name reads over a local archive."""
 
+from collections.abc import Sequence
 from datetime import date
 
 import pandas as pd
@@ -25,21 +26,33 @@ class IndexReader(DatedFrameReader[IndexRow]):
             return []
         return sorted({bar["index_name"] for bar in self.rows_on(day)})
 
-    def ohlc(self, name: str, *, from_date: date | None = None, to_date: date | None = None) -> pd.DataFrame:
-        needle = name.strip().casefold()
-        rows = [bar for day in self.window(from_date, to_date) for bar in self._first_match(day, needle)]
+    def ohlc(
+        self,
+        name: str,
+        *,
+        aliases: Sequence[str] = (),
+        from_date: date | None = None,
+        to_date: date | None = None,
+    ) -> pd.DataFrame:
+        needles = self._needles(name, aliases)
+        rows = [bar for day in self.window(from_date, to_date) for bar in self._first_match(day, needles)]
         return self.to_frame(rows)
 
-    def latest_row(self, name: str) -> pd.Series | None:
+    def latest_row(self, name: str, *, aliases: Sequence[str] = ()) -> pd.Series | None:
         latest_day = self.latest_date()
         if latest_day is None:
             return None
-        frame = self.ohlc(name, from_date=latest_day, to_date=latest_day)
+        frame = self.ohlc(name, aliases=aliases, from_date=latest_day, to_date=latest_day)
         return frame.iloc[0] if not frame.empty else None
 
-    def _first_match(self, day: date, needle: str) -> list[IndexRow]:
+    @staticmethod
+    def _needles(name: str, aliases: Sequence[str]) -> frozenset[str]:
+        """Case-folded name set an ``index_name`` cell may equal -- the query plus any past names."""
+        return frozenset({name.strip().casefold(), *(alias.strip().casefold() for alias in aliases)})
+
+    def _first_match(self, day: date, needles: frozenset[str]) -> list[IndexRow]:
         for bar in self.rows_on(day):
-            if bar["index_name"].casefold() == needle:
+            if bar["index_name"].casefold() in needles:
                 return [bar]
         return []
 

@@ -11,6 +11,7 @@ from powernse.constants import (
     DEFAULT_GITHUB_BRANCH,
     DEFAULT_SLEEP_SECONDS,
     ENV_ARCHIVE_ROOT,
+    ENV_CACHE_DIR,
     ENV_GITHUB_BRANCH,
     ENV_GITHUB_REPO,
     MIN_REQUEST_INTERVAL_SECONDS,
@@ -23,6 +24,7 @@ class EnvSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
     powernse_root: Path | None = Field(default=None, validation_alias=ENV_ARCHIVE_ROOT)
+    powernse_cache_dir: Path | None = Field(default=None, validation_alias=ENV_CACHE_DIR)
     powernse_github_repo: str | None = Field(default=None, validation_alias=ENV_GITHUB_REPO)
     powernse_github_branch: str = Field(default=DEFAULT_GITHUB_BRANCH, validation_alias=ENV_GITHUB_BRANCH)
 
