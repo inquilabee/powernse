@@ -41,6 +41,8 @@ powernse ohlc RELIANCE --from 2024-08-01 --to 2024-08-05
 
 `--resume` only walks forward. To pull the history **before** your earliest staged file — from the source's known start (index closes: 2012-02, which is where `ind_close_all` begins) — run it once with `--backfill`: `powernse index-closes --backfill`.
 
+For index levels **before 2012-02** — per-index EOD data back to ~1995 from NSE's historical API, merged into the same `index_closes` files — run `powernse index-history` (add `--all` for every catalogued index). After that, `data.index("NIFTY 50").ohlc(from_date=date(1995, 11, 3), ...)` spans the full history across NSE's renames.
+
 Dates before **2006-08-16** walk Monday–Friday (XBOM holiday data in `exchange-calendars` starts then). Missing NSE archives still count as download failures.
 
 Files land under `./nse-data/` (or `POWERNSE_ROOT` / `--root`).

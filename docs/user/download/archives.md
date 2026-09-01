@@ -25,6 +25,12 @@ powernse bhavcopy --from 2024-08-01 --to 2024-08-05
 # index closes start 2012-02-21 (ind_close_all 404s before that).
 powernse index-closes --backfill
 
+# index-history: reach BEFORE 2012-02-21 — per-index EOD levels back to ~1995 from
+# NSE's historical API, merged into the same index_closes files. Default: 24
+# long-history indices, [1995-11-03 .. 2012-02-20]. --all for every catalogued index.
+powernse index-history
+powernse index-history --index "NIFTY 50" --index "NIFTY BANK" --from 1995-11-03
+
 # F&O bhavcopy, index closes, full bhav (delivery columns)
 powernse fo-bhavcopy --from 2024-08-01 --to 2024-08-05
 powernse index-closes --from 2024-08-01 --to 2024-08-05
@@ -70,6 +76,10 @@ nse-data/
   raw/index_constituents/YYYY/YYYY-MM-DD_<index>.json
   manifest/downloads.jsonl
 ```
+
+`index-history` writes into the same `raw/index_closes/YYYY/YYYY-MM-DD.csv` files as
+`index-closes` (one row per index per day), so `NSEData(root).index(name).ohlc()` returns
+one continuous series across NSE's renames with no extra step.
 
 ## Next
 
