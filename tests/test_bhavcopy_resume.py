@@ -8,8 +8,12 @@ from support import write_staged
 
 from powernse.archive import ArchiveRoot
 from powernse.cli import main
-from powernse.datasets import BHAVCOPY
-from powernse.downloaders.resume import EMPTY_ARCHIVE_FROM, resolve_dated_resume_range
+from powernse.datasets import BHAVCOPY, INDEX_CLOSES
+from powernse.downloaders.resume import (
+    EMPTY_ARCHIVE_FROM,
+    resolve_dated_backfill_range,
+    resolve_dated_resume_range,
+)
 from powernse.types import DownloadSummary
 
 
@@ -104,3 +108,28 @@ def test_bhavcopy_resume_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 def test_bhavcopy_requires_from_to_without_resume(tmp_path: Path) -> None:
     code = main(["bhavcopy", "--root", str(tmp_path)])
     assert code == 2
+
+
+def test_backfill_range_from_source_start_to_before_earliest_staged(tmp_path: Path) -> None:
+    write_staged(tmp_path, INDEX_CLOSES, date(2020, 3, 2), "Index Name,Index Date\n")
+    write_staged(tmp_path, INDEX_CLOSES, date(2020, 3, 3), "Index Name,Index Date\n")
+    resolved_from, resolved_to = resolve_dated_backfill_range(tmp_path, INDEX_CLOSES)
+    assert resolved_from == date(2012, 2, 21)  # INDEX_CLOSES.history_start
+    assert resolved_to == date(2020, 3, 1)  # day before the earliest staged file
+
+
+def test_backfill_range_empty_archive_runs_to_today(tmp_path: Path) -> None:
+    resolved_from, resolved_to = resolve_dated_backfill_range(tmp_path, INDEX_CLOSES, today=date(2026, 9, 1))
+    assert (resolved_from, resolved_to) == (date(2012, 2, 21), date(2026, 9, 1))
+
+
+def test_backfill_range_raises_when_history_already_staged(tmp_path: Path) -> None:
+    write_staged(tmp_path, INDEX_CLOSES, date(2012, 2, 21), "Index Name,Index Date\n")
+    with pytest.raises(ValueError, match="nothing to backfill"):
+        resolve_dated_backfill_range(tmp_path, INDEX_CLOSES)
+
+
+def test_backfill_cli_rejects_combined_flags_and_soft_exits_when_done(tmp_path: Path) -> None:
+    assert main(["index-closes", "--backfill", "--resume", "--root", str(tmp_path)]) == 2
+    write_staged(tmp_path, INDEX_CLOSES, date(2012, 2, 21), "Index Name,Index Date\n")
+    assert main(["index-closes", "--backfill", "--root", str(tmp_path)]) == 0  # nothing to do

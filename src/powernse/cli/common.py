@@ -60,13 +60,28 @@ def resolve_range_or_resume(
     archive_root: Path,
     resume_resolver: Callable[..., tuple[date, date]],
     label: str,
+    backfill: bool = False,
+    backfill_resolver: Callable[..., tuple[date, date]] | None = None,
 ) -> tuple[date, date]:
+    if backfill:
+        if resume or from_date is not None or to_date is not None:
+            typer.echo("--backfill takes no --resume / --from / --to", err=True)
+            raise typer.Exit(code=2)
+        if backfill_resolver is None:  # pragma: no cover - wiring guard
+            raise typer.Exit(code=2)
+        try:
+            resolved_from, resolved_to = backfill_resolver(archive_root)
+        except ValueError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=0) from exc
+        typer.echo(f"{label} backfill: {resolved_from.isoformat()} → {resolved_to.isoformat()}")
+        return resolved_from, resolved_to
     if resume:
         resolved_from, resolved_to = resume_resolver(archive_root, days=days, from_date=from_date, to_date=to_date)
         typer.echo(f"{label} resume: {resolved_from.isoformat()} → {resolved_to.isoformat()} (days<={days})")
         return resolved_from, resolved_to
     if from_date is None or to_date is None:
-        typer.echo("Provide --from and --to, or use --resume", err=True)
+        typer.echo("Provide --from and --to, or use --resume / --backfill", err=True)
         raise typer.Exit(code=2)
     return from_date, to_date
 

@@ -23,6 +23,8 @@ class Dataset:
 
     key: str
     extension: str
+    history_start: date | None = None
+    """Earliest date this archive's remote source serves, when known (its files 404 before)."""
 
     def __str__(self) -> str:
         return self.key
@@ -50,7 +52,7 @@ class Dataset:
 BHAVCOPY = Dataset("bhavcopy", "csv")
 FO_BHAVCOPY = Dataset("fo_bhavcopy", "csv")
 FULL_BHAVCOPY = Dataset("full_bhavcopy", "csv")
-INDEX_CLOSES = Dataset("index_closes", "csv")
+INDEX_CLOSES = Dataset("index_closes", "csv", history_start=date(2012, 2, 21))
 BULK_DEALS = Dataset("bulk_deals", "csv")
 BLOCK_DEALS = Dataset("block_deals", "csv")
 FO_SECBAN = Dataset("fo_secban", "csv")

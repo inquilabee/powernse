@@ -39,6 +39,20 @@ export POWERNSE_GITHUB_REPO=inquilabee/powernse
 Prefer a Release asset (`--url …/nse-data-bundle/nse-data.zip`) when available — see
 [fetch-bundle](https://inquilabee.github.io/powernse/user/bundle/fetch-bundle/).
 
+## First time: backfill deep history
+
+`--resume` only ever walks **forward** from today, so it cannot reach a source's
+back-catalogue on a fresh (or thinly seeded) archive. Fill the leading gap once
+with `--backfill` — from the source's known start up to your earliest staged
+file (`--skip-existing` still applies):
+
+```bash
+powernse index-closes --backfill --root ./nse-data
+```
+
+Index closes start **2012-02-21** (`ind_close_all` 404s before that); a full
+backfill is ~3,500 files / ~34 MB.
+
 ## Sunday refresh
 
 Workflow `.github/workflows/refresh-nse-data.yml` resumes downloads (including corporate-actions and index-constituents) and commits updates. Locally:

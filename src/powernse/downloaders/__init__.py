@@ -13,7 +13,7 @@ from powernse.downloaders.index_constituents import (
     index_slug,
     parse_index_constituent_symbols,
 )
-from powernse.downloaders.resume import resolve_dated_resume_range
+from powernse.downloaders.resume import resolve_dated_backfill_range, resolve_dated_resume_range
 
 __all__ = [
     "BhavcopyDownloader",
@@ -29,5 +29,6 @@ __all__ = [
     "IndexConstituentsDownloader",
     "index_slug",
     "parse_index_constituent_symbols",
+    "resolve_dated_backfill_range",
     "resolve_dated_resume_range",
 ]

@@ -76,6 +76,10 @@ class ArchiveRoot:
         dates = self.staged_dates(dataset)
         return dates[-1] if dates else None
 
+    def earliest_staged_date(self, dataset: Dataset) -> date | None:
+        dates = self.staged_dates(dataset)
+        return dates[0] if dates else None
+
     # -- Bytes ------------------------------------------------------------------
 
     def write_bytes(self, relative: str | Path, payload: bytes) -> Path:

@@ -44,6 +44,10 @@ jobs:
           run_one bhavcopy uv run powernse bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
           run_one fo-bhavcopy uv run powernse fo-bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
           run_one index-closes uv run powernse index-closes --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
+          # --resume only walks forward; --backfill fills any gap before the earliest staged
+          # index-closes file (down to 2012-02-21). Idempotent once the history is staged: it exits 0
+          # with "nothing to backfill", otherwise --skip-existing stats the files and downloads nothing.
+          run_one index-closes-backfill uv run powernse index-closes --backfill --root "$ROOT" --sleep 0.2 --strict
           run_one full-bhavcopy uv run powernse full-bhavcopy --resume --days "$DAYS" --root "$ROOT" --sleep 0.2 --strict
           TODAY=$(date -u +%F)
           FROM=$(date -u -d "$TODAY - $DAYS days" +%F)
