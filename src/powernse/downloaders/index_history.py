@@ -290,20 +290,18 @@ class IndexHistoryDownloader(ArchiveDownloader):
         if from_date > to_date:
             msg = f"from_date {from_date} must be on or before to_date {to_date}"
             raise ValueError(msg)
-        downloaded = skipped = failed = 0
+        rows_by_index: dict[str, list[IndexHistoryRow]] = {}
+        failed = 0
         for index_name in index_names:
             try:
-                rows = self._collect_series(index_name, from_date, to_date)
+                rows_by_index[index_name] = self._collect_series(index_name, from_date, to_date)
             except (DownloadError, PayloadError) as exc:
                 if self._strict:
                     raise
                 logger.warning("Skipping index history %s: %s", index_name, exc)
                 failed += 1
-                continue
-            written, present = self._upsert_days(rows)
-            downloaded += written
-            skipped += present
-        return DownloadSummary(downloaded_count=downloaded, skipped_existing_count=skipped, failed_count=failed)
+        written, present = self._write_days(rows_by_index)
+        return DownloadSummary(downloaded_count=written, skipped_existing_count=present, failed_count=failed)
 
     def _collect_series(self, index_name: str, from_date: date, to_date: date) -> list[IndexHistoryRow]:
         primary = self._sources[0].fetch_series(index_name, from_date, to_date)
@@ -312,26 +310,48 @@ class IndexHistoryDownloader(ArchiveDownloader):
         earliest = primary[0].trade_date if primary else to_date
         if earliest <= from_date + timedelta(days=31):
             return primary
-        fallback = self._sources[1].fetch_series(index_name, from_date, earliest - timedelta(days=1))
+        try:
+            fallback = self._sources[1].fetch_series(index_name, from_date, earliest - timedelta(days=1))
+        except (DownloadError, PayloadError) as exc:
+            # A flaky secondary source must not discard good primary rows.
+            logger.warning("index history fallback source failed for %s: %s", index_name, exc)
+            return primary
         by_day: dict[date, IndexHistoryRow] = {row.trade_date: row for row in fallback}
         by_day.update({row.trade_date: row for row in primary})  # primary wins on overlap
         return [by_day[day] for day in sorted(by_day)]
 
-    def _upsert_days(self, rows: Sequence[IndexHistoryRow]) -> tuple[int, int]:
-        written = present = 0
-        for row in rows:
-            key = self._archive.staged_key(INDEX_CLOSES, row.trade_date)
-            existing = self._read_day(key)
-            if any(name.strip().casefold() == row.index_name.casefold() for name in existing):
-                present += 1
-                if self._skip_existing:
+    def _write_days(self, rows_by_index: dict[str, list[IndexHistoryRow]]) -> tuple[int, int]:
+        """Merge every index's rows into each day's CSV in a single read-modify-write per day file."""
+        by_day: dict[date, list[IndexHistoryRow]] = {}
+        for rows in rows_by_index.values():
+            for row in rows:
+                if row.close is None:  # no usable level -- can't stage an ind_close_all row
                     continue
-            existing[row.index_name] = self._csv_record(row)
-            payload = self._render_day(existing)
-            self._archive.write_bytes(key, payload)
-            record_download(self._archive, url=f"index-history:{row.index_name}", local_path=key, payload=payload)
-            written += 1
+                by_day.setdefault(row.trade_date, []).append(row)
+
+        written = present = 0
+        for day in sorted(by_day):
+            key = self._archive.staged_key(INDEX_CLOSES, day)
+            existing = self._read_day(key)
+            changed = 0
+            for row in by_day[day]:
+                match = self._match_key(existing, row.index_name)
+                if match is not None and self._skip_existing:
+                    present += 1
+                    continue
+                existing[match or row.index_name] = self._csv_record(row)
+                changed += 1
+            if changed:
+                payload = self._render_day(existing)
+                self._archive.write_bytes(key, payload)
+                record_download(self._archive, url="index-history", local_path=key, payload=payload)
+                written += changed
         return written, present
+
+    @staticmethod
+    def _match_key(existing: dict[str, dict[str, str]], index_name: str) -> str | None:
+        needle = index_name.casefold()
+        return next((name for name in existing if name.casefold() == needle), None)
 
     def _read_day(self, key: str) -> dict[str, dict[str, str]]:
         path = self._archive.path_for(key)
@@ -346,24 +366,35 @@ class IndexHistoryDownloader(ArchiveDownloader):
 
     @staticmethod
     def _csv_record(row: IndexHistoryRow) -> dict[str, str]:
+        # Older history is close-only; fill O/H/L from close so IndexClosesRowParser
+        # (which drops a row when any O/H/L cell is "-") still yields the day.
+        close = row.close
+        opened = row.open if row.open is not None else close
+        high = row.high if row.high is not None else close
+        low = row.low if row.low is not None else close
+
         def cell(value: float | None) -> str:
             return _MISSING if value is None else f"{value:g}"
 
         return {
             "Index Name": row.index_name,
             "Index Date": row.trade_date.strftime("%d-%m-%Y"),
-            "Open Index Value": cell(row.open),
-            "High Index Value": cell(row.high),
-            "Low Index Value": cell(row.low),
-            "Closing Index Value": cell(row.close),
+            "Open Index Value": cell(opened),
+            "High Index Value": cell(high),
+            "Low Index Value": cell(low),
+            "Closing Index Value": cell(close),
         }
 
     @staticmethod
     def _render_day(by_name: dict[str, dict[str, str]]) -> bytes:
+        # Widen the header to any extra ind_close_all columns (P/E, Volume, ...) present
+        # on rows already staged, so a merge never strips them.
+        fieldnames = list(_CSV_FIELDS)
+        for record in by_name.values():
+            fieldnames.extend(key for key in record if key not in fieldnames)
         buffer = io.StringIO()
-        writer = csv.DictWriter(buffer, fieldnames=list(_CSV_FIELDS), extrasaction="ignore")
+        writer = csv.DictWriter(buffer, fieldnames=fieldnames, extrasaction="ignore")
         writer.writeheader()
         for name in sorted(by_name):
-            record = by_name[name]
-            writer.writerow({field: record.get(field, "") for field in _CSV_FIELDS})
+            writer.writerow({field: by_name[name].get(field, "") for field in fieldnames})
         return buffer.getvalue().encode("utf-8")

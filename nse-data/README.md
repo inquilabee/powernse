@@ -62,8 +62,8 @@ powernse index-history --root ./nse-data          # 24 long-history indices
 powernse index-history --all --root ./nse-data     # every catalogued index (~2 min)
 ```
 
-Per-index coverage before ~2000 is uneven (NSE serves what it has); rows missing
-OHLC are staged with `-` and read back as `NaN` open/high/low, real close.
+Per-index coverage before ~2000 is uneven (NSE serves what it has). Close-only
+history rows are staged with open/high/low set equal to the close.
 
 ## Sunday refresh
 

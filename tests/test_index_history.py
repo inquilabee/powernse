@@ -16,6 +16,7 @@ from powernse.downloaders.index_history import (
     NiftyIndicesHistorySource,
     NseIndicesHistorySource,
 )
+from powernse.errors import DownloadError
 from powernse.index import lookup
 
 _NSE_FLAT = {
@@ -115,8 +116,26 @@ class _StubSource(HistoricalIndexSource):
         return [r for r in self._rows.get(index_name, []) if from_date <= r.trade_date <= to_date]
 
 
+class _BrokenSource(HistoricalIndexSource):
+    def __init__(self) -> None:
+        pass
+
+    def _fetch_chunk(self, index_name: str, start: date, end: date) -> bytes:  # pragma: no cover
+        raise AssertionError("unused")
+
+    def _parse(self, payload: bytes, *, index_name: str) -> list[IndexHistoryRow]:  # pragma: no cover
+        raise AssertionError("unused")
+
+    def fetch_series(self, index_name: str, from_date: date, to_date: date) -> list[IndexHistoryRow]:
+        raise DownloadError("fallback source is down")
+
+
 def _row(day: date, name: str, close: float) -> IndexHistoryRow:
     return IndexHistoryRow(trade_date=day, index_name=name, open=close, high=close, low=close, close=close)
+
+
+def _close_only(day: date, name: str, close: float) -> IndexHistoryRow:
+    return IndexHistoryRow(trade_date=day, index_name=name, open=None, high=None, low=None, close=close)
 
 
 def test_downloader_stages_and_reads_across_names(tmp_path: Path) -> None:
@@ -147,21 +166,43 @@ def test_downloader_stages_and_reads_across_names(tmp_path: Path) -> None:
     assert path.read_bytes() == before
 
 
-def test_downloader_merges_into_existing_day_file(tmp_path: Path) -> None:
-    day = date(2005, 6, 1)
+def test_downloader_merges_into_existing_day_file_keeping_extra_columns(tmp_path: Path) -> None:
+    day = date(2013, 6, 3)  # a day the ind_close_all archive already covers
     existing = staged_path(tmp_path, INDEX_CLOSES, day)
     existing.parent.mkdir(parents=True, exist_ok=True)
     existing.write_text(
-        "Index Name,Index Date,Open Index Value,High Index Value,Low Index Value,Closing Index Value\n"
-        "CNX Nifty Junior,01-06-2005,-,-,-,4200.5\n",
+        "Index Name,Index Date,Open Index Value,High Index Value,Low Index Value,"
+        "Closing Index Value,Points Change,Change(%),Volume,Turnover (Rs. Cr.),P/E,P/B,Div Yield\n"
+        "CNX Nifty Junior,03-06-2013,-,-,-,4200.5,10,0.2,123,456.7,18.1,3.2,1.1\n",
         encoding="utf-8",
     )
     stub = _StubSource({"NIFTY 50": [_row(day, "NIFTY 50", 2100.0)]})
     dl = IndexHistoryDownloader(tmp_path, sleep_seconds=0, sources=[stub])
     dl.download_range(day, day, ["NIFTY 50"])
     text = existing.read_text(encoding="utf-8")
-    assert "CNX Nifty Junior,01-06-2005" in text
-    assert "NIFTY 50,01-06-2005" in text
+    assert "P/E" in text.splitlines()[0] and "Div Yield" in text.splitlines()[0]
+    assert ",18.1,3.2,1.1" in text  # the pre-existing row's extra columns survived the merge
+    assert "NIFTY 50,03-06-2013" in text
+
+
+def test_close_only_rows_are_readable(tmp_path: Path) -> None:
+    days = [date(1996, 4, 1), date(1996, 4, 2)]
+    stub = _StubSource({"NIFTY 50": [_close_only(d, "NIFTY 50", 1050.0 + i) for i, d in enumerate(days)]})
+    dl = IndexHistoryDownloader(tmp_path, sleep_seconds=0, sources=[stub])
+    dl.download_range(days[0], days[-1], ["NIFTY 50"])
+    frame = NSEData(tmp_path).index("NIFTY 50").ohlc(from_date=days[0], to_date=days[-1])
+    assert list(frame["trade_date"]) == days
+    assert list(frame["close"]) == [1050.0, 1051.0]
+    assert list(frame["open"]) == [1050.0, 1051.0]  # O/H/L filled from close so the row survives the parser
+
+
+def test_fallback_failure_keeps_primary_rows(tmp_path: Path) -> None:
+    primary = _StubSource({"NIFTY 50": [_row(date(2005, 1, 3), "NIFTY 50", 2000.0)]})
+    dl = IndexHistoryDownloader(tmp_path, sleep_seconds=0, sources=[primary, _BrokenSource()])
+    summary = dl.download_range(date(1999, 1, 1), date(2005, 12, 31), ["NIFTY 50"])
+    assert summary.failed_count == 0 and summary.downloaded_count == 1
+    frame = NSEData(tmp_path).index("NIFTY 50").ohlc(from_date=date(1999, 1, 1), to_date=date(2005, 12, 31))
+    assert list(frame["trade_date"]) == [date(2005, 1, 3)]
 
 
 def test_downloader_stitches_fallback_before_primary(tmp_path: Path) -> None:
