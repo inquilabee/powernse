@@ -11,17 +11,20 @@ from functools import cache
 from importlib.resources import files
 from typing import Literal, Self
 
+from powernse.index.aliases import INDEX_ALIASES
+
 Category = Literal["broad", "sectoral", "thematic", "strategy", "fixed_income"]
 
 
 @dataclass(frozen=True, slots=True)
 class IndexEntry:
-    """One NSE index's identity: canonical name, short code, and classification."""
+    """One NSE index's identity: canonical name, short code, classification, and past names."""
 
     name: str
     code: str
     category: Category
     fno: bool
+    aliases: tuple[str, ...] = ()
 
 
 class IndexCatalog:
@@ -33,13 +36,22 @@ class IndexCatalog:
         for entry in entries:
             self._by_key.setdefault(self._key(entry.name), entry)
             self._by_key.setdefault(self._key(entry.code), entry)
+        for entry in entries:  # a canonical name/code always wins over an alias key
+            for alias in entry.aliases:
+                self._by_key.setdefault(self._key(alias), entry)
 
     @classmethod
     @cache
     def load(cls) -> Self:
-        """The bundled catalog (parsed once, then cached)."""
+        """The bundled catalog (parsed once, then cached), with historical aliases merged in."""
         raw = json.loads(files("powernse.index.resources").joinpath("indexes.json").read_text(encoding="utf-8"))
-        return cls(tuple(IndexEntry(**item) for item in raw))
+        return cls(tuple(cls._entry(item) for item in raw))
+
+    @staticmethod
+    def _entry(item: dict[str, object]) -> IndexEntry:
+        fields = {key: value for key, value in item.items() if key != "aliases"}
+        aliases = tuple(INDEX_ALIASES.get(str(item["name"]), ()))
+        return IndexEntry(**fields, aliases=aliases)
 
     def all(self) -> tuple[IndexEntry, ...]:
         return self._entries

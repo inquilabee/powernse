@@ -5,6 +5,10 @@ Maintainer tool -- hits live NSE, not run in CI or by users.
 
     uv run python scripts/build_index_catalog.py           # rewrite the catalog
     uv run python scripts/build_index_catalog.py --check    # exit 1 if it would change
+
+Historical index-name aliases are NOT emitted here (the API only knows present-day
+names) -- they live in ``src/powernse/index/aliases.py`` and are merged onto each
+entry at ``IndexCatalog.load()``. This file stays alias-free so a regen never drops them.
 """
 
 import argparse
