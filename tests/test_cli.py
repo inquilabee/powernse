@@ -146,3 +146,26 @@ def test_bse_corporate_actions_download(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr("powernse.cli.snapshots.BseCorporateActionsDownloader", FakeDownloader)
     code = main(["bse-corporate-actions", "--from", "2024-01-01", "--to", "2024-03-31", "--root", str(tmp_path)])
     assert code == 0
+
+
+def test_index_history_help_exits_zero() -> None:
+    assert main(["index-history", "--help"]) == 0
+
+
+def test_index_history_runs_with_index_and_range(tmp_path: Path, monkeypatch) -> None:
+    seen: dict[str, object] = {}
+
+    class FakeDownloader:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            self.root = tmp_path
+
+        def download_range(self, from_date, to_date, names) -> DownloadSummary:
+            seen["args"] = (from_date, to_date, list(names))
+            return DownloadSummary(downloaded_count=2, skipped_existing_count=0, failed_count=0)
+
+    monkeypatch.setattr("powernse.cli.index_history.IndexHistoryDownloader", FakeDownloader)
+    code = main(
+        ["index-history", "--index", "NIFTY 50", "--from", "2001-01-01", "--to", "2001-01-03", "--root", str(tmp_path)]
+    )
+    assert code == 0
+    assert seen["args"] == (date(2001, 1, 1), date(2001, 1, 3), ["NIFTY 50"])

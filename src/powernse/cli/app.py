@@ -7,6 +7,7 @@ import typer
 from powernse import datasets, package_version
 from powernse.cli.bundle_cmd import register_bundle_commands
 from powernse.cli.dated import register_dated_download_command
+from powernse.cli.index_history import register_index_history_command
 from powernse.cli.read import register_read_commands
 from powernse.cli.snapshots import register_snapshot_commands
 from powernse.downloaders import (  # noqa: F401 — getattr targets for dated commands / tests
@@ -70,6 +71,7 @@ register_dated_download_command(
     dataset=datasets.FULL_BHAVCOPY,
 )
 register_snapshot_commands(app)
+register_index_history_command(app)
 register_bundle_commands(app)
 register_read_commands(app)
 
