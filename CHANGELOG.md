@@ -2,9 +2,11 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-09-01
+
 ### Added
 
-- **`powernse index-history`** — one command for deep index history. Pulls per-index EOD levels back to the NIFTY 50 base date (1995-11-03) from NSE's historical API (`/api/historicalOR/indicesHistory`), with a NSE Indices Ltd (`niftyindices.com`) fallback for the leading gap when NSE's series starts late, and merges the result into the same `raw/index_closes/YYYY/YYYY-MM-DD.csv` files `index-closes` writes. No new dataset or read path — `NSEData(root).index("NIFTY 50").ohlc(from_date=date(1995, 11, 3), …)` returns one continuous series across NSE's renames. Defaults to 24 long-history indices over `[1995-11-03, 2012-02-20]` (the tail `ind_close_all` can't reach); `--index` (repeatable), `--all`, `--from`, `--to` override. The weekly `refresh-nse-data` workflow runs it, so the published `nse-data/` bundle now carries index history back to ~1995 for the major indices. New `IndexHistoryDownloader` / `HistoricalIndexSource` / `NseIndicesHistorySource` / `NiftyIndicesHistorySource`; `NseHttpClient.post_bytes`
+- **`powernse index-history`** — one command for deep index history. Pulls per-index end-of-day levels back to the Nifty 50 base date (1995-11-03) from NSE's historical API (`/api/historicalOR/indicesHistory`), with a NSE Indices Ltd (`niftyindices.com`) fallback for the leading gap when NSE's series starts late, and merges the result into the same `raw/index_closes/YYYY/YYYY-MM-DD.csv` files `index-closes` writes. No new dataset or read path — `NSEData(root).index("NIFTY 50").ohlc(from_date=date(1995, 11, 3), …)` returns one continuous series across NSE's renames. Defaults to 24 long-history indices over `[1995-11-03, 2012-02-20]` (the tail `ind_close_all` can't reach); `--index` (repeatable), `--all`, `--from`, `--to` override. The weekly `refresh-nse-data` workflow runs it, so the published `nse-data/` bundle now carries index history back to ~1995 for the major indices. New `IndexHistoryDownloader` / `HistoricalIndexSource` / `NseIndicesHistorySource` / `NiftyIndicesHistorySource`; `NseHttpClient.post_bytes`
 
 ## 0.5.0 — 2026-09-01
 
