@@ -8,6 +8,13 @@ entries:
       snapshots) over a shared DatedFrameReader base, plus the adjusted-read
       cache. This is the whole read subsystem behind NSEData; splitting it by
       subfolder would fragment a cohesive one-class-per-file unit.
+  - path: src/powernse/downloaders
+    reason: >-
+      Mirror of src/powernse/reading: one downloader per NSE source family
+      (bhavcopy / fo / full / index-closes / index-history / index-constituents /
+      deals+secban / equity-list / corporate-actions / bse-corporate-actions)
+      over shared base / dated / resume scaffolds. The download subsystem behind
+      the CLI; a subfolder split would fragment the one-class-per-file unit.
   - path: tests
     reason: >-
       Flat one-file-per-source-area pytest suite (test_bhavcopy.py ...
