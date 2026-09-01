@@ -34,6 +34,7 @@ class ArchiveDownloader:
         strict: bool = False,
         all_calendar_days: bool = False,
         fetch_bytes: Callable[[str], bytes] | None = None,
+        post_bytes: Callable[[str, bytes], bytes] | None = None,
         http_client: NseHttpClient | None = None,
     ) -> None:
         settings, archive = self._resolve_root(root)
@@ -44,8 +45,8 @@ class ArchiveDownloader:
         self._all_calendar_days = all_calendar_days
         if http_client is not None:
             self._http = http_client
-        elif fetch_bytes is not None:
-            self._http = NseHttpClient(fetch_override=fetch_bytes)
+        elif fetch_bytes is not None or post_bytes is not None:
+            self._http = NseHttpClient(fetch_override=fetch_bytes, post_override=post_bytes)
         else:
             self._http = NseHttpClient(min_interval_seconds=settings.min_request_interval_seconds)
 

@@ -53,6 +53,18 @@ powernse index-closes --backfill --root ./nse-data
 Index closes start **2012-02-21** (`ind_close_all` 404s before that); a full
 backfill is ~3,500 files / ~34 MB.
 
+To reach **before** 2012-02-21 — per-index EOD levels back to the NIFTY 50 base
+date (1995-11-03) from NSE's historical API, merged into the same
+`raw/index_closes/` files:
+
+```bash
+powernse index-history --root ./nse-data          # 24 long-history indices
+powernse index-history --all --root ./nse-data     # every catalogued index (~2 min)
+```
+
+Per-index coverage before ~2000 is uneven (NSE serves what it has). Close-only
+history rows are staged with open/high/low set equal to the close.
+
 ## Sunday refresh
 
 Workflow `.github/workflows/refresh-nse-data.yml` resumes downloads (including corporate-actions and index-constituents) and commits updates. Locally:
@@ -61,6 +73,7 @@ Workflow `.github/workflows/refresh-nse-data.yml` resumes downloads (including c
 powernse bhavcopy --resume --days 14 --root ./nse-data
 powernse fo-bhavcopy --resume --days 14 --root ./nse-data
 powernse index-closes --resume --days 14 --root ./nse-data
+powernse index-history --root ./nse-data
 powernse full-bhavcopy --resume --days 14 --root ./nse-data
 powernse corporate-actions --from "$(date -u -d '14 days ago' +%F)" --to "$(date -u +%F)" --root ./nse-data
 powernse index-constituents --date "$(date -u +%F)" --root ./nse-data

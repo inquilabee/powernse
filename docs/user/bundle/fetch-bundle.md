@@ -45,6 +45,8 @@ powernse fetch-bundle --url 'https://codeload.github.com/inquilabee/powernse/zip
 fetch-bundle: wrote 42 files to /…/nse-data
 ```
 
+- Bundled index-close history spans ~**1995** → present for the major indices
+  (`index-history` fills the pre-2012 tail); CM bhavcopy and the rest run 2012+
 - Destination defaults to `./nse-data` or `POWERNSE_ROOT`
 - `--force` **replaces** the destination tree (orphans from older layouts are removed)
 - Without `--force`, a non-empty destination raises an error
