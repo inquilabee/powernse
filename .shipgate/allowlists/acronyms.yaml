@@ -18,6 +18,7 @@ OHLC: open / high / low / close
 OHLCV: open / high / low / close / volume
 CM: cash market (NSE segment)
 CA: corporate action
+EQ: NSE's "EQ" series code for regular equity shares (vs. other series like BE, SM)
 FO: futures and options (F&O)
 UDIFF: NSE's unified daily bhavcopy file format
 ISIN: International Securities Identification Number
