@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-09-02
+
+### Added
+
+- **`Index.constituents(on)`** (and `NSEData(root).index(name)`'s reader,
+  `IndexReader.constituents`) — every staged constituent row for an index
+  snapshot (symbol, series, `lastPrice`, `ffmc`, and whatever other fields
+  NSE's payload carries) as a plain DataFrame, alongside the existing
+  EQ-only-symbols `Index.symbols(on)`. Replaces hand-rolling
+  `json.loads(path.read_bytes())` against the staged
+  `raw/index_constituents/` file to get index-weighting fields.
+  `powernse/downloaders/index_constituents.py`,
+  `powernse/reading/index.py`, `powernse/index/handle.py`
+
 ## 0.6.2 — 2026-09-01
 
 ### Fixed

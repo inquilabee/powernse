@@ -11,6 +11,7 @@ from powernse.downloaders.index_closes import IndexClosesDownloader
 from powernse.downloaders.index_constituents import (
     IndexConstituentsDownloader,
     index_slug,
+    parse_index_constituent_frame,
     parse_index_constituent_symbols,
 )
 from powernse.downloaders.index_history import (
@@ -40,6 +41,7 @@ __all__ = [
     "NiftyIndicesHistorySource",
     "NseIndicesHistorySource",
     "index_slug",
+    "parse_index_constituent_frame",
     "parse_index_constituent_symbols",
     "resolve_dated_backfill_range",
     "resolve_dated_resume_range",

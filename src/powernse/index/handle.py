@@ -15,8 +15,8 @@ class Index:
 
     ``Index("nifty50")`` on its own carries identity from the bundled catalog
     (``name`` / ``code`` / ``category`` / ``fno`` / ``known``). Data reads
-    (``ohlc`` / ``latest`` / ``symbols`` / ``constituent_dates``) need an archive
-    -- use ``NSEData(root).index(name)``, which binds a reader.
+    (``ohlc`` / ``latest`` / ``symbols`` / ``constituents`` / ``constituent_dates``) need
+    an archive -- use ``NSEData(root).index(name)``, which binds a reader.
     """
 
     def __init__(self, name: str, reader: IndexReader | None = None) -> None:
@@ -63,6 +63,11 @@ class Index:
     def symbols(self, on: date) -> list[str]:
         """EQ-series constituent symbols from the staged snapshot labelled ``on``."""
         return self._bound().symbols(on, self.name)
+
+    def constituents(self, on: date) -> pd.DataFrame:
+        """Every constituent row from the staged snapshot labelled ``on`` -- symbol,
+        series, lastPrice, ffmc, and whatever other fields NSE's snapshot carries."""
+        return self._bound().constituents(on, self.name)
 
     def constituent_dates(self) -> list[date]:
         """Dates for which a constituent snapshot of this index is staged."""

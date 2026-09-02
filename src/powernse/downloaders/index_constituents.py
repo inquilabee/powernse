@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import ClassVar
 from urllib.parse import urlencode
 
+import pandas as pd
+
 from powernse.constants import INDEX_CONSTITUENTS_API_URL
 from powernse.datasets import INDEX_CONSTITUENTS
 from powernse.downloaders.base import ArchiveDownloader
@@ -114,3 +116,21 @@ def parse_index_constituent_records(payload: bytes) -> list[IndexConstituentReco
 def parse_index_constituent_symbols(payload: bytes) -> list[str]:
     """Extract EQ series symbol list from an NSE index constituents JSON payload."""
     return [record.symbol for record in parse_index_constituent_records(payload) if record.series.upper() == "EQ"]
+
+
+def parse_index_constituent_frame(payload: bytes) -> pd.DataFrame:
+    """Every constituent row from an NSE index snapshot, as staged (all raw fields: symbol,
+    series, lastPrice, ffmc, ... whatever NSE's payload carries for that index)."""
+
+    def extract_raw_records(decoded: object) -> list[object]:
+        if isinstance(decoded, dict):
+            data = decoded.get("data")
+            if isinstance(data, list):
+                return list(data)
+        if isinstance(decoded, list):
+            return list(decoded)
+        msg = "Unexpected index constituents JSON shape"
+        raise PayloadError(msg)
+
+    raw_records = extract_raw_records(json.loads(payload))
+    return pd.DataFrame([item for item in raw_records if isinstance(item, dict)])

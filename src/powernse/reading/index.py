@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 
 from powernse.datasets import INDEX_CLOSES, INDEX_CONSTITUENTS
-from powernse.downloaders import index_slug, parse_index_constituent_symbols
+from powernse.downloaders import index_slug, parse_index_constituent_frame, parse_index_constituent_symbols
 from powernse.errors import ArchiveError
 from powernse.parsers.rows import INDEX_CLOSES_ROWS, IndexRow
 from powernse.reading.base import DatedFrameReader
@@ -57,11 +57,19 @@ class IndexReader(DatedFrameReader[IndexRow]):
         return []
 
     def symbols(self, on: date, name: str) -> list[str]:
+        return parse_index_constituent_symbols(self._constituents_payload(on, name))
+
+    def constituents(self, on: date, name: str) -> pd.DataFrame:
+        """Every staged constituent row for ``name`` on ``on`` (symbol, series, lastPrice,
+        ffmc, ... whatever fields NSE's snapshot carries), as a plain DataFrame."""
+        return parse_index_constituent_frame(self._constituents_payload(on, name))
+
+    def _constituents_payload(self, on: date, name: str) -> bytes:
         path = self._archive.staged_path(INDEX_CONSTITUENTS, on, discriminator=index_slug(name))
         if not path.is_file():
             msg = f"No staged index constituents for {name!r} on {on.isoformat()}"
             raise ArchiveError(msg)
-        return parse_index_constituent_symbols(path.read_bytes())
+        return path.read_bytes()
 
     def constituent_dates(self, name: str) -> list[date]:
         """Staged constituent-snapshot dates for ``name``, ascending."""

@@ -38,6 +38,12 @@ def _stage_constituents(root: Path, day: date, name: str, symbols: list[str]) ->
     p.write_text(json.dumps({"data": [{"symbol": s, "series": "EQ"} for s in symbols]}), encoding="utf-8")
 
 
+def _stage_constituent_rows(root: Path, day: date, name: str, rows: list[dict]) -> None:
+    p = staged_path(root, INDEX_CONSTITUENTS, day, discriminator=index_slug(name))
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"data": rows}), encoding="utf-8")
+
+
 def test_index_standalone_identity() -> None:
     nifty = Index("nifty50")
     assert (nifty.name, nifty.code, nifty.category, nifty.fno, nifty.known) == (
@@ -176,3 +182,24 @@ def test_index_handle_constituents(tmp_path: Path) -> None:
 
     with pytest.raises(ArchiveError, match="index constituents"):
         idx.symbols(date(2020, 1, 1))
+
+
+def test_index_handle_constituents_frame(tmp_path: Path) -> None:
+    _stage_constituent_rows(
+        tmp_path,
+        date(2024, 8, 1),
+        "Nifty 50",
+        [
+            {"symbol": "RELIANCE", "series": "EQ", "lastPrice": 2900.5, "ffmc": 1_965_000.0},
+            {"symbol": "TCS", "series": "EQ", "lastPrice": 3800.0, "ffmc": 1_100_000.0},
+            {"symbol": "NIFTY 50", "series": "", "lastPrice": 24500.0, "ffmc": None},
+        ],
+    )
+
+    df = NSEData(tmp_path).index("Nifty 50").constituents(date(2024, 8, 1))
+    assert list(df["symbol"]) == ["RELIANCE", "TCS", "NIFTY 50"]  # unfiltered, unlike symbols()
+    assert {"symbol", "series", "lastPrice", "ffmc"} <= set(df.columns)
+    assert df.set_index("symbol").loc["RELIANCE", "lastPrice"] == 2900.5
+
+    with pytest.raises(ArchiveError, match="index constituents"):
+        NSEData(tmp_path).index("Nifty 50").constituents(date(2020, 1, 1))
